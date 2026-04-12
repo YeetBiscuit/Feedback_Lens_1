@@ -1,9 +1,15 @@
-import fitz  # PyMuPDF
 import json
 
 
 def extract_pages(path):
     """Extract text per page. Returns list of {page, text}."""
+    try:
+        import fitz  # PyMuPDF
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            "PDF support requires PyMuPDF. Install the 'pymupdf' package in the active environment."
+        ) from exc
+
     doc = fitz.open(path)
     pages = []
     for i in range(doc.page_count):

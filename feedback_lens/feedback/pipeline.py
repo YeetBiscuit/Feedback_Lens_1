@@ -221,6 +221,8 @@ def generate_feedback_for_submission(
     ensure_schema_updates(conn)
     generation_id = None
     resolved_model = resolve_model_name(provider, model)
+    prompt = None
+    raw_response = None
 
     try:
         inputs = _load_generation_inputs(conn, submission_id)
@@ -290,12 +292,32 @@ def generate_feedback_for_submission(
             inputs["submission"],
             retrieved_chunks,
         )
+        conn.execute(
+            """
+            UPDATE generation_runs
+            SET prompt_text = ?
+            WHERE generation_id = ?
+            """,
+            (prompt, generation_id),
+        )
+        conn.commit()
+
         raw_response = generate_text(
             prompt,
             provider=provider,
             model=resolved_model,
             temperature=temperature,
         )
+        conn.execute(
+            """
+            UPDATE generation_runs
+            SET raw_response_text = ?
+            WHERE generation_id = ?
+            """,
+            (raw_response, generation_id),
+        )
+        conn.commit()
+
         payload = _extract_json_payload(raw_response)
         overall_feedback = payload.get("overall_feedback")
         if not isinstance(overall_feedback, dict):
@@ -370,11 +392,13 @@ def generate_feedback_for_submission(
                 """
                 UPDATE generation_runs
                 SET status = 'failed',
+                    prompt_text = COALESCE(prompt_text, ?),
+                    raw_response_text = COALESCE(raw_response_text, ?),
                     error_message = ?,
                     completed_at = CURRENT_TIMESTAMP
                 WHERE generation_id = ?
                 """,
-                (str(err), generation_id),
+                (prompt, raw_response, str(err), generation_id),
             )
             conn.commit()
         raise

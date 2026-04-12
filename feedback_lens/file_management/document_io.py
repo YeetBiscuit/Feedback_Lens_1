@@ -1,25 +1,28 @@
 import re
 from pathlib import Path
 
-from feedback_lens.file_management.readers.pdf_reader import extract_pages
 from feedback_lens.file_management.readers.text_reader import read_transcript
 from feedback_lens.paths import PROJECT_ROOT
 
-
-READERS = {
-    ".pdf": extract_pages,
-    ".txt": read_transcript,
-}
-
-
 def read_document_pages(file_path: str | Path) -> list[dict]:
     path = Path(file_path)
-    reader = READERS.get(path.suffix.lower())
-    if reader is None:
+    suffix = path.suffix.lower()
+
+    if suffix == ".txt":
+        return read_transcript(str(path))
+
+    if suffix == ".pdf":
+        from feedback_lens.file_management.readers.pdf_reader import extract_pages
+
+        return extract_pages(str(path))
+
+    supported_types = [".pdf", ".txt"]
+    if suffix not in supported_types:
         raise ValueError(
-            f"Unsupported file type '{path.suffix}'. Supported types: {', '.join(READERS)}"
+            f"Unsupported file type '{path.suffix}'. Supported types: {', '.join(supported_types)}"
         )
-    return reader(str(path))
+
+    raise ValueError(f"Unsupported file type '{path.suffix}'.")
 
 
 def pages_to_text(pages: list[dict]) -> str:
