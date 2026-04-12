@@ -111,6 +111,7 @@ CREATE TABLE assignment_specs (
     source_file_path TEXT,
     raw_text TEXT,
     cleaned_text TEXT NOT NULL,
+    retrieval_cues_json TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_assignment_specs_assignment
         FOREIGN KEY (assignment_id) REFERENCES assignments(assignment_id)
@@ -271,6 +272,7 @@ CREATE TABLE generation_runs (
     assignment_id INTEGER NOT NULL,
     rubric_id INTEGER NOT NULL,
     pipeline_version TEXT NOT NULL,
+    llm_provider TEXT,
     llm_model TEXT NOT NULL,
     prompt_template_version TEXT NOT NULL,
     retrieval_strategy TEXT,
@@ -359,6 +361,7 @@ CREATE TABLE overall_feedback (
     overall_comment TEXT NOT NULL,
     key_strengths TEXT,
     priority_improvements TEXT,
+    overall_grade_band TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (generation_id),
     CONSTRAINT fk_overall_feedback_generation

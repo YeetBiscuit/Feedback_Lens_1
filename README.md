@@ -1,38 +1,36 @@
 # Feedback Lens
 
-Feedback Lens is a Python-based foundation for an AI-assisted academic feedback pipeline.
-It currently provides data modelling, content ingestion, chunking, and vector indexing for unit materials.
+Feedback Lens is a Python-based baseline Retrieval-Augmented Generation pipeline for academic feedback. It ingests course materials, imports assignment documents, retrieves relevant teaching content, and generates structured rubric-aligned feedback for student submissions.
 
-## Current capabilities
+## What The Project Does
 
-- SQLite schema for units, assignments, rubrics, submissions, generation runs, and review records
-- Initialisation script for creating the database from `schema.sql`
-- Ingestion pipeline for `.pdf` and `.txt` teaching materials
-- Naive sliding-window chunking for extracted text
-- Embedding generation using `sentence-transformers` (`all-MiniLM-L6-v2`)
-- ChromaDB persistence for vector storage
-- Interactive database console for listing, inserting, updating, deleting, and custom SQL
+- stores units, assignments, rubrics, submissions, retrieval records, and feedback outputs in SQLite
+- ingests unit materials from `.pdf` and `.txt` files
+- auto-chunks and embeds course materials into a local Chroma vector store
+- imports assignment specifications, rubric PDFs, and student submissions into the database
+- prepares retrieval-ready cue lists from imported assignment specifications
+- extracts rubric tables into JSON and parsed rubric criteria
+- generates structured feedback with a pluggable LLM interface
 
-## Project layout
+## Local Data Model
 
-- `schema.sql` - full relational schema
-- `build.py` - database initialisation logic
-- `main.py` - interactive SQLite console
-- `ingest.py` - end-to-end ingestion pipeline
-- `pdf_reader.py` - PDF page extraction (PyMuPDF)
-- `txt_reader.py` - transcript reader (normalised to page format)
-- `chunking.py` - chunking strategies (current default: naive sliding window)
-- `embedding.py` - embedding and ChromaDB storage
-- `LLM/Qwen.py` - helper for calling Qwen via compatible OpenAI API
-- `resources/` - sample source material files
+This repository shares code, not operational data.
+
+Each user is expected to maintain their own local:
+
+- `feedback_system.db`
+- `chromadb/`
+- `documents/` files
+
+These local files are intentionally ignored by git and should be managed separately on each machine.
 
 ## Prerequisites
 
 - Python 3.10+
-- Windows, macOS, or Linux
-- Optional API key for Qwen integration (`QWEN_API_KEY`)
+- `pip`
+- optional Qwen API key if you want to run feedback generation
 
-## Installation
+## Setup
 
 ```bash
 python -m venv .venv
@@ -40,72 +38,41 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -U pip
 pip install chromadb sentence-transformers pymupdf openai
-```
-
-## Quick start
-
-### 1) Initialise the database
-
-```bash
 python build.py
 ```
 
-### 2) Add a unit record (required before ingestion)
+If you are using Qwen for generation:
 
-Use the DB console:
-
-```bash
-python main.py
+```powershell
+$env:QWEN_API_KEY="your_key_here"
 ```
 
-Choose option `4` (Insert row), select `units`, then provide values such as:
+## Documentation
 
-- `unit_code`: FIT2002
-- `unit_name`: Data Structures and Algorithms
-- `semester`: Semester 1
-- `year`: 2026
+- [Database guide](docs/database.md)
+- [Document ingestion guide](docs/document_ingestion.md)
+- [Usage guide](docs/usage.md)
+- [Configuration guide](docs/configuration.md)
+- [Troubleshooting guide](docs/troubleshooting.md)
 
-### 3) Ingest material (PDF or TXT)
+## Quick Start
 
-```bash
-python ingest.py "resources/your_file.txt" 1 lecture_transcript "Week 1 Transcript" 1
-```
+1. Run `python build.py` to initialise your local database.
+2. Use `python main.py`, then choose option `2` to add a unit and option `3` to add an assignment.
+3. Import assignment documents with `python import_documents.py`.
+4. Ingest course materials with `python ingest.py`.
+5. Import a student submission with `python import_documents.py submission ...`.
+6. Generate feedback with `python generate_feedback.py <submission_id> --provider qwen`.
 
-Arguments:
+The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 
-- `file_path`
-- `unit_id`
-- `material_type`
-- `title`
-- `week_number` (optional)
+## Code Layout
 
-Pipeline performed:
-
-1. Extract text
-2. Insert into `unit_materials`
-3. Chunk text into `material_chunks`
-4. Embed chunks into ChromaDB collection
-5. Map chunk IDs to vector IDs in `chunk_embedding_map`
-
-### 4) Inspect data
-
-Run:
-
-```bash
-python main.py
-```
-
-Then use options to list tables, view rows, or execute custom SQL.
-
-## Embedding and collection naming
-
-- Embedding model: `all-MiniLM-L6-v2`
-- Vectors stored in local `chromadb/`
-- Collection names are derived from unit metadata (`unit_code`, `year`, `semester`) and normalised for ChromaDB compatibility
-
-## Notes and limitations
-
-- Preprocessing is currently a placeholder (`cleaned_text = raw_text` in ingestion)
-- Chunking is currently naive and word-count based
-- Retrieval and feedback generation orchestration are schema-ready but not yet wired end-to-end
-- No automated tests are included yet
+- `feedback_lens/setup/` - setup and schema logic
+- `feedback_lens/db/` - database connection and schema-update helpers
+- `feedback_lens/file_management/` - document readers, importers, parsing, ingestion, chunking, and embedding
+- `feedback_lens/feedback/` - retrieval, prompting, LLM providers, and feedback pipeline
+- `feedback_lens/cli/` - internal CLI implementations
+- root `build.py`, `main.py`, `ingest.py`, `import_documents.py`, and `generate_feedback.py` remain as thin user-facing entry points
+- `documents/` - local document root
+- `chromadb/` - local vector store

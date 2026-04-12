@@ -1,13 +1,8 @@
 import sqlite3
-from pathlib import Path
 
-from feedback_lens.cli.db_console import main as package_main
 from feedback_lens.db.connection import connect_db
+from feedback_lens.paths import CHROMA_DIR, DB_PATH, SCHEMA_PATH
 from feedback_lens.setup.build import reset_feedback_system
-
-
-DB_PATH = Path("feedback_system.db")
-CHROMA_DIR = Path("chromadb")
 
 
 def get_connection() -> sqlite3.Connection:
@@ -408,7 +403,7 @@ def print_menu() -> None:
     print(
         """
 ==== Feedback Lens DB Console ====
-1. Reset database and vector store from schema.sql [destructive]
+1. Reset database and vector store from packaged schema [destructive]
 2. Add unit
 3. Add assignment
 4. List table names
@@ -441,7 +436,7 @@ def main() -> None:
                 continue
 
             try:
-                reset_feedback_system(DB_PATH, "schema.sql", CHROMA_DIR)
+                reset_feedback_system(DB_PATH, SCHEMA_PATH, CHROMA_DIR)
                 print(
                     f"Database reset at {DB_PATH} and vector store cleared at {CHROMA_DIR}."
                 )
@@ -485,4 +480,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    package_main()
+    main()

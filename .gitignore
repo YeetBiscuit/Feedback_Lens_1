@@ -5,3 +5,21 @@ env/
 ENV/
 __pycache__/
 *.py[cod]
+
+# Local project data
+feedback_system.db
+feedback_system.db-journal
+feedback_system.db-wal
+feedback_system.db-shm
+chromadb/
+
+# Keep document folder structure, ignore local document contents
+documents/**
+!documents/resources/
+!documents/specifications/
+!documents/rubrics/
+!documents/submissions/
+!documents/resources/.gitkeep
+!documents/specifications/.gitkeep
+!documents/rubrics/.gitkeep
+!documents/submissions/.gitkeep
