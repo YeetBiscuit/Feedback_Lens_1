@@ -110,7 +110,7 @@ Assignment specification:
 \"\"\"
 
 Column headers must be:
-CRITERION | WEIGHT | HD (85-100%) | D (75-84%) | C (65-74%) | P (50-64%) | FAIL (<50%)
+CRITERION | WEIGHT | HD (80-100%) | D (70-79%) | C (60-69%) | P (50-59%) | FAIL (<50%)
 
 Rules:
 - Include 4-6 criteria that together sum to 100%.

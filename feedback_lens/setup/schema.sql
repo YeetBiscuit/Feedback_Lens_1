@@ -14,6 +14,11 @@ CREATE TABLE units (
     unit_name TEXT NOT NULL,
     semester TEXT,
     year INTEGER,
+    level TEXT,
+    discipline TEXT,
+    credit_points REAL,
+    weeks INTEGER,
+    learning_outcomes_json TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -78,9 +83,15 @@ CREATE TABLE assignments (
     unit_id INTEGER NOT NULL,
     assignment_name TEXT NOT NULL,
     assignment_type TEXT,
+    assignment_code TEXT,
     -- e.g. reflection, report, essay, short_answer
     description TEXT,
     due_date TEXT,
+    weight REAL,
+    due_week INTEGER,
+    word_count_or_equivalent TEXT,
+    linked_topics_json TEXT,
+    learning_outcomes_assessed_json TEXT,
     version INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -109,6 +120,7 @@ CREATE TABLE assignment_specs (
     assignment_id INTEGER NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
     source_file_path TEXT,
+    source_content_hash TEXT,
     raw_text TEXT,
     cleaned_text TEXT NOT NULL,
     retrieval_cues_json TEXT,
@@ -128,6 +140,7 @@ CREATE TABLE rubrics (
     assignment_id INTEGER NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
     source_file_path TEXT,
+    source_content_hash TEXT,
     raw_text TEXT,
     cleaned_text TEXT,
     structured_rubric_json TEXT,
@@ -170,6 +183,7 @@ CREATE TABLE unit_materials (
     title TEXT NOT NULL,
     week_number INTEGER,
     source_file_path TEXT,
+    source_content_hash TEXT,
     raw_text TEXT,
     cleaned_text TEXT NOT NULL,
     version INTEGER NOT NULL DEFAULT 1,
@@ -206,6 +220,7 @@ CREATE TABLE student_submissions (
     student_identifier TEXT NOT NULL,
     -- can be anonymised ID instead of real student ID
     original_file_path TEXT,
+    source_content_hash TEXT,
     raw_text TEXT,
     cleaned_text TEXT NOT NULL,
     submitted_at TEXT,
@@ -397,3 +412,137 @@ CREATE TABLE human_reviews (
 
 CREATE INDEX idx_human_reviews_generation_id ON human_reviews(generation_id);
 CREATE INDEX idx_human_reviews_tutor_id ON human_reviews(tutor_id);
+
+-- =========================
+-- 17. CURRICULUM GENERATION RUNS
+-- Records unit package generation before ingestion
+-- =========================
+CREATE TABLE curriculum_generation_runs (
+    curriculum_run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_description TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    temperature REAL,
+    course_code TEXT,
+    output_root TEXT,
+    schema_json TEXT,
+    status TEXT NOT NULL DEFAULT 'running',
+    error_message TEXT,
+    started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT
+);
+
+CREATE INDEX idx_curriculum_generation_runs_status
+    ON curriculum_generation_runs(status);
+CREATE INDEX idx_curriculum_generation_runs_course_code
+    ON curriculum_generation_runs(course_code);
+
+-- =========================
+-- 18. CURRICULUM GENERATION STEPS
+-- Records each generation prompt/response
+-- =========================
+CREATE TABLE curriculum_generation_steps (
+    curriculum_step_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    curriculum_run_id INTEGER NOT NULL,
+    stage_key TEXT NOT NULL,
+    assignment_code TEXT,
+    week_number INTEGER,
+    grade_band TEXT,
+    prompt_messages_json TEXT NOT NULL,
+    raw_response TEXT,
+    parsed_output_json TEXT,
+    status TEXT NOT NULL DEFAULT 'running',
+    error_message TEXT,
+    locked_at TEXT,
+    started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT,
+    CONSTRAINT fk_curriculum_generation_steps_run
+        FOREIGN KEY (curriculum_run_id) REFERENCES curriculum_generation_runs(curriculum_run_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_curriculum_generation_steps_run_id
+    ON curriculum_generation_steps(curriculum_run_id);
+CREATE INDEX idx_curriculum_generation_steps_stage_key
+    ON curriculum_generation_steps(stage_key);
+
+-- =========================
+-- 19. CURRICULUM ARTIFACTS
+-- Files written by curriculum generation
+-- =========================
+CREATE TABLE curriculum_artifacts (
+    curriculum_artifact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    curriculum_run_id INTEGER NOT NULL,
+    curriculum_step_id INTEGER,
+    artifact_type TEXT NOT NULL,
+    title TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    content_hash TEXT,
+    text_content TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_curriculum_artifacts_run
+        FOREIGN KEY (curriculum_run_id) REFERENCES curriculum_generation_runs(curriculum_run_id)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_curriculum_artifacts_step
+        FOREIGN KEY (curriculum_step_id) REFERENCES curriculum_generation_steps(curriculum_step_id)
+        ON DELETE SET NULL
+);
+
+CREATE INDEX idx_curriculum_artifacts_run_id
+    ON curriculum_artifacts(curriculum_run_id);
+CREATE INDEX idx_curriculum_artifacts_type
+    ON curriculum_artifacts(artifact_type);
+
+-- =========================
+-- 20. UNIT INGESTION RUNS
+-- Records auto-ingestion of generated unit folders
+-- =========================
+CREATE TABLE unit_ingestion_runs (
+    ingestion_run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    unit_id INTEGER,
+    unit_directory TEXT NOT NULL,
+    dry_run INTEGER NOT NULL DEFAULT 0,
+    force INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'running',
+    summary_json TEXT,
+    error_message TEXT,
+    started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT,
+    CONSTRAINT fk_unit_ingestion_runs_unit
+        FOREIGN KEY (unit_id) REFERENCES units(unit_id)
+        ON DELETE SET NULL
+);
+
+CREATE INDEX idx_unit_ingestion_runs_unit_id
+    ON unit_ingestion_runs(unit_id);
+CREATE INDEX idx_unit_ingestion_runs_status
+    ON unit_ingestion_runs(status);
+
+-- =========================
+-- 21. UNIT INGESTION ITEMS
+-- One row per discovered/imported file in a unit ingestion run
+-- =========================
+CREATE TABLE unit_ingestion_items (
+    ingestion_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ingestion_run_id INTEGER NOT NULL,
+    item_type TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    source_content_hash TEXT,
+    action TEXT NOT NULL,
+    status TEXT NOT NULL,
+    message TEXT,
+    assignment_id INTEGER,
+    spec_id INTEGER,
+    rubric_id INTEGER,
+    material_id INTEGER,
+    submission_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_unit_ingestion_items_run
+        FOREIGN KEY (ingestion_run_id) REFERENCES unit_ingestion_runs(ingestion_run_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_unit_ingestion_items_run_id
+    ON unit_ingestion_items(ingestion_run_id);
+CREATE INDEX idx_unit_ingestion_items_status
+    ON unit_ingestion_items(status);

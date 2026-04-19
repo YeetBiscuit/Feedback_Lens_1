@@ -1,4 +1,5 @@
 from feedback_lens.feedback.llm.providers import (
+    generate_chat,
     generate_text,
     get_provider,
     list_provider_names,
@@ -6,6 +7,7 @@ from feedback_lens.feedback.llm.providers import (
 )
 
 __all__ = [
+    "generate_chat",
     "generate_text",
     "get_provider",
     "list_provider_names",

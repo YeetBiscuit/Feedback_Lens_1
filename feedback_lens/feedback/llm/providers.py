@@ -33,3 +33,22 @@ def generate_text(
 ) -> str:
     client = get_provider(provider)
     return client.generate(prompt, model=model, temperature=temperature)
+
+
+def generate_chat(
+    messages: list[dict[str, str]],
+    provider: str = "qwen",
+    model: str | None = None,
+    temperature: float = 0.2,
+) -> str:
+    client = get_provider(provider)
+    if hasattr(client, "generate_chat"):
+        return client.generate_chat(messages, model=model, temperature=temperature)
+    return client.generate(_messages_to_prompt(messages), model=model, temperature=temperature)
+
+
+def _messages_to_prompt(messages: list[dict[str, str]]) -> str:
+    return "\n\n".join(
+        f"{message.get('role', 'user').upper()}:\n{message.get('content', '')}"
+        for message in messages
+    )

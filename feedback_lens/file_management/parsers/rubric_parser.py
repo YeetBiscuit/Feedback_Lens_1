@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 import fitz
 
@@ -95,6 +96,27 @@ def _rows_to_dicts(headers: list[str], rows: list[list[str]]) -> list[dict]:
     return row_dicts
 
 
+def extract_pipe_rubric_tables(text: str) -> list[dict]:
+    rows = _extract_pipe_rows(text)
+    if len(rows) < 2:
+        return []
+
+    headers = _dedupe_headers(rows[0])
+    body_rows = rows[1:]
+    return [
+        {
+            "page_number": 1,
+            "table_index": 1,
+            "bbox": [],
+            "row_count": len(rows),
+            "column_count": len(headers),
+            "headers": headers,
+            "rows": _rows_to_dicts(headers, body_rows),
+            "markdown": _rows_to_markdown([headers, *body_rows]),
+        }
+    ]
+
+
 def extract_rubric_tables(file_path: str | Path) -> list[dict]:
     path = Path(file_path)
     if path.suffix.lower() != ".pdf":
@@ -130,7 +152,47 @@ def extract_rubric_tables(file_path: str | Path) -> list[dict]:
                     }
                 )
 
-    return tables_json
+    if tables_json:
+        return tables_json
+
+    extracted_text = []
+    with fitz.open(path) as doc:
+        for page in doc:
+            extracted_text.append(page.get_text())
+    return extract_pipe_rubric_tables("\n".join(extracted_text))
+
+
+def _extract_pipe_rows(text: str) -> list[list[str]]:
+    rows = []
+    expected_width = None
+
+    for line in text.splitlines():
+        if "|" not in line:
+            continue
+        cells = [_clean_cell(cell) for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 2 or _is_pipe_separator_row(cells):
+            continue
+        if expected_width is None:
+            expected_width = len(cells)
+        rows.append(_normalise_pipe_row_width(cells, expected_width))
+
+    return rows
+
+
+def _is_pipe_separator_row(cells: list[str]) -> bool:
+    return all(re.fullmatch(r":?-{3,}:?", cell.replace(" ", "")) for cell in cells)
+
+
+def _normalise_pipe_row_width(cells: list[str], width: int) -> list[str]:
+    if len(cells) < width:
+        return cells + [""] * (width - len(cells))
+    if len(cells) > width:
+        return cells[: width - 1] + [" | ".join(cells[width - 1 :])]
+    return cells
+
+
+def _rows_to_markdown(rows: list[list[str]]) -> str:
+    return "\n".join("| " + " | ".join(row) + " |" for row in rows)
 
 
 def _find_header_index(headers: list[str], keywords: tuple[str, ...]) -> int | None:
@@ -180,7 +242,7 @@ def extract_rubric_criteria(tables: list[dict]) -> list[dict]:
                 continue
 
             criterion_name_lower = criterion_name.casefold()
-            if criterion_name_lower in {"criterion", "criteria"}:
+            if criterion_name_lower in {"criterion", "criteria", "total"}:
                 continue
 
             criterion_description = None

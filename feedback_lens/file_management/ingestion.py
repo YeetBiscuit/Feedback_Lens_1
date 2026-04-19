@@ -3,6 +3,7 @@ from pathlib import Path
 
 from feedback_lens.file_management.document_io import (
     clean_text,
+    hash_file,
     normalise_source_path,
     read_document_pages,
 )
@@ -80,8 +81,8 @@ def ingest_material(
         """
         INSERT INTO unit_materials
             (unit_id, assignment_id, material_type, title,
-             week_number, source_file_path, raw_text, cleaned_text)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             week_number, source_file_path, source_content_hash, raw_text, cleaned_text)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             unit_id,
@@ -90,6 +91,7 @@ def ingest_material(
             title,
             week_number,
             normalise_source_path(file_path),
+            hash_file(file_path),
             raw_text,
             cleaned_text,
         ),

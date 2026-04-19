@@ -48,6 +48,23 @@ class QwenProvider(LLMProvider):
             raise RuntimeError("Qwen returned an empty response.")
         return content
 
+    def generate_chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        temperature: float = 0.2,
+    ) -> str:
+        client = self._build_client()
+        completion = client.chat.completions.create(
+            model=model or self.default_model,
+            messages=messages,
+            temperature=temperature,
+        )
+        content = completion.choices[0].message.content
+        if not content:
+            raise RuntimeError("Qwen returned an empty response.")
+        return content
+
 
 def ask_qwen(prompt, model=QWEN_MODEL, temperature: float = 0.2):
     return QwenProvider().generate(prompt, model=model, temperature=temperature)

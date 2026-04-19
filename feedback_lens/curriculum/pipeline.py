@@ -192,6 +192,12 @@ def _write_pdf(path: Path, text: str) -> Path:
     return write_plain_pdf(text, collision_safe_path(path))
 
 
+def _write_rubric_pdf(path: Path, text: str) -> Path:
+    from feedback_lens.curriculum.pdf import write_rubric_table_pdf
+
+    return write_rubric_table_pdf(text, collision_safe_path(path))
+
+
 def _insert_artifact(
     conn: sqlite3.Connection,
     run_id: int,
@@ -428,7 +434,7 @@ def generate_unit(
                 progress_callback=progress_callback,
                 progress_label=f"{assignment_id} rubric",
             )
-            rubric_path = _write_pdf(assignment_dir / "rubric.pdf", rubric_text)
+            rubric_path = _write_rubric_pdf(assignment_dir / "rubric.pdf", rubric_text)
             rubrics[assignment_id] = rubric_text
             record_artifact(
                 rubric_step,

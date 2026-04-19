@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from feedback_lens.db.connection import get_next_version
-from feedback_lens.file_management.document_io import extract_document
+from feedback_lens.file_management.document_io import extract_document, hash_file
 from feedback_lens.file_management.parsers.rubric_parser import (
     extract_rubric_criteria,
     extract_rubric_tables,
@@ -36,13 +36,15 @@ def import_assignment_spec(
     cur = conn.execute(
         """
         INSERT INTO assignment_specs
-            (assignment_id, version, source_file_path, raw_text, cleaned_text, retrieval_cues_json)
-        VALUES (?, ?, ?, ?, ?, ?)
+            (assignment_id, version, source_file_path, source_content_hash,
+             raw_text, cleaned_text, retrieval_cues_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             assignment_id,
             version,
             document["file_path"],
+            hash_file(file_path),
             document["raw_text"],
             document["cleaned_text"],
             json.dumps(retrieval_cues, ensure_ascii=False, indent=2),
@@ -88,13 +90,15 @@ def import_rubric(
     cur = conn.execute(
         """
         INSERT INTO rubrics
-            (assignment_id, version, source_file_path, raw_text, cleaned_text, structured_rubric_json)
-        VALUES (?, ?, ?, ?, ?, ?)
+            (assignment_id, version, source_file_path, source_content_hash,
+             raw_text, cleaned_text, structured_rubric_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             assignment_id,
             version,
             document["file_path"],
+            hash_file(file_path),
             document["raw_text"],
             document["cleaned_text"],
             structured_rubric_json,
@@ -152,14 +156,15 @@ def import_student_submission(
     cur = conn.execute(
         """
         INSERT INTO student_submissions
-            (assignment_id, student_identifier, original_file_path,
+            (assignment_id, student_identifier, original_file_path, source_content_hash,
              raw_text, cleaned_text, submitted_at, version)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             assignment_id,
             student_identifier,
             document["file_path"],
+            hash_file(file_path),
             document["raw_text"],
             document["cleaned_text"],
             submitted_at,

@@ -11,8 +11,10 @@ from feedback_lens.curriculum.paths import assignment_slug, collision_safe_path
 from feedback_lens.curriculum.pipeline import generate_unit
 from feedback_lens.file_management.parsers.rubric_parser import (
     extract_pipe_rubric_tables,
+    extract_rubric_tables,
     extract_rubric_criteria,
 )
+from feedback_lens.curriculum.pdf import write_rubric_table_pdf
 from feedback_lens.file_management.unit_auto_ingestion import (
     ingest_unit_directory,
 )
@@ -131,6 +133,23 @@ class UnitGenerationIngestionTests(unittest.TestCase):
         self.assertEqual(len(criteria), 2)
         self.assertEqual(criteria[0]["criterion_name"], "Analysis")
         self.assertIn("HD", criteria[0]["performance_levels"])
+
+    def test_rubric_table_pdf_is_parseable_by_pymupdf(self) -> None:
+        text = """
+| CRITERION | WEIGHT | HD | D | C | P | FAIL |
+| Analysis | 50% | Excellent argument | Strong argument | Sound argument | Basic argument | Missing |
+| Evidence | 50% | Rich evidence | Relevant evidence | Adequate evidence | Limited evidence | Absent |
+| TOTAL | 100% | | | | | |
+"""
+        with _temp_dir() as tmp:
+            path = Path(tmp) / "rubric.pdf"
+            write_rubric_table_pdf(text, path)
+            tables = extract_rubric_tables(path)
+            criteria = extract_rubric_criteria(tables)
+
+        self.assertGreaterEqual(len(tables), 1)
+        self.assertEqual(len(criteria), 2)
+        self.assertEqual(criteria[0]["criterion_name"], "Analysis")
 
     def test_auto_ingest_dry_run_classifies_without_db_writes(self) -> None:
         with _temp_dir() as tmp:
@@ -252,6 +271,11 @@ class UnitGenerationIngestionTests(unittest.TestCase):
                 self.assertIn("course schema generation", "\n".join(progress_events))
                 self.assertIn("Completed curriculum generation run", progress_events[-1])
                 self.assertTrue((unit_root / "schema.json").exists())
+                rubric_pdf = unit_root / "assignments" / "a1-test-report" / "rubric.pdf"
+                self.assertGreaterEqual(
+                    len(extract_rubric_criteria(extract_rubric_tables(rubric_pdf))),
+                    1,
+                )
                 self.assertTrue(
                     (
                         unit_root

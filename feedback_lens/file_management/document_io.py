@@ -1,8 +1,18 @@
 import re
+import hashlib
 from pathlib import Path
 
 from feedback_lens.file_management.readers.text_reader import read_transcript
 from feedback_lens.paths import PROJECT_ROOT
+
+
+def hash_file(file_path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(file_path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
 
 def read_document_pages(file_path: str | Path) -> list[dict]:
     path = Path(file_path)
