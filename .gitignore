@@ -5,6 +5,9 @@ env/
 ENV/
 __pycache__/
 *.py[cod]
+tmp_tests/
+.tmp_tests/
+.tmp_compile/
 
 # Local project data
 feedback_system.db
@@ -19,7 +22,9 @@ documents/**
 !documents/specifications/
 !documents/rubrics/
 !documents/submissions/
+!documents/units/
 !documents/resources/.gitkeep
 !documents/specifications/.gitkeep
 !documents/rubrics/.gitkeep
 !documents/submissions/.gitkeep
+!documents/units/.gitkeep
