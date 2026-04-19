@@ -52,6 +52,12 @@ Provider options:
 python generate_unit.py --description-file course_description.txt --provider qwen --model qwen3.5-plus --temperature 0.2
 ```
 
+Gemini is also available:
+
+```powershell
+python generate_unit.py --description-file course_description.txt --provider gemini --model gemini-2.5-flash --temperature 0.2
+```
+
 The CLI prints live progress as it works: run creation, each model-call stage, each generated file path, and the final review/ingestion command. Use `--quiet` only when you want the final summary without the stage-by-stage console output.
 
 Example progress output:
@@ -86,6 +92,12 @@ Set the provider API key before generation. For Qwen:
 
 ```powershell
 $env:QWEN_API_KEY="your_key_here"
+```
+
+For Gemini:
+
+```powershell
+$env:GEMINI_API_KEY="your_key_here"
 ```
 
 ## Review-First Workflow

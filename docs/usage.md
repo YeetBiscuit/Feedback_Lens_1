@@ -103,6 +103,12 @@ For Qwen:
 $env:QWEN_API_KEY="your_key_here"
 ```
 
+For Gemini:
+
+```powershell
+$env:GEMINI_API_KEY="your_key_here"
+```
+
 If you need more detail about providers and model selection, see [configuration.md](configuration.md).
 
 ## 7. Generate Feedback
@@ -111,6 +117,12 @@ Run:
 
 ```powershell
 python generate_feedback.py <submission_id> --provider qwen --top-k 5
+```
+
+Or with Gemini:
+
+```powershell
+python generate_feedback.py <submission_id> --provider gemini --top-k 5
 ```
 
 Example:
@@ -192,6 +204,8 @@ Run:
 python build.py
 $env:QWEN_API_KEY="your_qwen_key_here"
 ```
+
+For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` instead and use `--provider gemini`.
 
 Create the unit and assignment:
 

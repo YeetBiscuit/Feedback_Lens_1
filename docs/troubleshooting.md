@@ -10,10 +10,18 @@ Symptom:
 Missing API key. Please set environment variable QWEN_API_KEY.
 ```
 
+For Gemini, the message names `GEMINI_API_KEY`.
+
 Fix:
 
 ```powershell
 $env:QWEN_API_KEY="your_key_here"
+```
+
+Or, for Gemini:
+
+```powershell
+$env:GEMINI_API_KEY="your_key_here"
 ```
 
 Then rerun `python generate_feedback.py ...`.
@@ -28,7 +36,7 @@ Unsupported LLM provider '...'
 
 Fix:
 
-- use a registered provider name such as `qwen`
+- use a registered provider name such as `qwen` or `gemini`
 - check `feedback_lens/feedback/llm/providers.py` if you added a custom provider
 
 ## No Assignment Or Submission Found

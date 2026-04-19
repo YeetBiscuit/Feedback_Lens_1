@@ -16,14 +16,21 @@ These are local machine paths and are intentionally not shared through git.
 
 Feedback generation uses a provider registry in `feedback_lens/feedback/llm/providers.py`.
 
-Current registered provider:
+Current registered providers:
 
 - `qwen`
+- `gemini`
 
 You can select a provider at runtime with:
 
 ```bash
 python generate_feedback.py <submission_id> --provider qwen
+```
+
+Gemini can be selected the same way:
+
+```bash
+python generate_feedback.py <submission_id> --provider gemini
 ```
 
 If you pass an unsupported provider name, generation fails with a clear error listing the available providers.
@@ -44,6 +51,10 @@ Current Qwen default:
 
 - `qwen3.5-plus`
 
+Current Gemini default:
+
+- `gemini-2.5-flash`
+
 ## Qwen Configuration
 
 Qwen is implemented through the OpenAI-compatible client in `feedback_lens/feedback/llm/qwen.py`.
@@ -58,6 +69,28 @@ Set the API key before generation:
 
 ```powershell
 $env:QWEN_API_KEY="your_key_here"
+```
+
+## Gemini Configuration
+
+Gemini is implemented through Google's OpenAI-compatible endpoint in `feedback_lens/feedback/llm/gemini.py`.
+
+Current Gemini settings:
+
+- environment variable for API key: `GEMINI_API_KEY`
+- base URL: `https://generativelanguage.googleapis.com/v1beta/openai/`
+- default model: `gemini-2.5-flash`
+
+Set the API key before generation:
+
+```powershell
+$env:GEMINI_API_KEY="your_key_here"
+```
+
+Run feedback generation with:
+
+```bash
+python generate_feedback.py 1 --provider gemini
 ```
 
 ## Retrieval Configuration

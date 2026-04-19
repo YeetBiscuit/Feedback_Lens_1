@@ -1,7 +1,9 @@
+from feedback_lens.feedback.llm.gemini import GeminiProvider
 from feedback_lens.feedback.llm.qwen import QwenProvider
 
 
 _PROVIDER_FACTORIES = {
+    "gemini": GeminiProvider,
     "qwen": QwenProvider,
 }
 
