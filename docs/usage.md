@@ -12,7 +12,7 @@ This guide shows the normal operator workflow from database setup through feedba
 6. Ingest unit materials
 7. Import a student submission
 8. Generate feedback
-9. Inspect the saved results
+9. Review the saved results
 
 ## 1. Initialise Your Local Environment
 
@@ -135,37 +135,45 @@ Completed generation_run=1 using qwen:qwen3.5-plus. retrieval_cues=5, deduplicat
 
 ## 8. Inspect Results
 
-Run:
+List recent generation runs:
 
 ```powershell
-python main.py
+python review_generation.py list
 ```
 
-Use option `9` and try:
+Show the latest generation run in a readable report:
 
-```sql
-SELECT * FROM generation_runs;
+```powershell
+python review_generation.py
 ```
 
-```sql
-SELECT * FROM overall_feedback;
+Show a specific run:
+
+```powershell
+python review_generation.py show 1
 ```
 
-```sql
-SELECT rc.criterion_name, cf.strengths, cf.areas_for_improvement,
-       cf.improvement_suggestion, cf.suggested_level
-FROM criterion_feedback AS cf
-JOIN rubric_criteria AS rc ON rc.criterion_id = cf.criterion_id
-WHERE cf.generation_id = 1
-ORDER BY rc.criterion_order;
+Include the full prompt and raw model response:
+
+```powershell
+python review_generation.py show 1 --show-prompt --show-response
 ```
 
-```sql
-SELECT rank_position, chunk_id, similarity_score
-FROM retrieval_records
-WHERE generation_id = 1
-ORDER BY rank_position;
+Show full retrieved chunk text instead of a preview:
+
+```powershell
+python review_generation.py show 1 --full-chunks
 ```
+
+The review command prints:
+
+- generation metadata such as provider, model, prompt template, status, and timestamps
+- overall feedback and grade band
+- per-criterion feedback in rubric order
+- retrieved chunks with source title, week, rank, score, query text, and chunk preview
+- optional full `prompt_text` and `raw_response_text`
+
+If you still want raw SQL, `python main.py` option `9` remains available.
 
 ## End-To-End Example
 

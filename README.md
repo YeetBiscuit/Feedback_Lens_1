@@ -63,6 +63,7 @@ $env:QWEN_API_KEY="your_key_here"
 4. Ingest course materials with `python ingest.py`.
 5. Import a student submission with `python import_documents.py submission ...`.
 6. Generate feedback with `python generate_feedback.py <submission_id> --provider qwen`.
+7. Review saved prompts, retrievals, and outputs with `python review_generation.py`.
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 

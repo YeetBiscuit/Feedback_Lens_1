@@ -4,11 +4,15 @@ from pathlib import Path
 from feedback_lens.paths import DB_PATH
 
 
-def connect_db(db_path: str | Path = DB_PATH) -> sqlite3.Connection:
+def connect_db(
+    db_path: str | Path = DB_PATH,
+    ensure_updates: bool = True,
+) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
-    ensure_schema_updates(conn)
+    if ensure_updates:
+        ensure_schema_updates(conn)
     return conn
 
 
@@ -48,6 +52,8 @@ def ensure_column(
 def ensure_schema_updates(conn: sqlite3.Connection) -> None:
     changed = False
     changed |= ensure_column(conn, "generation_runs", "llm_provider", "TEXT")
+    changed |= ensure_column(conn, "generation_runs", "prompt_text", "TEXT")
+    changed |= ensure_column(conn, "generation_runs", "raw_response_text", "TEXT")
     changed |= ensure_column(conn, "overall_feedback", "overall_grade_band", "TEXT")
     changed |= ensure_column(conn, "assignment_specs", "retrieval_cues_json", "TEXT")
 
