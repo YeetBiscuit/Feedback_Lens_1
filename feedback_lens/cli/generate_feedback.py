@@ -13,6 +13,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model")
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--temperature", type=float, default=0.2)
+    parser.add_argument(
+        "--mode",
+        choices=["retrieval", "direct"],
+        default="retrieval",
+        help=(
+            "retrieval uses the current course-context retrieval pipeline; "
+            "direct sends only the submission, rubric, and assignment spec."
+        ),
+    )
     return parser
 
 
@@ -28,11 +37,12 @@ def main() -> None:
             model=args.model,
             top_k=args.top_k,
             temperature=args.temperature,
+            context_mode=args.mode,
         )
 
     print(
         f"Completed generation_run={result.generation_id} using "
-        f"{result.provider}:{result.model}. "
+        f"{result.provider}:{result.model} in {result.context_mode} mode. "
         f"retrieval_cues={result.retrieval_cue_count}, "
         f"deduplicated_chunks={result.deduplicated_chunk_count}, "
         f"criterion_count={result.criterion_count}, "

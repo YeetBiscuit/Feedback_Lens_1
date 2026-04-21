@@ -13,6 +13,7 @@ from feedback_lens.feedback.retrieval import (
 
 
 VALID_GRADE_BANDS = {"N", "P", "C", "D", "HD"}
+VALID_CONTEXT_MODES = {"retrieval", "direct"}
 
 
 @dataclass(slots=True)
@@ -24,6 +25,39 @@ class FeedbackGenerationResult:
     deduplicated_chunk_count: int
     provider: str
     model: str
+    context_mode: str
+    pipeline_version: str
+    prompt_template_version: str
+    retrieval_strategy: str
+
+
+def _normalise_context_mode(value: str) -> str:
+    context_mode = value.strip().lower()
+    aliases = {
+        "rag": "retrieval",
+        "retrieved": "retrieval",
+        "no-retrieval": "direct",
+        "none": "direct",
+    }
+    context_mode = aliases.get(context_mode, context_mode)
+    if context_mode not in VALID_CONTEXT_MODES:
+        raise ValueError(
+            "context_mode must be one of: "
+            f"{', '.join(sorted(VALID_CONTEXT_MODES))}"
+        )
+    return context_mode
+
+
+def _default_pipeline_version(context_mode: str) -> str:
+    if context_mode == "direct":
+        return "baseline_direct_v1"
+    return "baseline_retrieval_v1"
+
+
+def _default_prompt_template_version(context_mode: str) -> str:
+    if context_mode == "direct":
+        return "baseline_direct_feedback_json_v1"
+    return "baseline_feedback_json_v1"
 
 
 def _load_generation_inputs(
@@ -215,18 +249,36 @@ def generate_feedback_for_submission(
     model: str | None = None,
     top_k: int = 5,
     temperature: float = 0.2,
-    pipeline_version: str = "baseline_direct_v1",
-    prompt_template_version: str = "baseline_feedback_json_v1",
+    pipeline_version: str | None = None,
+    prompt_template_version: str | None = None,
+    context_mode: str = "retrieval",
 ) -> FeedbackGenerationResult:
     ensure_schema_updates(conn)
     generation_id = None
+    resolved_context_mode = _normalise_context_mode(context_mode)
+    resolved_pipeline_version = pipeline_version or _default_pipeline_version(
+        resolved_context_mode
+    )
+    resolved_prompt_template_version = (
+        prompt_template_version
+        or _default_prompt_template_version(resolved_context_mode)
+    )
+    retrieval_strategy = (
+        "none_direct_v1"
+        if resolved_context_mode == "direct"
+        else "assignment_spec_multi_cue_v1"
+    )
     resolved_model = resolve_model_name(provider, model)
     prompt = None
     raw_response = None
 
     try:
         inputs = _load_generation_inputs(conn, submission_id)
-        retrieval_cues = load_assignment_spec_cues(inputs["assignment_spec"])
+        retrieval_cues = (
+            []
+            if resolved_context_mode == "direct"
+            else load_assignment_spec_cues(inputs["assignment_spec"])
+        )
 
         cur = conn.execute(
             """
@@ -240,49 +292,52 @@ def generate_feedback_for_submission(
                 inputs["submission"]["submission_id"],
                 inputs["assignment"]["assignment_id"],
                 inputs["rubric"]["rubric_id"],
-                pipeline_version,
+                resolved_pipeline_version,
                 provider,
                 resolved_model,
-                prompt_template_version,
-                "assignment_spec_multi_cue_v1",
+                resolved_prompt_template_version,
+                retrieval_strategy,
                 temperature,
-                top_k,
+                0 if resolved_context_mode == "direct" else top_k,
             ),
         )
         generation_id = cur.lastrowid
 
-        collection_name, retrieved_chunks, retrieval_hits = retrieve_relevant_chunks(
-            conn,
-            inputs["assignment"],
-            retrieval_cues,
-            top_k=top_k,
-        )
-        if not retrieved_chunks:
-            raise ValueError(
-                f"No course material chunks were retrieved from collection '{collection_name}'. "
-                "Ingest unit materials before generating feedback."
+        retrieved_chunks = []
+        retrieval_hits = []
+        if resolved_context_mode == "retrieval":
+            collection_name, retrieved_chunks, retrieval_hits = retrieve_relevant_chunks(
+                conn,
+                inputs["assignment"],
+                retrieval_cues,
+                top_k=top_k,
             )
+            if not retrieved_chunks:
+                raise ValueError(
+                    f"No course material chunks were retrieved from collection '{collection_name}'. "
+                    "Ingest unit materials before generating feedback."
+                )
 
-        prompt_chunk_ids = {chunk["chunk_id"] for chunk in retrieved_chunks}
-        for hit in retrieval_hits:
-            conn.execute(
-                """
-                INSERT INTO retrieval_records
-                    (generation_id, criterion_id, query_text, chunk_id,
-                     rank_position, similarity_score, used_in_prompt)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    generation_id,
-                    None,
-                    hit["query_text"],
-                    hit["chunk_id"],
-                    hit["rank_position"],
-                    hit["similarity_score"],
-                    1 if hit["chunk_id"] in prompt_chunk_ids else 0,
-                ),
-            )
-        conn.commit()
+            prompt_chunk_ids = {chunk["chunk_id"] for chunk in retrieved_chunks}
+            for hit in retrieval_hits:
+                conn.execute(
+                    """
+                    INSERT INTO retrieval_records
+                        (generation_id, criterion_id, query_text, chunk_id,
+                         rank_position, similarity_score, used_in_prompt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        generation_id,
+                        None,
+                        hit["query_text"],
+                        hit["chunk_id"],
+                        hit["rank_position"],
+                        hit["similarity_score"],
+                        1 if hit["chunk_id"] in prompt_chunk_ids else 0,
+                    ),
+                )
+            conn.commit()
 
         prompt = build_feedback_prompt(
             inputs["assignment"],
@@ -291,6 +346,7 @@ def generate_feedback_for_submission(
             inputs["criteria"],
             inputs["submission"],
             retrieved_chunks,
+            include_retrieved_context=resolved_context_mode == "retrieval",
         )
         conn.execute(
             """
@@ -385,6 +441,10 @@ def generate_feedback_for_submission(
             deduplicated_chunk_count=len(retrieved_chunks),
             provider=provider,
             model=resolved_model,
+            context_mode=resolved_context_mode,
+            pipeline_version=resolved_pipeline_version,
+            prompt_template_version=resolved_prompt_template_version,
+            retrieval_strategy=retrieval_strategy,
         )
     except Exception as err:
         if generation_id is not None:
