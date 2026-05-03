@@ -15,10 +15,11 @@ def _load_performance_levels_json(raw_json: str | None) -> dict | None:
 def build_feedback_prompt(
     assignment_row: sqlite3.Row,
     assignment_spec_row: sqlite3.Row,
-    rubric_row: sqlite3.Row,
+    _rubric_row: sqlite3.Row,
     rubric_criteria_rows: list[sqlite3.Row],
     submission_row: sqlite3.Row,
-    retrieved_chunks: list[dict],
+    retrieved_chunks: list[dict] | None = None,
+    include_retrieved_context: bool = True,
 ) -> str:
     criteria_payload = [
         {
@@ -44,7 +45,7 @@ def build_feedback_prompt(
             "matched_cues": chunk.get("matched_cues", []),
             "chunk_text": chunk["chunk_text"],
         }
-        for chunk in retrieved_chunks
+        for chunk in (retrieved_chunks or [])
     ]
 
     response_schema = {
@@ -67,8 +68,25 @@ def build_feedback_prompt(
         ],
     }
 
+    context_rule = (
+        "- Base the feedback on the assignment specification, rubric, student submission, and retrieved course context.\n"
+        "- If the retrieved course context is weak or incomplete for a point, say that plainly instead of inventing evidence."
+        if include_retrieved_context
+        else "- Base the feedback only on the assignment specification, rubric, and student submission.\n"
+        "- Do not assume additional course context that is not present in those inputs."
+    )
+
+    retrieved_context_section = (
+        f"""
+Retrieved course context that could be helpful:
+{json.dumps(retrieved_context, ensure_ascii=False, indent=2)}
+""".strip()
+        if include_retrieved_context
+        else ""
+    )
+
     return f"""
-You are generating personalised, rubric-aligned feedback for a higher-education computing assignment.
+You are generating personalised, rubric-aligned feedback for a higher-education assignment.
 
 Return valid JSON only. Do not wrap the JSON in markdown fences. Do not add commentary before or after the JSON.
 
@@ -78,8 +96,7 @@ Required JSON schema:
 Rules:
 - Include exactly one `criterion_feedback` item for each criterion_id listed below.
 - Preserve the provided `criterion_id` values exactly.
-- Base the feedback on the assignment specification, rubric, student submission, and retrieved course context.
-- If the retrieved course context is weak or incomplete for a point, say that plainly instead of inventing evidence.
+{context_rule}
 - Use concise, tutor-facing academic feedback language.
 - `overall_grade_band` and each `suggested_level` must be one of: N, P, C, D, HD.
 - `key_strengths` and `priority_improvements` should each contain 2 to 5 short items.
@@ -100,14 +117,10 @@ Assignment metadata:
 Rubric criteria:
 {json.dumps(criteria_payload, ensure_ascii=False, indent=2)}
 
-Retrieved course context:
-{json.dumps(retrieved_context, ensure_ascii=False, indent=2)}
+{retrieved_context_section}
 
 Assignment specification text:
 {assignment_spec_row["cleaned_text"]}
-
-Rubric text:
-{rubric_row["cleaned_text"] or rubric_row["raw_text"] or ""}
 
 Student submission text:
 {submission_row["cleaned_text"]}

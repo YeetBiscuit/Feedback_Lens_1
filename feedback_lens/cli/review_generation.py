@@ -1,10 +1,14 @@
 import argparse
+import json
 import sqlite3
 import textwrap
 from pathlib import Path
 
 from feedback_lens.feedback.review import (
     fetch_generation_review,
+    format_generation_review_markdown,
+    generation_review_to_export_dict,
+    list_generation_run_ids,
     list_generation_runs,
     parse_json_text_list,
 )
@@ -32,6 +36,47 @@ def build_parser() -> argparse.ArgumentParser:
     show_parser.add_argument("--show-response", action="store_true")
     show_parser.add_argument("--full-chunks", action="store_true")
     show_parser.add_argument("--chunk-chars", type=int, default=240)
+
+    export_parser = subparsers.add_parser(
+        "export",
+        help="Export one or more generation runs as JSON or Markdown.",
+    )
+    export_parser.add_argument("generation_id", nargs="?", type=int)
+    export_parser.add_argument(
+        "--all",
+        action="store_true",
+        dest="export_all",
+        help="Export all generation runs, newest first.",
+    )
+    export_parser.add_argument(
+        "--limit",
+        type=int,
+        help="Limit the number of runs exported with --all.",
+    )
+    export_parser.add_argument(
+        "--format",
+        choices=["json", "markdown", "md"],
+        default="json",
+        help="Export format. Defaults to json.",
+    )
+    export_parser.add_argument(
+        "--output",
+        "-o",
+        help="Write the export to this file. Defaults to standard output.",
+    )
+    export_parser.add_argument("--include-prompt", action="store_true")
+    export_parser.add_argument("--include-response", action="store_true")
+    export_parser.add_argument(
+        "--include-chunks",
+        action="store_true",
+        help="Include retrieved chunk text in the export.",
+    )
+    export_parser.add_argument(
+        "--full-chunks",
+        action="store_true",
+        help="Include full chunk text instead of previews when --include-chunks is set.",
+    )
+    export_parser.add_argument("--chunk-chars", type=int, default=240)
 
     parser.set_defaults(command="show")
     return parser
@@ -221,6 +266,88 @@ def handle_show(
         print()
 
 
+def _write_or_print_export(content: str, output: str | None) -> None:
+    if output is None:
+        print(content, end="")
+        return
+
+    output_path = Path(output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(content, encoding="utf-8")
+    print(f"Exported feedback generation run data to {output_path}")
+
+
+def _resolve_export_generation_ids(
+    conn: sqlite3.Connection,
+    generation_id: int | None,
+    export_all: bool,
+    limit: int | None,
+) -> list[int]:
+    if export_all and generation_id is not None:
+        raise ValueError("Provide either a generation_id or --all, not both.")
+
+    if export_all:
+        return list_generation_run_ids(conn, limit=limit)
+
+    if generation_id is not None:
+        return [generation_id]
+
+    latest = list_generation_runs(conn, limit=1)
+    if not latest:
+        return []
+    return [latest[0]["generation_id"]]
+
+
+def handle_export(
+    generation_id: int | None,
+    export_all: bool,
+    limit: int | None,
+    export_format: str,
+    output: str | None,
+    include_prompt: bool,
+    include_response: bool,
+    include_chunks: bool,
+    full_chunks: bool,
+    chunk_chars: int,
+) -> None:
+    with _connect_review_db() as conn:
+        generation_ids = _resolve_export_generation_ids(
+            conn,
+            generation_id,
+            export_all,
+            limit,
+        )
+        payloads = [
+            generation_review_to_export_dict(
+                fetch_generation_review(conn, item),
+                include_prompt=include_prompt,
+                include_response=include_response,
+                include_chunk_text=include_chunks,
+                full_chunks=full_chunks,
+                chunk_chars=chunk_chars,
+            )
+            for item in generation_ids
+        ]
+
+    if not payloads:
+        print("No generation runs found.")
+        return
+
+    if export_format == "json":
+        data = (
+            {"export_version": 1, "generation_runs": payloads}
+            if export_all
+            else payloads[0]
+        )
+        content = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+    else:
+        content = "\n---\n\n".join(
+            format_generation_review_markdown(payload) for payload in payloads
+        )
+
+    _write_or_print_export(content, output)
+
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
@@ -229,12 +356,30 @@ def main() -> None:
         handle_list(args.limit)
         return
 
+    if args.command == "export":
+        try:
+            handle_export(
+                generation_id=args.generation_id,
+                export_all=args.export_all,
+                limit=args.limit,
+                export_format=args.format,
+                output=args.output,
+                include_prompt=args.include_prompt,
+                include_response=args.include_response,
+                include_chunks=args.include_chunks,
+                full_chunks=args.full_chunks,
+                chunk_chars=args.chunk_chars,
+            )
+        except ValueError as err:
+            parser.error(str(err))
+        return
+
     handle_show(
-        generation_id=args.generation_id,
-        show_prompt=args.show_prompt,
-        show_response=args.show_response,
-        full_chunks=args.full_chunks,
-        chunk_chars=args.chunk_chars,
+        generation_id=getattr(args, "generation_id", None),
+        show_prompt=getattr(args, "show_prompt", False),
+        show_response=getattr(args, "show_response", False),
+        full_chunks=getattr(args, "full_chunks", False),
+        chunk_chars=getattr(args, "chunk_chars", 240),
     )
 
 

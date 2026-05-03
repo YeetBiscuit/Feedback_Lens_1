@@ -131,18 +131,29 @@ Example:
 python generate_feedback.py 1 --provider qwen --top-k 5
 ```
 
+The default generation mode is `retrieval`, which uses assignment-spec cues to retrieve relevant unit-material chunks before prompting the LLM.
+
+To generate a direct baseline without retrieved course context:
+
+```powershell
+python generate_feedback.py 1 --provider qwen --mode direct
+```
+
+Direct mode sends only the assignment metadata, structured rubric criteria, assignment specification text, and student submission text to the LLM. It records `pipeline_version=baseline_direct_v1`, `retrieval_strategy=none_direct_v1`, and `top_k=0`.
+
 What happens:
 
 1. the system loads the specified submission
 2. it loads the latest spec and latest rubric for that submission's assignment
-3. it loads the retrieval cues prepared during spec import, queries ChromaDB once per cue, and deduplicates the matched unit-material chunks
-4. it sends a strict JSON prompt to the selected provider
-5. it saves the result into SQLite
+3. in `retrieval` mode, it loads the retrieval cues prepared during spec import, queries ChromaDB once per cue, and deduplicates the matched unit-material chunks
+4. in `direct` mode, it skips ChromaDB and uses only the submission, rubric, and spec inputs
+5. it sends a strict JSON prompt to the selected provider
+6. it saves the result into SQLite
 
 Expected output shape:
 
 ```text
-Completed generation_run=1 using qwen:qwen3.5-plus. retrieval_cues=5, deduplicated_chunks=5, criterion_count=4, overall_grade_band=D.
+Completed generation_run=1 using qwen:qwen3.5-plus in retrieval mode. retrieval_cues=5, deduplicated_chunks=5, criterion_count=4, overall_grade_band=D.
 ```
 
 ## 8. Inspect Results
@@ -184,6 +195,32 @@ The review command prints:
 - per-criterion feedback in rubric order
 - retrieved chunks with source title, week, rank, score, query text, and chunk preview
 - optional full `prompt_text` and `raw_response_text`
+
+Export the latest generation run as JSON:
+
+```powershell
+python review_generation.py export --output exports/latest_generation_run.json
+```
+
+Export a specific run as Markdown:
+
+```powershell
+python review_generation.py export 1 --format markdown --output exports/generation_run_1.md
+```
+
+Export all runs as one JSON file:
+
+```powershell
+python review_generation.py export --all --output exports/generation_runs.json
+```
+
+Include the saved prompt, raw model response, and retrieved chunk text:
+
+```powershell
+python review_generation.py export 1 --include-prompt --include-response --include-chunks --output exports/generation_run_1_full.json
+```
+
+By default, exports include generation metadata, overall feedback, criterion feedback, and retrieved chunk metadata. Prompt text, raw model responses, and retrieved chunk text are opt-in because they can be long and may contain sensitive student or assessment content.
 
 If you still want raw SQL, `python main.py` option `9` remains available.
 
