@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Feedback Review</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f4;min-height:100vh;padding:1.25rem;font-size:16px}
+.top-bar{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.meta{display:flex;gap:2.5rem}
+.meta-item label{font-size:13px;color:#888;display:block;margin-bottom:2px}
+.meta-item span{font-size:17px;font-weight:600}
+.meta-item span.blue{color:#2563eb}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:17px;font-weight:600;margin-bottom:1rem}
+.sub-box{border:1px dashed #ccc;border-radius:8px;padding:1rem;background:#fafafa;min-height:220px}
+.q-title{font-size:16px;font-weight:600;margin-bottom:.75rem}
+.q-body{font-size:15px;color:#444;line-height:1.7}
+.q-body p{margin-bottom:.6rem}
+.word-count{font-size:14px;color:#888;margin-top:.75rem}
+.word-count strong{color:#333}
+.form-label{font-size:14px;color:#666;display:block;margin-bottom:4px}
+.form-group{margin-bottom:1rem}
+select,input[type=number]{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.check-row{display:flex;align-items:center;gap:8px;font-size:15px;color:#555;margin-bottom:1rem}
+.btn-generate{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:500;cursor:pointer}
+.btn-generate:hover{background:#1d4ed8}
+.btn-generate:disabled{background:#ccc;cursor:not-allowed}
+.fb-section{margin-bottom:1.25rem}
+.fb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.fb-label{font-size:15px;font-weight:600}
+.fb-label.s{color:#16a34a}.fb-label.w{color:#dc2626}.fb-label.sg{color:#d97706}
+.fb-actions{display:flex;gap:6px}
+.icon-btn{background:none;border:1px solid #e5e5e5;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:14px;color:#666}
+.icon-btn:hover{background:#f5f5f5}
+textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;line-height:1.6;resize:vertical;min-height:80px;font-family:inherit}
+.grade-toggle{font-size:14px;color:#2563eb;cursor:pointer;background:none;border:none;padding:0;margin-bottom:6px;display:block}
+.grade-badge{font-size:28px;font-weight:700;color:#7c3aed;margin-right:8px}
+.hidden{display:none}
+.bottom-nav{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
+.btn-save{padding:9px 24px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:15px;cursor:pointer}
+.btn-next{padding:9px 24px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer}
+.btn-next:hover{background:#1d4ed8}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="meta">
+    <div class="meta-item"><label>Student ID</label><span id="student-id">30123456</span></div>
+    <div class="meta-item"><label>Current Question</label><span class="blue" id="q-label">Question 1 of 4</span></div>
+  </div>
+  <div style="font-size:13px;color:#888">Progress: <span id="pct">25%</span></div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-title">Submission Preview</div>
+    <div class="sub-box">
+      <div class="q-title" id="q-title">Question 1: Explain the Singleton Pattern</div>
+      <div class="q-body" id="q-body">
+        <p>The Singleton pattern is a creational design pattern that ensures a class has only one instance and provides a global point of access to it. This is useful when exactly one object is needed to coordinate actions across the system.</p>
+        <p>The pattern works by making the constructor private, preventing direct instantiation, and providing a static method that returns the single instance. The instance is typically stored as a static member variable.</p>
+        <p>Common use cases include configuration managers, logging systems, and connection pools where having multiple instances would be problematic or wasteful of resources.</p>
+      </div>
+    </div>
+    <div class="word-count">Word Count: <strong id="wc">156 words</strong></div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title">Feedback Generation Control</div>
+      <div class="form-group">
+        <label class="form-label">Feedback Type</label>
+        <select id="fb-type"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Marking Rigour</label>
+        <select id="rigour"><option value="formative" selected>Formative</option><option value="strict">Strict</option></select>
+      </div>
+      <div class="two-col">
+        <div><label class="form-label">Word Limit</label><input type="number" id="word-limit" value="200" min="50"></div>
+        <div><label class="form-label">Tolerance (%)</label><input type="number" id="tolerance" value="10" min="0"></div>
+      </div>
+      <label class="check-row"><input type="checkbox" id="ref-check"> Reference Check</label>
+      <button class="btn-generate" id="gen-btn" onclick="loadFromDB()">&#10024; Generate</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI Feedback</div>
+
+      <div class="fb-section">
+        <div class="fb-header"><span class="fb-label s">Strengths</span>
+          <div class="fb-actions">
+            <button class="icon-btn" title="Regenerate">&#10227;</button>
+            <button class="icon-btn" title="Suggest from similar">&#128161;</button>
+          </div>
+        </div>
+        <textarea id="txt-strengths"></textarea>
+      </div>
+
+      <div class="fb-section">
+        <div class="fb-header"><span class="fb-label w">Weaknesses</span>
+          <div class="fb-actions">
+            <button class="icon-btn" title="Regenerate">&#10227;</button>
+            <button class="icon-btn" title="Suggest from similar">&#128161;</button>
+          </div>
+        </div>
+        <textarea id="txt-weaknesses"></textarea>
+      </div>
+
+      <div class="fb-section">
+        <div class="fb-header"><span class="fb-label sg">Suggestions</span>
+          <div class="fb-actions">
+            <button class="icon-btn" title="Regenerate">&#10227;</button>
+            <button class="icon-btn" title="Suggest from similar">&#128161;</button>
+          </div>
+        </div>
+        <textarea id="txt-suggestions"></textarea>
+      </div>
+
+      <div>
+        <label class="form-label">AI Estimate Grade</label>
+        <button class="grade-toggle" id="grade-toggle-btn" onclick="toggleGrade()">Show AI grade</button>
+        <div class="hidden" id="grade-area">
+          <span class="grade-badge" id="grade-badge">-</span>
+          <div style="margin-top:10px">
+            <label class="form-label">Rationale</label>
+            <textarea id="txt-rationale" style="min-height:60px"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem">
+        <label class="form-label">Final Total Mark (out of 100)</label>
+        <input type="number" id="final-mark" min="0" max="100" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px">
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+  <button class="btn-save" onclick="window.location.href='/educator'">&#8592; Back</button>
+  <div style="display:flex;gap:8px">
+    <!-- <button class="btn-save" onclick="prevQ()">&#8592; Previous Question</button> -->
+    <button class="btn-next" onclick="nextQ()">Next Question &#8594;</button>
+  </div>
+  </div>
+  </div>
+</div>
+
+<script>
+var currentQ = 1;
+var totalQ = 4;
+var gradeVisible = false;
+var allData = null;
+
+var questions = [
+  {title:"Question 1: Explain the Singleton Pattern",body:"<p>The Singleton pattern is a creational design pattern that ensures a class has only one instance and provides a global point of access to it. This is useful when exactly one object is needed to coordinate actions across the system.</p><p>The pattern works by making the constructor private, preventing direct instantiation, and providing a static method that returns the single instance. The instance is typically stored as a static member variable.</p><p>Common use cases include configuration managers, logging systems, and connection pools where having multiple instances would be problematic or wasteful of resources.</p>",wc:"156 words"},
+  {title:"Question 2: Explain the Observer Pattern",body:"<p>The Observer pattern is a behavioral design pattern where an object called the subject maintains a list of dependents called observers and notifies them of state changes. This enables a publish-subscribe model.</p><p>Common use cases include event handling systems, MVC architectures where views observe models, and notification services.</p>",wc:"48 words"},
+  {title:"Question 3: Compare Singleton and Factory patterns",body:"<p>The Singleton pattern focuses on controlling instance creation by ensuring only one instance exists. The Factory pattern focuses on abstracting the object creation process to allow flexible instantiation of different types.</p>",wc:"32 words"},
+  {title:"Question 4: Real-world application",body:"<p>In a web application I would use the Singleton pattern for a database connection pool manager. The Singleton ensures all parts of the application share one pool, improving efficiency and manageability.</p>",wc:"33 words"}
+];
+
+function updateProgress(){
+  document.getElementById('q-label').textContent='Question '+currentQ+' of '+totalQ;
+  document.getElementById('pct').textContent=Math.round((currentQ/totalQ)*100)+'%';
+  var q=questions[currentQ-1];
+  document.getElementById('q-title').textContent=q.title;
+  document.getElementById('q-body').innerHTML=q.body;
+  document.getElementById('wc').textContent=q.wc;
+}
+
+function nextQ(){if(currentQ<totalQ){currentQ++;updateProgress();loadFromDB();}}
+function prevQ(){if(currentQ>1){currentQ--;updateProgress();loadFromDB();}}
+
+function toggleGrade(){
+  gradeVisible=!gradeVisible;
+  document.getElementById('grade-area').classList.toggle('hidden',!gradeVisible);
+  document.getElementById('grade-toggle-btn').textContent=gradeVisible?'Hide AI grade':'Show AI grade';
+}
+
+function loadFromDB(){
+  var btn=document.getElementById('gen-btn');
+  btn.disabled=true;
+  btn.textContent='Loading...';
+  fetch('/api/feedback/1')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      allData=data;
+      var criteria=data.criterion_feedback;
+      var c=criteria[currentQ-1]||criteria[0];
+      document.getElementById('txt-strengths').value=c.strengths||'';
+      document.getElementById('txt-weaknesses').value=c.areas_for_improvement||'';
+      document.getElementById('txt-suggestions').value=c.improvement_suggestion||'';
+      document.getElementById('grade-badge').textContent=c.suggested_level||'-';
+      document.getElementById('txt-rationale').value=c.evidence_summary||'';
+      btn.disabled=false;
+      btn.textContent='✨ Generate';
+    })
+    .catch(function(e){
+      console.error(e);
+      btn.disabled=false;
+      btn.textContent='✨ Generate';
+    });
+}
+
+window.onload=loadFromDB;
+</script>
+</body>
+</html>
