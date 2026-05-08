@@ -90,7 +90,6 @@ textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;fon
 
     <div class="card">
       <div class="card-title">AI Feedback</div>
-
       <div class="fb-section">
         <div class="fb-header"><span class="fb-label s">Strengths</span>
           <div class="fb-actions">
@@ -100,7 +99,6 @@ textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;fon
         </div>
         <textarea id="txt-strengths"></textarea>
       </div>
-
       <div class="fb-section">
         <div class="fb-header"><span class="fb-label w">Weaknesses</span>
           <div class="fb-actions">
@@ -110,7 +108,6 @@ textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;fon
         </div>
         <textarea id="txt-weaknesses"></textarea>
       </div>
-
       <div class="fb-section">
         <div class="fb-header"><span class="fb-label sg">Suggestions</span>
           <div class="fb-actions">
@@ -120,7 +117,6 @@ textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;fon
         </div>
         <textarea id="txt-suggestions"></textarea>
       </div>
-
       <div>
         <label class="form-label">AI Estimate Grade</label>
         <button class="grade-toggle" id="grade-toggle-btn" onclick="toggleGrade()">Show AI grade</button>
@@ -132,19 +128,16 @@ textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;fon
           </div>
         </div>
       </div>
-
       <div style="margin-top:1rem">
         <label class="form-label">Final Total Mark (out of 100)</label>
-        <input type="number" id="final-mark" min="0" max="100" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px">
+        <input type="number" id="final-mark" min="0" max="100" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px">
       </div>
     </div>
 
     <div class="bottom-nav">
-  <button class="btn-save" onclick="window.location.href='/educator'">&#8592; Back</button>
-  <div style="display:flex;gap:8px">
-    <!-- <button class="btn-save" onclick="prevQ()">&#8592; Previous Question</button> -->
-    <button class="btn-next" onclick="nextQ()">Next Question &#8594;</button>
-  </div>
+  <button class="btn-save" id="btn-back" onclick="prevQ()">&#8592; Back</button>
+  <button class="btn-save" onclick="saveCurrent()">Save</button>
+  <button class="btn-next" id="btn-next" onclick="nextQ()">Next Question &#8594;</button>
   </div>
   </div>
 </div>
@@ -155,12 +148,7 @@ var totalQ = 4;
 var gradeVisible = false;
 var allData = null;
 
-var questions = [
-  {title:"Question 1: Explain the Singleton Pattern",body:"<p>The Singleton pattern is a creational design pattern that ensures a class has only one instance and provides a global point of access to it. This is useful when exactly one object is needed to coordinate actions across the system.</p><p>The pattern works by making the constructor private, preventing direct instantiation, and providing a static method that returns the single instance. The instance is typically stored as a static member variable.</p><p>Common use cases include configuration managers, logging systems, and connection pools where having multiple instances would be problematic or wasteful of resources.</p>",wc:"156 words"},
-  {title:"Question 2: Explain the Observer Pattern",body:"<p>The Observer pattern is a behavioral design pattern where an object called the subject maintains a list of dependents called observers and notifies them of state changes. This enables a publish-subscribe model.</p><p>Common use cases include event handling systems, MVC architectures where views observe models, and notification services.</p>",wc:"48 words"},
-  {title:"Question 3: Compare Singleton and Factory patterns",body:"<p>The Singleton pattern focuses on controlling instance creation by ensuring only one instance exists. The Factory pattern focuses on abstracting the object creation process to allow flexible instantiation of different types.</p>",wc:"32 words"},
-  {title:"Question 4: Real-world application",body:"<p>In a web application I would use the Singleton pattern for a database connection pool manager. The Singleton ensures all parts of the application share one pool, improving efficiency and manageability.</p>",wc:"33 words"}
-];
+var questions = [];
 
 function updateProgress(){
   document.getElementById('q-label').textContent='Question '+currentQ+' of '+totalQ;
@@ -168,11 +156,49 @@ function updateProgress(){
   var q=questions[currentQ-1];
   document.getElementById('q-title').textContent=q.title;
   document.getElementById('q-body').innerHTML=q.body;
-  document.getElementById('wc').textContent=q.wc;
+  var wordCount = q.body.replace(/<[^>]+>/g,'').trim().split(/\s+/).length;
+  document.getElementById('wc').textContent=wordCount+' words';
+  document.getElementById('btn-next').textContent=currentQ===totalQ?'Go to General Feedback':'Next Question';
+  document.getElementById('btn-back').textContent = currentQ===1 ? 'Back to Dashboard' : 'Previous Question';
 }
 
-function nextQ(){if(currentQ<totalQ){currentQ++;updateProgress();loadFromDB();}}
-function prevQ(){if(currentQ>1){currentQ--;updateProgress();loadFromDB();}}
+function saveCurrent(){
+  if(!allData) return;
+  var criteria = allData.criterion_feedback;
+  var c = criteria[currentQ-1]||criteria[0];
+  var payload = {
+    criteria: [{
+      criterion_id: c.criterion_id,
+      strengths: document.getElementById('txt-strengths').value,
+      weaknesses: document.getElementById('txt-weaknesses').value,
+      suggestions: document.getElementById('txt-suggestions').value
+    }]
+  };
+  fetch('/api/feedback/1/save', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); })
+    .then(function(){ alert('Saved!'); })
+    .catch(function(e){ console.error(e); });
+}
+
+function nextQ(){
+  if(currentQ<totalQ){currentQ++;history.pushState({ q: currentQ }, '', '?q=' + currentQ);
+  updateProgress();loadFromDB(); 
+  }
+  else{window.location.href='/educator/general-feedback';}
+}
+
+function prevQ(){
+  if(currentQ>1){
+    currentQ--;
+    updateProgress();
+    loadFromDB();
+  } else {
+    window.location.href='/educator';
+  }
+}
 
 function toggleGrade(){
   gradeVisible=!gradeVisible;
@@ -188,6 +214,24 @@ function loadFromDB(){
     .then(function(r){return r.json();})
     .then(function(data){
       allData=data;
+
+      if(data.run.submission_text && questions.length===0){
+        var text = data.run.submission_text;
+        var parts = text.split(/\n(?=Question \d+:)/);
+        questions = parts.filter(function(p){ return p.match(/^Question \d+:/); }).map(function(p){
+          var lines = p.trim().split('\n');
+          var title = lines[0].trim();
+          var body = lines.slice(1).filter(function(l){ return l.trim(); }).map(function(l){
+            return '<p>'+l.trim()+'</p>';
+          }).join('');
+          var wordCount = p.replace(/<[^>]+>/g,'').trim().split(/\s+/).length;
+          return {title:title, body:body, wc:wordCount+' words'};
+        });
+        if(questions.length===0) questions=[{title:'Question 1',body:'<p>No content</p>',wc:'0 words'}];
+        totalQ = questions.length;
+        updateProgress();
+      }
+
       var criteria=data.criterion_feedback;
       var c=criteria[currentQ-1]||criteria[0];
       document.getElementById('txt-strengths').value=c.strengths||'';
@@ -195,17 +239,38 @@ function loadFromDB(){
       document.getElementById('txt-suggestions').value=c.improvement_suggestion||'';
       document.getElementById('grade-badge').textContent=c.suggested_level||'-';
       document.getElementById('txt-rationale').value=c.evidence_summary||'';
+      document.getElementById('final-mark').value='';
       btn.disabled=false;
-      btn.textContent='✨ Generate';
+      btn.textContent='Generate';
     })
     .catch(function(e){
       console.error(e);
       btn.disabled=false;
-      btn.textContent='✨ Generate';
+      btn.textContent='Generate';
     });
 }
 
-window.onload=loadFromDB;
+window.addEventListener('popstate', function(e) {
+  if(e.state && e.state.q){
+    currentQ = e.state.q;
+  } else {
+    currentQ = 1;
+  }
+  updateProgress();
+  loadFromDB();
+});
+
+window.onload = function(){
+  var params = new URLSearchParams(window.location.search);
+  var qParam = parseInt(params.get('q'));
+  if(qParam >= 1 && qParam <= totalQ){
+    currentQ = qParam;
+  }
+  history.replaceState({ q: currentQ }, '', '?q=' + currentQ);
+  updateProgress();
+  loadFromDB();
+};
+
 </script>
 </body>
 </html>
