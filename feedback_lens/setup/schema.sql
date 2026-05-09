@@ -377,6 +377,7 @@ CREATE TABLE overall_feedback (
     key_strengths TEXT,
     priority_improvements TEXT,
     overall_grade_band TEXT,
+    final_mark REAL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (generation_id),
     CONSTRAINT fk_overall_feedback_generation
