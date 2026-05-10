@@ -341,6 +341,34 @@ CREATE INDEX idx_retrieval_records_generation_id ON retrieval_records(generation
 CREATE INDEX idx_retrieval_records_criterion_id ON retrieval_records(criterion_id);
 
 -- =========================
+-- 13A. RETRIEVAL PLANNING RECORDS
+-- Stores LLM-generated retrieval cues for planned retrieval runs
+-- =========================
+CREATE TABLE retrieval_planning_records (
+    planning_record_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    generation_id INTEGER NOT NULL,
+    strategy TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model TEXT NOT NULL,
+    prompt_template_version TEXT NOT NULL,
+    prompt_text TEXT,
+    raw_response_text TEXT,
+    planned_cues_json TEXT,
+    status TEXT NOT NULL DEFAULT 'running',
+    error_message TEXT,
+    started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at TEXT,
+    CONSTRAINT fk_retrieval_planning_generation
+        FOREIGN KEY (generation_id) REFERENCES generation_runs(generation_id)
+        ON DELETE CASCADE
+);
+
+CREATE INDEX idx_retrieval_planning_generation_id
+    ON retrieval_planning_records(generation_id);
+CREATE INDEX idx_retrieval_planning_status
+    ON retrieval_planning_records(status);
+
+-- =========================
 -- 14. CRITERION FEEDBACK
 -- One row per criterion for one generation run
 -- =========================
