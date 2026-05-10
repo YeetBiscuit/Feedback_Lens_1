@@ -73,6 +73,7 @@ The operator must type `YES` exactly to proceed.
 
 - `student_submissions` - extracted submission text, versioned per assignment and student
 - `generation_runs` - one row per generation attempt, including provider, model, strategy, and status
+- `retrieval_planning_records` - planner prompts, raw responses, and LLM-generated retrieval cues for planned retrieval runs
 - `retrieval_records` - retrieved chunks associated with a generation run
 - `criterion_feedback` - criterion-level generated comments
 - `overall_feedback` - overall summary, strengths, improvements, and one overall grade band
@@ -123,6 +124,7 @@ Database connections go through `feedback_lens.db.connection.connect_db()`, whic
 
 - `generation_runs.llm_provider`
 - `overall_feedback.overall_grade_band`
+- `retrieval_planning_records`
 
 ## Useful Inspection Queries
 

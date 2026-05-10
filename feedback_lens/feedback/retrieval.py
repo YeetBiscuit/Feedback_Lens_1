@@ -7,6 +7,84 @@ from feedback_lens.file_management.indexing.embedding import (
 )
 
 
+def _coerce_order(value: object, fallback: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _coerce_text_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [str(item).strip() for item in value if str(item).strip()]
+
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+
+    return []
+
+
+def _coerce_int_list(value: object) -> list[int]:
+    if not isinstance(value, list):
+        return []
+
+    items = []
+    for item in value:
+        try:
+            items.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    return items
+
+
+def normalize_retrieval_cues(
+    raw_cues: object,
+    max_cues: int | None = None,
+) -> list[dict]:
+    if not isinstance(raw_cues, list):
+        return []
+
+    cues = []
+    for index, item in enumerate(raw_cues, start=1):
+        if not isinstance(item, dict):
+            continue
+
+        text = str(item.get("text", "")).strip()
+        if not text:
+            continue
+
+        label = str(item.get("label", f"Cue {index}")).strip() or f"Cue {index}"
+        cue = {
+            "order": _coerce_order(item.get("order"), index),
+            "label": label,
+            "text": text,
+            "source_sections": _coerce_text_list(item.get("source_sections")),
+        }
+
+        cue_type = str(item.get("cue_type", "")).strip()
+        if cue_type:
+            cue["cue_type"] = cue_type
+
+        rubric_criterion_ids = _coerce_int_list(item.get("rubric_criterion_ids"))
+        if rubric_criterion_ids:
+            cue["rubric_criterion_ids"] = rubric_criterion_ids
+
+        rationale = str(item.get("rationale", "")).strip()
+        if rationale:
+            cue["rationale"] = rationale
+
+        cues.append(cue)
+
+    cues.sort(key=lambda cue: (cue["order"], cue["label"]))
+    if max_cues is not None:
+        cues = cues[: max(max_cues, 0)]
+
+    for index, cue in enumerate(cues, start=1):
+        cue["order"] = index
+
+    return cues
+
+
 def load_assignment_spec_cues(assignment_spec_row: sqlite3.Row) -> list[dict]:
     raw_json = assignment_spec_row["retrieval_cues_json"]
     if raw_json:
@@ -14,25 +92,9 @@ def load_assignment_spec_cues(assignment_spec_row: sqlite3.Row) -> list[dict]:
             value = json.loads(raw_json)
         except json.JSONDecodeError:
             value = None
-        if isinstance(value, list):
-            cues = []
-            for index, item in enumerate(value, start=1):
-                if not isinstance(item, dict):
-                    continue
-                text = str(item.get("text", "")).strip()
-                if not text:
-                    continue
-                cues.append(
-                    {
-                        "order": int(item.get("order", index)),
-                        "label": str(item.get("label", f"Cue {index}")).strip()
-                        or f"Cue {index}",
-                        "text": text,
-                        "source_sections": item.get("source_sections") or [],
-                    }
-                )
-            if cues:
-                return sorted(cues, key=lambda cue: (cue["order"], cue["label"]))
+        cues = normalize_retrieval_cues(value)
+        if cues:
+            return cues
 
     return [
         {

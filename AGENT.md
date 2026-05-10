@@ -27,15 +27,20 @@ These inputs are used to generate structured feedback grounded in course materia
 
 ---
 
-# Baseline Version (Current Scope)
+# Current Scope
 
-This project is currently implementing the **baseline version** of the system.
+This project keeps the **baseline version** of the system as the default retrieval path and now includes an opt-in retrieval planning add-on.
 
 The baseline uses a **direct retrieval approach**:
 - Retrieval queries are constructed directly from:
   - assignment specification
-  - marking rubric
-  - student submission
+
+The planned retrieval add-on uses an LLM to read:
+- assignment specification
+- marking rubric
+- student submission
+
+The planner generates targeted retrieval cues that are passed into the existing course-material retrieval pipeline.
 
 ---
 
@@ -49,8 +54,6 @@ The baseline uses a **direct retrieval approach**:
 2. For each student submission:
    - A retrieval query is constructed directly from:
      - assignment specification
-     - marking rubric
-     - student submission
 
 3. Relevant course materials are retrieved (top-k)
 
@@ -77,22 +80,23 @@ The generated feedback MUST follow this structure:
 
 # Design Constraints
 
-- DO NOT implement a retrieval planner at this stage
-- DO NOT introduce multi-step agent workflows
-- DO NOT significantly restructure the pipeline
+- Keep the baseline retrieval strategy as the default behavior
+- Keep planned retrieval opt-in and easy to compare against the baseline
+- Do not significantly restructure the pipeline
 - Prefer minimal and modular code changes
-- Keep the design extensible for future integration of a retrieval planner
+- Keep data handling, retrieval planning, retrieval, and generation separated
 
 ---
 
-# Future Extension (Not Implemented Yet)
+# Retrieval Planner Add-On
 
-A future version of the system will include an **LLM-based retrieval planner** that:
-- extracts structured signals from inputs
+The LLM-based retrieval planner:
+- extracts structured signals from the assignment specification, rubric, and student submission
 - generates targeted retrieval cues
 - improves alignment between retrieved context and assignment requirements
+- records planner prompts, raw responses, and normalized cues for auditability
 
-This functionality MUST NOT be implemented in the baseline.
+This functionality complements the baseline rather than replacing it.
 
 ---
 

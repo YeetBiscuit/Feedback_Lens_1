@@ -79,6 +79,7 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
     changed |= ensure_column(conn, "generation_runs", "prompt_text", "TEXT")
     changed |= ensure_column(conn, "generation_runs", "raw_response_text", "TEXT")
     changed |= ensure_column(conn, "overall_feedback", "overall_grade_band", "TEXT")
+    changed |= ensure_column(conn, "overall_feedback", "final_mark", "REAL")
     changed |= ensure_column(conn, "assignment_specs", "retrieval_cues_json", "TEXT")
     changed |= ensure_column(conn, "assignment_specs", "source_content_hash", "TEXT")
     changed |= ensure_column(conn, "rubrics", "source_content_hash", "TEXT")
@@ -194,6 +195,30 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             CONSTRAINT fk_unit_ingestion_items_run
                 FOREIGN KEY (ingestion_run_id) REFERENCES unit_ingestion_runs(ingestion_run_id)
+                ON DELETE CASCADE
+        )
+        """,
+    )
+    changed |= ensure_table(
+        conn,
+        "retrieval_planning_records",
+        """
+        CREATE TABLE retrieval_planning_records (
+            planning_record_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            generation_id INTEGER NOT NULL,
+            strategy TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            prompt_template_version TEXT NOT NULL,
+            prompt_text TEXT,
+            raw_response_text TEXT,
+            planned_cues_json TEXT,
+            status TEXT NOT NULL DEFAULT 'running',
+            error_message TEXT,
+            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT,
+            CONSTRAINT fk_retrieval_planning_generation
+                FOREIGN KEY (generation_id) REFERENCES generation_runs(generation_id)
                 ON DELETE CASCADE
         )
         """,

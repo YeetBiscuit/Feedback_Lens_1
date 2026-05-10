@@ -98,6 +98,7 @@ python generate_feedback.py 1 --provider gemini
 The feedback generation CLI exposes:
 
 - `--top-k` - how many unit-material chunks to retrieve
+- `--retrieval-strategy` - `baseline` for imported assignment-spec cues, or `planned` for LLM-generated retrieval cues
 - `--temperature` - model temperature during generation
 
 Example:
@@ -106,9 +107,18 @@ Example:
 python generate_feedback.py 1 --provider qwen --top-k 8 --temperature 0.1
 ```
 
+Planned retrieval example:
+
+```bash
+python generate_feedback.py 1 --provider qwen --mode retrieval --retrieval-strategy planned
+```
+
+Planned retrieval uses the selected provider and model to read the assignment specification, rubric, and student submission before retrieval. It records the planner prompt, raw planner response, and normalized cue list in `retrieval_planning_records`.
+
 Defaults:
 
 - `top_k = 5`
+- `retrieval_strategy = baseline`
 - `temperature = 0.2`
 
 ## Embedding Configuration
