@@ -10,10 +10,22 @@ from feedback_lens.feedback.retrieval import (
     load_assignment_spec_cues,
     retrieve_relevant_chunks,
 )
+from feedback_lens.feedback.retrieval_planner import (
+    DEFAULT_MAX_RETRIEVAL_CUES,
+    RETRIEVAL_PLANNER_STRATEGY,
+    build_retrieval_planner_prompt,
+    parse_retrieval_planner_response,
+)
 
 
 VALID_GRADE_BANDS = {"N", "P", "C", "D", "HD"}
 VALID_CONTEXT_MODES = {"retrieval", "direct"}
+NO_RETRIEVAL_STRATEGY = "none_direct_v1"
+ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY = "assignment_spec_multi_cue_v1"
+VALID_RETRIEVAL_STRATEGIES = {
+    ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
+    RETRIEVAL_PLANNER_STRATEGY,
+}
 
 
 @dataclass(slots=True)
@@ -48,9 +60,37 @@ def _normalise_context_mode(value: str) -> str:
     return context_mode
 
 
-def _default_pipeline_version(context_mode: str) -> str:
+def _normalise_retrieval_strategy(
+    value: str | None,
+    context_mode: str,
+) -> str:
+    if context_mode == "direct":
+        return NO_RETRIEVAL_STRATEGY
+
+    strategy = (value or ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY).strip().lower()
+    aliases = {
+        "assignment-spec": ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
+        "assignment_spec": ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
+        "baseline": ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
+        "spec": ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
+        "llm-planned": RETRIEVAL_PLANNER_STRATEGY,
+        "planned": RETRIEVAL_PLANNER_STRATEGY,
+        "planner": RETRIEVAL_PLANNER_STRATEGY,
+    }
+    strategy = aliases.get(strategy, strategy)
+    if strategy not in VALID_RETRIEVAL_STRATEGIES:
+        raise ValueError(
+            "retrieval_strategy must be one of: "
+            f"{', '.join(sorted(VALID_RETRIEVAL_STRATEGIES))}"
+        )
+    return strategy
+
+
+def _default_pipeline_version(context_mode: str, retrieval_strategy: str) -> str:
     if context_mode == "direct":
         return "baseline_direct_v1"
+    if retrieval_strategy == RETRIEVAL_PLANNER_STRATEGY:
+        return "planned_retrieval_v1"
     return "baseline_retrieval_v1"
 
 
@@ -242,6 +282,91 @@ def _map_criterion_feedback(
     return mapped
 
 
+def _create_retrieval_planning_record(
+    conn: sqlite3.Connection,
+    generation_id: int,
+    strategy: str,
+    provider: str,
+    model: str,
+    prompt_template_version: str,
+    prompt_text: str,
+) -> int:
+    cur = conn.execute(
+        """
+        INSERT INTO retrieval_planning_records
+            (generation_id, strategy, provider, model, prompt_template_version,
+             prompt_text, status)
+        VALUES (?, ?, ?, ?, ?, ?, 'running')
+        """,
+        (
+            generation_id,
+            strategy,
+            provider,
+            model,
+            prompt_template_version,
+            prompt_text,
+        ),
+    )
+    conn.commit()
+    return int(cur.lastrowid)
+
+
+def _record_retrieval_planner_response(
+    conn: sqlite3.Connection,
+    planning_record_id: int,
+    raw_response_text: str,
+) -> None:
+    conn.execute(
+        """
+        UPDATE retrieval_planning_records
+        SET raw_response_text = ?
+        WHERE planning_record_id = ?
+        """,
+        (raw_response_text, planning_record_id),
+    )
+    conn.commit()
+
+
+def _complete_retrieval_planning_record(
+    conn: sqlite3.Connection,
+    planning_record_id: int,
+    retrieval_cues: list[dict],
+) -> None:
+    conn.execute(
+        """
+        UPDATE retrieval_planning_records
+        SET planned_cues_json = ?,
+            status = 'completed',
+            completed_at = CURRENT_TIMESTAMP
+        WHERE planning_record_id = ?
+        """,
+        (
+            json.dumps(retrieval_cues, ensure_ascii=False),
+            planning_record_id,
+        ),
+    )
+    conn.commit()
+
+
+def _fail_retrieval_planning_record(
+    conn: sqlite3.Connection,
+    planning_record_id: int,
+    error_message: str,
+) -> None:
+    conn.execute(
+        """
+        UPDATE retrieval_planning_records
+        SET status = 'failed',
+            error_message = ?,
+            completed_at = CURRENT_TIMESTAMP
+        WHERE planning_record_id = ?
+          AND status != 'completed'
+        """,
+        (error_message, planning_record_id),
+    )
+    conn.commit()
+
+
 def generate_feedback_for_submission(
     conn: sqlite3.Connection,
     submission_id: int,
@@ -252,21 +377,24 @@ def generate_feedback_for_submission(
     pipeline_version: str | None = None,
     prompt_template_version: str | None = None,
     context_mode: str = "retrieval",
+    retrieval_strategy: str | None = None,
+    planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
 ) -> FeedbackGenerationResult:
     ensure_schema_updates(conn)
     generation_id = None
+    planning_record_id = None
     resolved_context_mode = _normalise_context_mode(context_mode)
+    resolved_retrieval_strategy = _normalise_retrieval_strategy(
+        retrieval_strategy,
+        resolved_context_mode,
+    )
     resolved_pipeline_version = pipeline_version or _default_pipeline_version(
-        resolved_context_mode
+        resolved_context_mode,
+        resolved_retrieval_strategy,
     )
     resolved_prompt_template_version = (
         prompt_template_version
         or _default_prompt_template_version(resolved_context_mode)
-    )
-    retrieval_strategy = (
-        "none_direct_v1"
-        if resolved_context_mode == "direct"
-        else "assignment_spec_multi_cue_v1"
     )
     resolved_model = resolve_model_name(provider, model)
     prompt = None
@@ -274,11 +402,7 @@ def generate_feedback_for_submission(
 
     try:
         inputs = _load_generation_inputs(conn, submission_id)
-        retrieval_cues = (
-            []
-            if resolved_context_mode == "direct"
-            else load_assignment_spec_cues(inputs["assignment_spec"])
-        )
+        retrieval_cues = []
 
         cur = conn.execute(
             """
@@ -296,12 +420,54 @@ def generate_feedback_for_submission(
                 provider,
                 resolved_model,
                 resolved_prompt_template_version,
-                retrieval_strategy,
+                resolved_retrieval_strategy,
                 temperature,
                 0 if resolved_context_mode == "direct" else top_k,
             ),
         )
         generation_id = cur.lastrowid
+
+        if resolved_context_mode == "retrieval":
+            if resolved_retrieval_strategy == RETRIEVAL_PLANNER_STRATEGY:
+                planner_prompt = build_retrieval_planner_prompt(
+                    inputs["assignment"],
+                    inputs["assignment_spec"],
+                    inputs["rubric"],
+                    inputs["criteria"],
+                    inputs["submission"],
+                    max_cues=planner_max_cues,
+                )
+                planning_record_id = _create_retrieval_planning_record(
+                    conn,
+                    generation_id,
+                    resolved_retrieval_strategy,
+                    provider,
+                    resolved_model,
+                    planner_prompt.prompt_template_version,
+                    planner_prompt.prompt_text,
+                )
+                planner_raw_response = generate_text(
+                    planner_prompt.prompt_text,
+                    provider=provider,
+                    model=resolved_model,
+                    temperature=temperature,
+                )
+                _record_retrieval_planner_response(
+                    conn,
+                    planning_record_id,
+                    planner_raw_response,
+                )
+                retrieval_cues = parse_retrieval_planner_response(
+                    planner_raw_response,
+                    max_cues=planner_max_cues,
+                )
+                _complete_retrieval_planning_record(
+                    conn,
+                    planning_record_id,
+                    retrieval_cues,
+                )
+            else:
+                retrieval_cues = load_assignment_spec_cues(inputs["assignment_spec"])
 
         retrieved_chunks = []
         retrieval_hits = []
@@ -444,9 +610,11 @@ def generate_feedback_for_submission(
             context_mode=resolved_context_mode,
             pipeline_version=resolved_pipeline_version,
             prompt_template_version=resolved_prompt_template_version,
-            retrieval_strategy=retrieval_strategy,
+            retrieval_strategy=resolved_retrieval_strategy,
         )
     except Exception as err:
+        if planning_record_id is not None:
+            _fail_retrieval_planning_record(conn, planning_record_id, str(err))
         if generation_id is not None:
             conn.execute(
                 """

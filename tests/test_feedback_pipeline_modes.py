@@ -61,34 +61,80 @@ def _connect_minimal_feedback_db() -> sqlite3.Connection:
         VALUES (1, 1, 'student_001', 'My submission analyses the task.')
         """
     )
+    conn.execute(
+        """
+        INSERT INTO unit_materials
+            (material_id, unit_id, material_type, title, week_number, cleaned_text)
+        VALUES
+            (1, 1, 'lecture_transcript', 'Week 2 Concepts', 2,
+             'Course context about reflective analysis.')
+        """
+    )
+    conn.execute(
+        """
+        INSERT INTO material_chunks
+            (chunk_id, material_id, chunk_index, chunk_text)
+        VALUES
+            (1, 1, 1, 'Reflective analysis connects claims to course concepts.')
+        """
+    )
     conn.commit()
     return conn
+
+
+def _feedback_response(overall_comment: str = "Sound feedback.") -> str:
+    return json.dumps(
+        {
+            "overall_feedback": {
+                "overall_comment": overall_comment,
+                "key_strengths": ["Clear structure"],
+                "priority_improvements": ["Use more evidence"],
+                "overall_grade_band": "C",
+            },
+            "criterion_feedback": [
+                {
+                    "criterion_id": 1,
+                    "criterion_name": "Analysis",
+                    "strengths": "Identifies relevant ideas.",
+                    "areas_for_improvement": "Needs more depth.",
+                    "improvement_suggestion": "Add a specific example.",
+                    "suggested_level": "C",
+                    "evidence_summary": "Based on the submission and rubric.",
+                }
+            ],
+        }
+    )
+
+
+def _retrieval_result(query_text: str = "retrieval query") -> tuple[str, list[dict], list[dict]]:
+    retrieved_chunks = [
+        {
+            "rank_position": 1,
+            "chunk_id": 1,
+            "title": "Week 2 Concepts",
+            "material_type": "lecture_transcript",
+            "week_number": 2,
+            "page_number_start": None,
+            "page_number_end": None,
+            "matched_cues": ["Course concept"],
+            "chunk_text": "Reflective analysis connects claims to course concepts.",
+        }
+    ]
+    retrieval_hits = [
+        {
+            "query_text": query_text,
+            "chunk_id": 1,
+            "rank_position": 1,
+            "similarity_score": 0.9,
+        }
+    ]
+    return "comp1001_2026_s1", retrieved_chunks, retrieval_hits
 
 
 class FeedbackPipelineModeTests(unittest.TestCase):
     @patch("feedback_lens.feedback.pipeline.generate_text")
     def test_direct_mode_skips_retrieval_and_records_direct_run(self, mock_generate_text) -> None:
-        mock_generate_text.return_value = json.dumps(
-            {
-                "overall_feedback": {
-                    "overall_comment": "Sound direct feedback.",
-                    "key_strengths": ["Clear structure"],
-                    "priority_improvements": ["Use more evidence"],
-                    "overall_grade_band": "C",
-                },
-                "criterion_feedback": [
-                    {
-                        "criterion_id": 1,
-                        "criterion_name": "Analysis",
-                        "strengths": "Identifies relevant ideas.",
-                        "areas_for_improvement": "Needs more depth.",
-                        "improvement_suggestion": "Add a specific example.",
-                        "suggested_level": "C",
-                        "evidence_summary": "Based on the submission and rubric.",
-                    }
-                ],
-            }
-        )
+        mock_generate_text.return_value = _feedback_response("Sound direct feedback.")
 
         with _connect_minimal_feedback_db() as conn:
             result = generate_feedback_for_submission(
@@ -125,6 +171,150 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertIn("Rubric criteria:", run["prompt_text"])
         self.assertIn("assignment specification, rubric, and student submission", run["prompt_text"])
         mock_generate_text.assert_called_once()
+
+    def test_retrieval_mode_defaults_to_assignment_spec_cues(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+                planning_count = conn.execute(
+                    "SELECT COUNT(*) AS count FROM retrieval_planning_records"
+                ).fetchone()["count"]
+
+        retrieval_cues = mock_retrieve.call_args.args[2]
+        self.assertEqual(result.context_mode, "retrieval")
+        self.assertEqual(result.retrieval_strategy, "assignment_spec_multi_cue_v1")
+        self.assertEqual(result.retrieval_cue_count, 1)
+        self.assertEqual(run["pipeline_version"], "baseline_retrieval_v1")
+        self.assertEqual(run["retrieval_strategy"], "assignment_spec_multi_cue_v1")
+        self.assertEqual(planning_count, 0)
+        self.assertEqual(retrieval_cues[0]["label"], "Task")
+        self.assertEqual(retrieval_cues[0]["text"], "reflection report")
+        mock_generate_text.assert_called_once()
+
+    def test_planned_retrieval_generates_and_records_planner_cues(self) -> None:
+        planner_response = json.dumps(
+            {
+                "retrieval_cues": [
+                    {
+                        "order": 1,
+                        "label": "Reflective analysis concepts",
+                        "text": "course concepts for reflective analysis in computing practice",
+                        "rubric_criterion_ids": [1],
+                        "rationale": "Needed to judge the analysis criterion fairly.",
+                    }
+                ]
+            }
+        )
+
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.side_effect = [
+                planner_response,
+                _feedback_response("Sound planned feedback."),
+            ]
+            mock_retrieve.return_value = _retrieval_result(
+                "Reflective analysis concepts\n"
+                "course concepts for reflective analysis in computing practice"
+            )
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                    retrieval_strategy="planned",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+                planning = conn.execute(
+                    """
+                    SELECT *
+                    FROM retrieval_planning_records
+                    WHERE generation_id = ?
+                    """,
+                    (result.generation_id,),
+                ).fetchone()
+
+        planner_prompt = mock_generate_text.call_args_list[0].args[0]
+        retrieval_cues = mock_retrieve.call_args.args[2]
+        planned_cues = json.loads(planning["planned_cues_json"])
+
+        self.assertEqual(result.retrieval_strategy, "llm_planned_cue_v1")
+        self.assertEqual(result.pipeline_version, "planned_retrieval_v1")
+        self.assertEqual(result.retrieval_cue_count, 1)
+        self.assertEqual(run["retrieval_strategy"], "llm_planned_cue_v1")
+        self.assertEqual(planning["status"], "completed")
+        self.assertEqual(planning["strategy"], "llm_planned_cue_v1")
+        self.assertEqual(planning["prompt_template_version"], "retrieval_planner_json_v1")
+        self.assertIn("Rubric text:", planner_prompt)
+        self.assertIn("Student submission text:", planner_prompt)
+        self.assertEqual(retrieval_cues[0]["label"], "Reflective analysis concepts")
+        self.assertEqual(retrieval_cues[0]["rubric_criterion_ids"], [1])
+        self.assertEqual(planned_cues[0]["rationale"], "Needed to judge the analysis criterion fairly.")
+        self.assertEqual(mock_generate_text.call_count, 2)
+
+    def test_malformed_planner_response_marks_generation_failed(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = "not json"
+
+            with _connect_minimal_feedback_db() as conn:
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "Retrieval planner response did not contain a JSON object",
+                ):
+                    generate_feedback_for_submission(
+                        conn,
+                        submission_id=1,
+                        provider="qwen",
+                        model="test-model",
+                        context_mode="retrieval",
+                        retrieval_strategy="planned",
+                    )
+
+                run = conn.execute("SELECT * FROM generation_runs").fetchone()
+                planning = conn.execute(
+                    "SELECT * FROM retrieval_planning_records"
+                ).fetchone()
+
+        self.assertEqual(run["status"], "failed")
+        self.assertEqual(planning["status"], "failed")
+        self.assertEqual(planning["raw_response_text"], "not json")
+        self.assertIn(
+            "Retrieval planner response did not contain a JSON object",
+            planning["error_message"],
+        )
+        mock_retrieve.assert_not_called()
 
 
 if __name__ == "__main__":

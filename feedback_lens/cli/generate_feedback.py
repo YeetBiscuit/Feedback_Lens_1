@@ -14,6 +14,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument(
+        "--retrieval-strategy",
+        choices=[
+            "baseline",
+            "planned",
+            "assignment_spec_multi_cue_v1",
+            "llm_planned_cue_v1",
+        ],
+        default="baseline",
+        help=(
+            "Retrieval strategy for retrieval mode. baseline uses imported "
+            "assignment-spec cues; planned uses an LLM planner to generate "
+            "targeted retrieval cues from the spec, rubric, and submission."
+        ),
+    )
+    parser.add_argument(
         "--mode",
         choices=["retrieval", "direct"],
         default="retrieval",
@@ -34,15 +49,17 @@ def main() -> None:
             conn,
             submission_id=args.submission_id,
             provider=args.provider,
-            model=args.model,
-            top_k=args.top_k,
-            temperature=args.temperature,
-            context_mode=args.mode,
-        )
+                model=args.model,
+                top_k=args.top_k,
+                temperature=args.temperature,
+                context_mode=args.mode,
+                retrieval_strategy=args.retrieval_strategy,
+            )
 
     print(
         f"Completed generation_run={result.generation_id} using "
         f"{result.provider}:{result.model} in {result.context_mode} mode. "
+        f"retrieval_strategy={result.retrieval_strategy}, "
         f"retrieval_cues={result.retrieval_cue_count}, "
         f"deduplicated_chunks={result.deduplicated_chunk_count}, "
         f"criterion_count={result.criterion_count}, "

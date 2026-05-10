@@ -133,6 +133,14 @@ python generate_feedback.py 1 --provider qwen --top-k 5
 
 The default generation mode is `retrieval`, which uses assignment-spec cues to retrieve relevant unit-material chunks before prompting the LLM.
 
+You can also run the optional planned retrieval strategy:
+
+```powershell
+python generate_feedback.py 1 --provider qwen --mode retrieval --retrieval-strategy planned --top-k 5
+```
+
+Planned retrieval adds an intermediate LLM planning step. The planner reads the assignment specification, rubric, and student submission, then generates targeted retrieval cues for the course-material search. The baseline retrieval strategy remains the default.
+
 To generate a direct baseline without retrieved course context:
 
 ```powershell
@@ -145,15 +153,17 @@ What happens:
 
 1. the system loads the specified submission
 2. it loads the latest spec and latest rubric for that submission's assignment
-3. in `retrieval` mode, it loads the retrieval cues prepared during spec import, queries ChromaDB once per cue, and deduplicates the matched unit-material chunks
-4. in `direct` mode, it skips ChromaDB and uses only the submission, rubric, and spec inputs
-5. it sends a strict JSON prompt to the selected provider
-6. it saves the result into SQLite
+3. in baseline `retrieval` mode, it loads the retrieval cues prepared during spec import
+4. with `--retrieval-strategy planned`, it asks the selected LLM to generate targeted retrieval cues from the spec, rubric, and submission
+5. in either retrieval strategy, it queries ChromaDB once per cue and deduplicates the matched unit-material chunks
+6. in `direct` mode, it skips both ChromaDB and retrieval planning, then uses only the submission, rubric, and spec inputs
+7. it sends a strict JSON prompt to the selected provider
+8. it saves the result into SQLite
 
 Expected output shape:
 
 ```text
-Completed generation_run=1 using qwen:qwen3.5-plus in retrieval mode. retrieval_cues=5, deduplicated_chunks=5, criterion_count=4, overall_grade_band=D.
+Completed generation_run=1 using qwen:qwen3.5-plus in retrieval mode. retrieval_strategy=assignment_spec_multi_cue_v1, retrieval_cues=5, deduplicated_chunks=5, criterion_count=4, overall_grade_band=D.
 ```
 
 ## 8. Inspect Results

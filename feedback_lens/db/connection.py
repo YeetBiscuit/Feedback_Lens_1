@@ -199,6 +199,30 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
         )
         """,
     )
+    changed |= ensure_table(
+        conn,
+        "retrieval_planning_records",
+        """
+        CREATE TABLE retrieval_planning_records (
+            planning_record_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            generation_id INTEGER NOT NULL,
+            strategy TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            prompt_template_version TEXT NOT NULL,
+            prompt_text TEXT,
+            raw_response_text TEXT,
+            planned_cues_json TEXT,
+            status TEXT NOT NULL DEFAULT 'running',
+            error_message TEXT,
+            started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            completed_at TEXT,
+            CONSTRAINT fk_retrieval_planning_generation
+                FOREIGN KEY (generation_id) REFERENCES generation_runs(generation_id)
+                ON DELETE CASCADE
+        )
+        """,
+    )
 
     if changed:
         conn.commit()
