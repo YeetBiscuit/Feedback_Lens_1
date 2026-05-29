@@ -58,6 +58,12 @@ Gemini is also available:
 python generate_unit.py --description-file course_description.txt --provider gemini --model gemini-2.5-flash --temperature 0.2
 ```
 
+NVIDIA DeepSeek is also available:
+
+```powershell
+python generate_unit.py --description-file course_description.txt --provider nvidia_deepseek --model deepseek-ai/deepseek-v4-pro --temperature 0.2
+```
+
 The CLI prints live progress as it works: run creation, each model-call stage, each generated file path, and the final review/ingestion command. Use `--quiet` only when you want the final summary without the stage-by-stage console output.
 
 Example progress output:
@@ -80,6 +86,24 @@ Suppress live progress if you are running from a script:
 python generate_unit.py --description-file course_description.txt --quiet
 ```
 
+## Add More Synthetic Submissions
+
+After `generate_unit.py` finishes, generate more test submissions from the existing unit package:
+
+```powershell
+python generate_synthetic_submissions.py documents/units/{COURSE_CODE} --assignment A1 --grade-band HD --count 3
+```
+
+Omit `--assignment` to generate for every assignment, and omit `--grade-band` to generate HD, D, C, and P variants. The command reuses the generated assignment spec, rubric, linked lecture transcripts, tutorial worksheet, and sample answers. It writes files such as `submission_HD_extra_01.pdf` under each assignment's `submissions/` folder and updates `unit_manifest.json` with distinct synthetic student identifiers so `ingest_unit.py` imports them as separate students.
+
+You can also add your own `.pdf` or `.txt` submissions manually under:
+
+```text
+documents/units/{COURSE_CODE}/assignments/{assignment_slug}/submissions/
+```
+
+If the filename contains a grade band such as `HD`, `D`, `C`, or `P`, add a matching `student_identifiers` entry in `unit_manifest.json` when you want it treated as a new student instead of another version of the default synthetic student.
+
 ## Required Setup
 
 Initialise the database first:
@@ -98,6 +122,12 @@ For Gemini:
 
 ```powershell
 $env:GEMINI_API_KEY="your_key_here"
+```
+
+For NVIDIA DeepSeek:
+
+```powershell
+$env:NVIDIA_API_KEY="your_key_here"
 ```
 
 ## Review-First Workflow

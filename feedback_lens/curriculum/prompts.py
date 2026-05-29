@@ -1,5 +1,72 @@
 import json
 
+GRADE_BAND_PROFILES = {
+    "HD": """
+Target grade: HD (80-100%)
+
+Use the rubric to satisfy the High Distinction descriptors across the submission.
+
+The generated submission should:
+- address all major task requirements;
+- show deep understanding of the core task;
+- use the available materials precisely and consistently;
+- provide strong analysis, synthesis, original connections, and detailed justification;
+- use specific evidence rather than general claims;
+- sound like a genuine high-performing student submission, with only realistic minor imperfections that do not reduce the grade.
+""".strip(),
+    "D": """
+Target grade: D (70-79%)
+
+Use the rubric to satisfy most Distinction-level descriptors. Treat D as the grade ceiling.
+
+The generated submission should:
+- meet almost all major task requirements;
+- show clear understanding of the core task;
+- use most relevant materials accurately;
+- include some synthesis and justification, but not sustained HD-level insight;
+- have minor gaps in depth, precision, or originality;
+- avoid the sustained originality, polish, or comprehensive evidence that would justify HD;
+- sound like a genuine capable student submission, not a deliberately weakened answer.
+""".strip(),
+    "C": """
+Target grade: C (60-69%)
+
+Use the rubric to satisfy the core Credit-level descriptors. Treat C as the grade ceiling.
+
+The generated submission should:
+- meet the central task requirements but leave some secondary requirements underdeveloped;
+- show adequate understanding of the core task;
+- use mostly relevant materials, but unevenly;
+- include some analysis, while still relying on description or summary in places;
+- include several omissions compared with D or HD descriptors;
+- avoid strong synthesis, original connections, or highly detailed justification;
+- sound like a genuine mid-range student submission, not an intentionally bad parody.
+
+The submission must contain clear grade-limiting weaknesses. A judge should have obvious evidence for why it should not receive D or HD.
+""".strip(),
+    "P": """
+Target grade: Pass (50-59%)
+
+Use the rubric, but intentionally satisfy only the minimum Pass-level descriptors. Treat P as the grade ceiling.
+
+The generated submission should:
+- meet enough requirements to avoid failing;
+- show limited understanding of the core task;
+- use some relevant materials, but inconsistently and sometimes superficially;
+- mostly summarise rather than analyse;
+- include several visible omissions compared with C, D, or HD descriptors;
+- include one or two plausible misunderstandings or weak interpretations;
+- make some vague claims without enough evidence;
+- provide limited or generic justification;
+- avoid strong synthesis, original connections, or detailed justification;
+- sound like a genuine student submission, not an intentionally bad parody.
+
+Do not accidentally include evidence that would justify C, D, or HD.
+
+The submission must contain clear grade-limiting weaknesses. A judge should have obvious evidence for why it should not receive C, D, or HD.
+""".strip(),
+}
+
 
 def schema_messages(description: str) -> list[dict[str, str]]:
     return [
@@ -239,25 +306,10 @@ def submission_messages(
     worksheet_text: str,
     sample_answer_text: str,
     grade_band: str,
+    variation_note: str | None = None,
 ) -> list[dict[str, str]]:
-    persona = {
-        "HD": "Highly engaged student. Uses all materials deeply and makes original connections.",
-        "D": "Capable student. Uses most materials with minor gaps in depth or originality.",
-        "C": "Average student. Uses materials partially and misses some nuance.",
-        "P": "Struggling student. Surface engagement, with some errors or omissions.",
-    }[grade_band]
-    return [
-        {
-            "role": "system",
-            "content": (
-                "You are simulating a university student completing an assignment. "
-                "Write in first-person student voice. Do not break character. "
-                "Output only the complete submission document. No markdown."
-            ),
-        },
-        {
-            "role": "user",
-            "content": f"""
+    profile = GRADE_BAND_PROFILES[grade_band]
+    user_content = f"""
 Write a complete student submission for the assignment below.
 
 ASSIGNMENT SPECIFICATION:
@@ -283,13 +335,37 @@ Tutorial worksheet and sample answers:
 {sample_answer_text}
 \"\"\"
 
-STUDENT PERSONA:
+GRADE CALIBRATION PROFILE:
 Grade band target: {grade_band}
-Persona description: {persona}
+{profile}
 
 The submission must be realistic for the target grade band when marked against
 the rubric. Do not produce a perfect submission for any band below HD.
-""".strip(),
+
+Before writing, internally compare the planned submission against the rubric and
+reduce or improve it until the evidence supports the target band, not a higher
+band. Do not output this check.
+""".strip()
+    if variation_note:
+        user_content = (
+            f"{user_content}\n\n"
+            "VARIATION REQUIREMENTS:\n"
+            "Variation requirements must not override the target grade calibration.\n"
+            f"{variation_note.strip()}"
+        )
+
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are simulating a university student completing an assignment. "
+                "Write in first-person student voice. Do not break character. "
+                "Output only the complete submission document. No markdown."
+            ),
+        },
+        {
+            "role": "user",
+            "content": user_content,
         },
     ]
 

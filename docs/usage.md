@@ -109,6 +109,12 @@ For Gemini:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
+For NVIDIA DeepSeek:
+
+```powershell
+$env:NVIDIA_API_KEY="your_key_here"
+```
+
 If you need more detail about providers and model selection, see [configuration.md](configuration.md).
 
 ## 7. Generate Feedback
@@ -123,6 +129,12 @@ Or with Gemini:
 
 ```powershell
 python generate_feedback.py <submission_id> --provider gemini --top-k 5
+```
+
+Or with NVIDIA DeepSeek:
+
+```powershell
+python generate_feedback.py <submission_id> --provider nvidia_deepseek --top-k 5
 ```
 
 Example:
@@ -252,7 +264,7 @@ python build.py
 $env:QWEN_API_KEY="your_qwen_key_here"
 ```
 
-For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` instead and use `--provider gemini`.
+For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` instead and use `--provider gemini`. For NVIDIA DeepSeek, set `$env:NVIDIA_API_KEY="your_nvidia_key_here"` and use `--provider nvidia_deepseek`.
 
 Create the unit and assignment:
 

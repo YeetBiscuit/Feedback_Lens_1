@@ -8,6 +8,12 @@ from feedback_lens.feedback.llm.gemini import (
     GEMINI_MODEL,
     GeminiProvider,
 )
+from feedback_lens.feedback.llm.nvidia_deepseek import (
+    NVIDIA_API_KEY_ENV,
+    NVIDIA_DEEPSEEK_BASE_URL,
+    NVIDIA_DEEPSEEK_MODEL,
+    NvidiaDeepSeekProvider,
+)
 from feedback_lens.feedback.llm.providers import list_provider_names, resolve_model_name
 
 
@@ -16,10 +22,20 @@ class LLMProviderRegistryTests(unittest.TestCase):
         self.assertIn("gemini", list_provider_names())
         self.assertEqual(resolve_model_name("gemini"), GEMINI_MODEL)
 
+    def test_nvidia_deepseek_is_registered_with_default_model(self) -> None:
+        self.assertIn("nvidia_deepseek", list_provider_names())
+        self.assertEqual(resolve_model_name("nvidia_deepseek"), NVIDIA_DEEPSEEK_MODEL)
+
     def test_gemini_missing_key_error_names_expected_env_var(self) -> None:
         provider = GeminiProvider()
         with patch.dict(os.environ, {}, clear=True):
             with self.assertRaisesRegex(RuntimeError, GEMINI_API_KEY_ENV):
+                provider.generate("Hello")
+
+    def test_nvidia_deepseek_missing_key_error_names_expected_env_var(self) -> None:
+        provider = NvidiaDeepSeekProvider()
+        with patch.dict(os.environ, {}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, NVIDIA_API_KEY_ENV):
                 provider.generate("Hello")
 
     @patch("feedback_lens.feedback.llm.gemini.OpenAI")
@@ -41,6 +57,29 @@ class LLMProviderRegistryTests(unittest.TestCase):
         )
         mock_openai.return_value.chat.completions.create.assert_called_once_with(
             model=GEMINI_MODEL,
+            messages=[{"role": "user", "content": "Hello"}],
+            temperature=0.1,
+        )
+
+    @patch("feedback_lens.feedback.llm.nvidia_deepseek.OpenAI")
+    def test_nvidia_deepseek_uses_openai_compatible_endpoint(self, mock_openai) -> None:
+        provider = NvidiaDeepSeekProvider()
+        mock_choice = mock_openai.return_value.chat.completions.create.return_value
+        mock_choice.choices[0].message.content = "ok"
+
+        with patch.dict(os.environ, {NVIDIA_API_KEY_ENV: "test-key"}, clear=True):
+            result = provider.generate_chat(
+                [{"role": "user", "content": "Hello"}],
+                temperature=0.1,
+            )
+
+        self.assertEqual(result, "ok")
+        mock_openai.assert_called_once_with(
+            api_key="test-key",
+            base_url=NVIDIA_DEEPSEEK_BASE_URL,
+        )
+        mock_openai.return_value.chat.completions.create.assert_called_once_with(
+            model=NVIDIA_DEEPSEEK_MODEL,
             messages=[{"role": "user", "content": "Hello"}],
             temperature=0.1,
         )

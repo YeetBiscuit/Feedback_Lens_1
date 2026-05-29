@@ -1,8 +1,9 @@
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
 
 from feedback_lens.curriculum import prompts
 from feedback_lens.curriculum.paths import (
@@ -40,6 +41,20 @@ class CurriculumGenerationResult:
     output_root: Path
     provider: str
     model: str
+
+
+@dataclass(slots=True)
+class SyntheticSubmissionGenerationResult:
+    curriculum_run_id: int
+    course_code: str
+    output_root: Path
+    provider: str
+    model: str
+    written_paths: list[Path]
+
+    @property
+    def generated_count(self) -> int:
+        return len(self.written_paths)
 
 
 def _emit(progress_callback: ProgressCallback | None, message: str) -> None:
@@ -275,6 +290,367 @@ def _write_unit_manifest(root: Path, schema: dict, year: int | None, semester: s
     path = root / "unit_manifest.json"
     path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     return path
+
+
+def _load_json_file(path: Path, required: bool = True) -> dict:
+    if not path.exists():
+        if required:
+            raise ValueError(f"Required JSON file does not exist: {path}")
+        return {}
+    with path.open(encoding="utf-8") as handle:
+        value = json.load(handle)
+    if not isinstance(value, dict):
+        raise ValueError(f"Expected JSON object in {path}")
+    return value
+
+
+def _read_generated_document(path: Path) -> str:
+    from feedback_lens.file_management.document_io import extract_document
+
+    document = extract_document(path)
+    text = document["cleaned_text"]
+    if not text:
+        raise ValueError(f"No readable text found in {path}")
+    return text
+
+
+def _find_generated_document(
+    exact_paths: Sequence[Path],
+    fallback_paths: Sequence[Path],
+    label: str,
+) -> Path:
+    for path in exact_paths:
+        if path.exists() and path.is_file() and path.suffix.lower() in {".pdf", ".txt"}:
+            return path
+    candidates = [
+        path
+        for path in fallback_paths
+        if path.exists() and path.is_file() and path.suffix.lower() in {".pdf", ".txt"}
+    ]
+    if candidates:
+        return sorted(candidates, key=lambda item: (item.stat().st_mtime, item.name))[-1]
+    raise ValueError(f"Could not find {label}.")
+
+
+def _lecture_week_from_path(path: Path) -> int | None:
+    match = re.search(r"week[_ -]?0*(\d+)", path.stem, re.IGNORECASE)
+    return int(match.group(1)) if match else None
+
+
+def _load_lecture_texts(root: Path) -> dict[int, str]:
+    lecture_texts: dict[int, str] = {}
+    lectures_dir = root / "lectures"
+    if not lectures_dir.exists():
+        return lecture_texts
+    for path in sorted(lectures_dir.glob("*.txt")):
+        week = _lecture_week_from_path(path)
+        if week is not None:
+            lecture_texts[week] = path.read_text(encoding="utf-8").strip()
+    return lecture_texts
+
+
+def _selected_assignments(schema: dict, assignment_codes: Sequence[str] | None) -> list[dict]:
+    assignments = [item for item in schema.get("assignments", []) if isinstance(item, dict)]
+    if not assignment_codes:
+        return assignments
+
+    wanted = {str(code).strip().upper() for code in assignment_codes if str(code).strip()}
+    selected = [
+        assignment
+        for assignment in assignments
+        if str(assignment.get("id") or assignment.get("assignment_code") or "").upper()
+        in wanted
+    ]
+    found = {
+        str(assignment.get("id") or assignment.get("assignment_code") or "").upper()
+        for assignment in selected
+    }
+    missing = sorted(wanted - found)
+    if missing:
+        raise ValueError(f"Unknown assignment code(s): {', '.join(missing)}")
+    return selected
+
+
+def _normalise_grade_bands(grade_bands: Sequence[str] | None) -> list[str]:
+    if not grade_bands:
+        return list(GRADE_BANDS)
+    normalised = [str(band).strip().upper() for band in grade_bands]
+    invalid = sorted({band for band in normalised if band not in GRADE_BANDS})
+    if invalid:
+        raise ValueError(
+            f"Unsupported grade band(s): {', '.join(invalid)}. "
+            f"Use one of: {', '.join(GRADE_BANDS)}"
+        )
+    return normalised
+
+
+def _manifest_assignment_entry(manifest: dict, assignment: dict) -> tuple[str, dict]:
+    slug = assignment_slug(assignment)
+    assignments = manifest.setdefault("assignments", {})
+    if not isinstance(assignments, dict):
+        assignments = {}
+        manifest["assignments"] = assignments
+    entry = assignments.setdefault(slug, {})
+    if not isinstance(entry, dict):
+        entry = {}
+        assignments[slug] = entry
+    entry.setdefault("assignment_code", assignment.get("id"))
+    entry.setdefault("title", assignment.get("title"))
+    entry.setdefault("type", assignment.get("type"))
+    entry.setdefault("weight", assignment.get("weight"))
+    entry.setdefault("due_week", assignment.get("due_week"))
+    return slug, entry
+
+
+def _next_extra_submission_index(
+    submission_dir: Path,
+    grade_band: str,
+    assignment_manifest: dict,
+) -> int:
+    pattern = re.compile(
+        rf"^submission_{re.escape(grade_band)}_extra_(\d+)",
+        re.IGNORECASE,
+    )
+    seen: set[int] = set()
+    if submission_dir.exists():
+        for path in submission_dir.iterdir():
+            match = pattern.match(path.stem)
+            if match:
+                seen.add(int(match.group(1)))
+    identifiers = assignment_manifest.get("student_identifiers") or {}
+    if isinstance(identifiers, dict):
+        for filename in identifiers:
+            match = pattern.match(Path(str(filename)).stem)
+            if match:
+                seen.add(int(match.group(1)))
+    return max(seen, default=0) + 1
+
+
+def _write_manifest(path: Path, manifest: dict) -> None:
+    path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def generate_synthetic_submissions(
+    conn: sqlite3.Connection,
+    unit_directory: str | Path,
+    assignment_codes: Sequence[str] | None = None,
+    grade_bands: Sequence[str] | None = None,
+    count_per_band: int = 1,
+    provider: str = "qwen",
+    model: str | None = None,
+    temperature: float = 0.2,
+    progress_callback: ProgressCallback | None = None,
+) -> SyntheticSubmissionGenerationResult:
+    """Generate extra synthetic student submissions for an existing unit package."""
+    from feedback_lens.feedback.llm.providers import resolve_model_name
+
+    if count_per_band < 1:
+        raise ValueError("count_per_band must be at least 1.")
+
+    unit_dir = Path(unit_directory)
+    if not unit_dir.exists() or not unit_dir.is_dir():
+        raise ValueError(f"Unit directory does not exist: {unit_dir}")
+
+    schema = _load_json_file(unit_dir / "schema.json")
+    manifest_path = unit_dir / "unit_manifest.json"
+    manifest = _load_json_file(manifest_path, required=False)
+    manifest.setdefault(
+        "unit",
+        {
+            "course_code": schema.get("course_code"),
+            "course_title": schema.get("course_title"),
+        },
+    )
+    manifest.setdefault("materials", {})
+
+    course_code = str(schema.get("course_code") or "").upper()
+    if not course_code:
+        raise ValueError("schema.json must include course_code.")
+    selected = _selected_assignments(schema, assignment_codes)
+    if not selected:
+        raise ValueError("No assignments were found in schema.json.")
+    selected_bands = _normalise_grade_bands(grade_bands)
+
+    resolved_model = resolve_model_name(provider, model)
+    run_id = _insert_run(
+        conn,
+        f"Additional synthetic submissions for {course_code} from {normalise_source_path(unit_dir)}",
+        provider,
+        resolved_model,
+        temperature,
+    )
+    conn.execute(
+        """
+        UPDATE curriculum_generation_runs
+        SET course_code = ?,
+            output_root = ?,
+            schema_json = ?
+        WHERE curriculum_run_id = ?
+        """,
+        (
+            course_code,
+            normalise_source_path(unit_dir),
+            json.dumps(schema, ensure_ascii=False),
+            run_id,
+        ),
+    )
+    conn.commit()
+    _emit(
+        progress_callback,
+        f"Created extra synthetic submission run {run_id} using {provider}:{resolved_model}.",
+    )
+
+    written_paths: list[Path] = []
+
+    try:
+        lecture_texts = _load_lecture_texts(unit_dir)
+        for assignment in selected:
+            assignment_id = str(assignment.get("id") or assignment.get("assignment_code") or "")
+            slug, assignment_manifest = _manifest_assignment_entry(manifest, assignment)
+            assignment_dir = unit_dir / "assignments" / slug
+            if not assignment_dir.exists():
+                raise ValueError(f"Assignment directory does not exist: {assignment_dir}")
+
+            spec_path = _find_generated_document(
+                [assignment_dir / "spec.pdf", assignment_dir / "spec.txt"],
+                list(assignment_dir.glob("spec.*")),
+                f"{assignment_id} assignment specification",
+            )
+            rubric_path = _find_generated_document(
+                [assignment_dir / "rubric.pdf", assignment_dir / "rubric.txt"],
+                list(assignment_dir.glob("rubric.*")),
+                f"{assignment_id} rubric",
+            )
+            tutorials_dir = unit_dir / "tutorials"
+            worksheet_path = _find_generated_document(
+                [
+                    tutorials_dir / f"{slug}_worksheet.pdf",
+                    tutorials_dir / f"{slug}_worksheet.txt",
+                ],
+                list(tutorials_dir.glob(f"{slug}*worksheet.*")),
+                f"{assignment_id} tutorial worksheet",
+            )
+            sample_path = _find_generated_document(
+                [
+                    tutorials_dir / f"{slug}_sample_answers.pdf",
+                    tutorials_dir / f"{slug}_sample_answers.txt",
+                ],
+                list(tutorials_dir.glob(f"{slug}*sample_answers.*")),
+                f"{assignment_id} sample answers",
+            )
+
+            spec_text = _read_generated_document(spec_path)
+            rubric_text = _read_generated_document(rubric_path)
+            worksheet_text = _read_generated_document(worksheet_path)
+            sample_text = _read_generated_document(sample_path)
+            transcripts = _transcripts_for_assignment(assignment, lecture_texts)
+            submission_dir = assignment_dir / "submissions"
+            submission_dir.mkdir(parents=True, exist_ok=True)
+
+            for grade_band in selected_bands:
+                next_index = _next_extra_submission_index(
+                    submission_dir,
+                    grade_band,
+                    assignment_manifest,
+                )
+                for offset in range(count_per_band):
+                    variant_index = next_index + offset
+                    variant_label = f"{variant_index:02d}"
+                    variation_note = (
+                        f"Create variant {variant_label} for testing. Make it distinct from "
+                        "other synthetic submissions by changing the student's angle, examples, "
+                        "evidence choices, structure, and mistake pattern while staying plausible "
+                        f"for the {grade_band} grade band. Do not mention this variant instruction."
+                    )
+                    submission_step, submission_text, _ = _run_step(
+                        conn,
+                        run_id,
+                        "stage_4_student_submission_extra",
+                        prompts.submission_messages(
+                            spec_text,
+                            rubric_text,
+                            transcripts,
+                            worksheet_text,
+                            sample_text,
+                            grade_band,
+                            variation_note=variation_note,
+                        ),
+                        provider,
+                        resolved_model,
+                        temperature,
+                        assignment_code=assignment_id,
+                        grade_band=grade_band,
+                        progress_callback=progress_callback,
+                        progress_label=(
+                            f"{assignment_id} extra synthetic {grade_band} "
+                            f"submission {variant_label}"
+                        ),
+                    )
+                    submission_path = _write_pdf(
+                        submission_dir / f"submission_{grade_band}_extra_{variant_label}.pdf",
+                        submission_text,
+                    )
+                    identifiers = assignment_manifest.setdefault("student_identifiers", {})
+                    if not isinstance(identifiers, dict):
+                        identifiers = {}
+                        assignment_manifest["student_identifiers"] = identifiers
+                    identifiers[submission_path.name] = (
+                        f"{slug}_{grade_band}_synthetic_extra_{variant_label}"
+                    )
+                    _write_manifest(manifest_path, manifest)
+                    _insert_artifact(
+                        conn,
+                        run_id,
+                        submission_step,
+                        "student_submission",
+                        f"{assignment_id} {grade_band} extra submission {variant_label}",
+                        submission_path,
+                        submission_text,
+                    )
+                    written_paths.append(submission_path)
+                    _emit(progress_callback, f"Wrote student_submission: {submission_path}")
+
+        _insert_artifact(
+            conn,
+            run_id,
+            None,
+            "manifest",
+            "Updated unit manifest",
+            manifest_path,
+            manifest_path.read_text(encoding="utf-8"),
+        )
+        conn.execute(
+            """
+            UPDATE curriculum_generation_runs
+            SET status = 'completed',
+                completed_at = CURRENT_TIMESTAMP
+            WHERE curriculum_run_id = ?
+            """,
+            (run_id,),
+        )
+        conn.commit()
+        _emit(progress_callback, f"Completed extra synthetic submission run {run_id}.")
+        return SyntheticSubmissionGenerationResult(
+            curriculum_run_id=run_id,
+            course_code=course_code,
+            output_root=unit_dir,
+            provider=provider,
+            model=resolved_model,
+            written_paths=written_paths,
+        )
+    except Exception as err:
+        conn.execute(
+            """
+            UPDATE curriculum_generation_runs
+            SET status = 'failed',
+                error_message = ?,
+                completed_at = CURRENT_TIMESTAMP
+            WHERE curriculum_run_id = ?
+            """,
+            (str(err), run_id),
+        )
+        conn.commit()
+        raise
 
 
 def generate_unit(
