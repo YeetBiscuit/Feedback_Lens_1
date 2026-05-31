@@ -8,7 +8,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from feedback_lens.curriculum.paths import assignment_slug, collision_safe_path
-from feedback_lens.curriculum.pipeline import generate_unit
+from feedback_lens.curriculum.pipeline import generate_synthetic_submissions, generate_unit
+from feedback_lens.curriculum.prompts import submission_messages
 from feedback_lens.file_management.parsers.rubric_parser import (
     extract_pipe_rubric_tables,
     extract_rubric_tables,
@@ -44,6 +45,19 @@ def _connect_temp_db(_path: Path | None = None) -> sqlite3.Connection:
     ensure_schema_updates(conn)
     conn.commit()
     return conn
+
+
+def _submission_user_prompt(grade_band: str, variation_note: str | None = None) -> str:
+    messages = submission_messages(
+        "Assignment spec.",
+        "Rubric.",
+        "Lecture transcript.",
+        "Worksheet.",
+        "Sample answer.",
+        grade_band,
+        variation_note=variation_note,
+    )
+    return messages[1]["content"]
 
 
 def _write_minimal_unit(root: Path) -> None:
@@ -150,6 +164,56 @@ class UnitGenerationIngestionTests(unittest.TestCase):
         self.assertGreaterEqual(len(tables), 1)
         self.assertEqual(len(criteria), 2)
         self.assertEqual(criteria[0]["criterion_name"], "Analysis")
+
+    def test_pass_submission_prompt_sets_minimum_pass_ceiling(self) -> None:
+        prompt = _submission_user_prompt("P")
+
+        self.assertIn("GRADE CALIBRATION PROFILE", prompt)
+        self.assertIn("minimum Pass-level descriptors", prompt)
+        self.assertIn("Treat P as the grade ceiling", prompt)
+        self.assertIn("mostly summarise rather than analyse", prompt)
+        self.assertIn(
+            "Do not accidentally include evidence that would justify C, D, or HD",
+            prompt,
+        )
+
+    def test_credit_and_distinction_prompts_prevent_overperformance(self) -> None:
+        credit_prompt = _submission_user_prompt("C")
+        distinction_prompt = _submission_user_prompt("D")
+
+        self.assertIn("Treat C as the grade ceiling", credit_prompt)
+        self.assertIn(
+            "avoid strong synthesis, original connections, or highly detailed justification",
+            credit_prompt,
+        )
+        self.assertIn("Treat D as the grade ceiling", distinction_prompt)
+        self.assertIn(
+            "avoid the sustained originality, polish, or comprehensive evidence that would justify HD",
+            distinction_prompt,
+        )
+
+    def test_hd_submission_prompt_does_not_request_artificial_weaknesses(self) -> None:
+        prompt = _submission_user_prompt("HD")
+
+        self.assertIn("Target grade: HD", prompt)
+        self.assertIn("satisfy the High Distinction descriptors", prompt)
+        self.assertNotIn("Treat HD as the grade ceiling", prompt)
+        self.assertNotIn("deliberately weakened", prompt)
+        self.assertNotIn("intentionally bad parody", prompt)
+
+    def test_variation_note_is_subordinate_to_grade_calibration(self) -> None:
+        prompt = _submission_user_prompt("P", variation_note="Use a case-study angle.")
+
+        self.assertIn("VARIATION REQUIREMENTS", prompt)
+        self.assertIn(
+            "Variation requirements must not override the target grade calibration",
+            prompt,
+        )
+        self.assertIn("Use a case-study angle.", prompt)
+        self.assertLess(
+            prompt.index("GRADE CALIBRATION PROFILE"),
+            prompt.index("VARIATION REQUIREMENTS"),
+        )
 
     def test_auto_ingest_dry_run_classifies_without_db_writes(self) -> None:
         with _temp_dir() as tmp:
@@ -297,6 +361,96 @@ class UnitGenerationIngestionTests(unittest.TestCase):
                 ).fetchone()
                 self.assertEqual(unit_count["count"], 0)
                 self.assertEqual(ingestion_run_count["count"], 0)
+
+    def test_generate_extra_synthetic_submissions_updates_manifest(self) -> None:
+        with _temp_dir() as tmp:
+            db_path = Path(tmp) / "feedback.db"
+            unit_dir = Path(tmp) / "documents" / "units" / "COMP3001"
+            _write_minimal_unit(unit_dir)
+            assignment_dir = unit_dir / "assignments" / "a1-literature-review"
+            (assignment_dir / "rubric.txt").write_text(
+                "Rubric with HD, D, C, P and fail descriptors.",
+                encoding="utf-8",
+            )
+            lectures_dir = unit_dir / "lectures"
+            lectures_dir.mkdir()
+            (lectures_dir / "week_01_foundations.txt").write_text(
+                "Lecture transcript on evidence and synthesis.",
+                encoding="utf-8",
+            )
+            tutorials_dir = unit_dir / "tutorials"
+            tutorials_dir.mkdir()
+            (tutorials_dir / "a1-literature-review_worksheet.txt").write_text(
+                "Worksheet prompts about evaluating sources.",
+                encoding="utf-8",
+            )
+            (tutorials_dir / "a1-literature-review_sample_answers.txt").write_text(
+                "Sample answer using credible evidence.",
+                encoding="utf-8",
+            )
+
+            def fake_generate_chat(messages, provider, model, temperature):
+                joined = "\n".join(message["content"] for message in messages)
+                self.assertIn("VARIATION REQUIREMENTS", joined)
+                return "Extra synthetic submission body."
+
+            with _connect_temp_db(db_path) as conn:
+                with patch(
+                    "feedback_lens.feedback.llm.providers.generate_chat",
+                    fake_generate_chat,
+                ):
+                    result = generate_synthetic_submissions(
+                        conn,
+                        unit_dir,
+                        assignment_codes=["A1"],
+                        grade_bands=["HD"],
+                        count_per_band=2,
+                        provider="qwen",
+                        model="fake-model",
+                    )
+
+                self.assertEqual(result.generated_count, 2)
+                self.assertTrue(
+                    (
+                        assignment_dir
+                        / "submissions"
+                        / "submission_HD_extra_01.pdf"
+                    ).exists()
+                )
+                self.assertTrue(
+                    (
+                        assignment_dir
+                        / "submissions"
+                        / "submission_HD_extra_02.pdf"
+                    ).exists()
+                )
+                manifest = json.loads(
+                    (unit_dir / "unit_manifest.json").read_text(encoding="utf-8")
+                )
+                identifiers = manifest["assignments"]["a1-literature-review"][
+                    "student_identifiers"
+                ]
+                self.assertEqual(
+                    identifiers["submission_HD_extra_01.pdf"],
+                    "a1-literature-review_HD_synthetic_extra_01",
+                )
+                step_count = conn.execute(
+                    """
+                    SELECT COUNT(*) AS count
+                    FROM curriculum_generation_steps
+                    WHERE stage_key = 'stage_4_student_submission_extra'
+                    """
+                ).fetchone()
+                self.assertEqual(step_count["count"], 2)
+                run = conn.execute(
+                    """
+                    SELECT status
+                    FROM curriculum_generation_runs
+                    WHERE curriculum_run_id = ?
+                    """,
+                    (result.curriculum_run_id,),
+                ).fetchone()
+                self.assertEqual(run["status"], "completed")
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ Current registered providers:
 
 - `qwen`
 - `gemini`
+- `nvidia_deepseek`
 
 You can select a provider at runtime with:
 
@@ -31,6 +32,12 @@ Gemini can be selected the same way:
 
 ```bash
 python generate_feedback.py <submission_id> --provider gemini
+```
+
+NVIDIA DeepSeek can also be selected:
+
+```bash
+python generate_feedback.py <submission_id> --provider nvidia_deepseek
 ```
 
 If you pass an unsupported provider name, generation fails with a clear error listing the available providers.
@@ -53,7 +60,11 @@ Current Qwen default:
 
 Current Gemini default:
 
-- `gemini-2.5-flash`
+- `gemini-3-flash-preview`
+
+Current NVIDIA DeepSeek default:
+
+- `deepseek-ai/deepseek-v4-pro`
 
 ## Qwen Configuration
 
@@ -79,7 +90,7 @@ Current Gemini settings:
 
 - environment variable for API key: `GEMINI_API_KEY`
 - base URL: `https://generativelanguage.googleapis.com/v1beta/openai/`
-- default model: `gemini-2.5-flash`
+- default model: `gemini-3-flash-preview`
 
 Set the API key before generation:
 
@@ -91,6 +102,28 @@ Run feedback generation with:
 
 ```bash
 python generate_feedback.py 1 --provider gemini
+```
+
+## NVIDIA DeepSeek Configuration
+
+NVIDIA DeepSeek is implemented through NVIDIA's OpenAI-compatible endpoint in `feedback_lens/feedback/llm/nvidia_deepseek.py`.
+
+Current NVIDIA DeepSeek settings:
+
+- environment variable for API key: `NVIDIA_API_KEY`
+- base URL: `https://integrate.api.nvidia.com/v1`
+- default model: `deepseek-ai/deepseek-v4-pro`
+
+Set the API key before generation:
+
+```powershell
+$env:NVIDIA_API_KEY="your_key_here"
+```
+
+Run feedback generation with:
+
+```bash
+python generate_feedback.py 1 --provider nvidia_deepseek
 ```
 
 ## Retrieval Configuration
