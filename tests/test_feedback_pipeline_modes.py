@@ -164,6 +164,10 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertEqual(run["prompt_template_version"], "baseline_direct_feedback_json_v1")
         self.assertEqual(run["retrieval_strategy"], "none_direct_v1")
         self.assertEqual(run["top_k"], 0)
+        self.assertEqual(run["per_cue_top_k"], 0)
+        self.assertEqual(run["max_final_chunks"], 0)
+        self.assertEqual(result.per_cue_top_k, 0)
+        self.assertEqual(result.max_final_chunks, 0)
         self.assertEqual(retrieval_count, 0)
         self.assertNotIn("Retrieved course context:", run["prompt_text"])
         self.assertNotIn("Rubric text:", run["prompt_text"])
@@ -199,15 +203,57 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                 ).fetchone()["count"]
 
         retrieval_cues = mock_retrieve.call_args.args[2]
+        retrieval_kwargs = mock_retrieve.call_args.kwargs
         self.assertEqual(result.context_mode, "retrieval")
         self.assertEqual(result.retrieval_strategy, "assignment_spec_multi_cue_v1")
         self.assertEqual(result.retrieval_cue_count, 1)
+        self.assertEqual(result.per_cue_top_k, 5)
+        self.assertEqual(result.max_final_chunks, 10)
         self.assertEqual(run["pipeline_version"], "baseline_retrieval_v1")
         self.assertEqual(run["retrieval_strategy"], "assignment_spec_multi_cue_v1")
+        self.assertEqual(run["top_k"], 5)
+        self.assertEqual(run["per_cue_top_k"], 5)
+        self.assertEqual(run["max_final_chunks"], 10)
         self.assertEqual(planning_count, 0)
         self.assertEqual(retrieval_cues[0]["label"], "Task")
         self.assertEqual(retrieval_cues[0]["text"], "reflection report")
+        self.assertEqual(retrieval_kwargs["per_cue_top_k"], 5)
+        self.assertEqual(retrieval_kwargs["max_final_chunks"], 10)
         mock_generate_text.assert_called_once()
+
+    def test_retrieval_limits_are_configurable(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                    per_cue_top_k=3,
+                    max_final_chunks=8,
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+
+        retrieval_kwargs = mock_retrieve.call_args.kwargs
+        self.assertEqual(retrieval_kwargs["per_cue_top_k"], 3)
+        self.assertEqual(retrieval_kwargs["max_final_chunks"], 8)
+        self.assertEqual(run["top_k"], 3)
+        self.assertEqual(run["per_cue_top_k"], 3)
+        self.assertEqual(run["max_final_chunks"], 8)
+        self.assertEqual(result.per_cue_top_k, 3)
+        self.assertEqual(result.max_final_chunks, 8)
 
     def test_planned_retrieval_generates_and_records_planner_cues(self) -> None:
         planner_response = json.dumps(

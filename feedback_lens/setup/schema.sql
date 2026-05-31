@@ -293,6 +293,8 @@ CREATE TABLE generation_runs (
     retrieval_strategy TEXT,
     temperature REAL,
     top_k INTEGER,
+    per_cue_top_k INTEGER,
+    max_final_chunks INTEGER,
     started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     completed_at TEXT,
     status TEXT NOT NULL DEFAULT 'running',

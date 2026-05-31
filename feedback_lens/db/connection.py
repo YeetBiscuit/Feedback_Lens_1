@@ -78,6 +78,8 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
     changed |= ensure_column(conn, "generation_runs", "llm_provider", "TEXT")
     changed |= ensure_column(conn, "generation_runs", "prompt_text", "TEXT")
     changed |= ensure_column(conn, "generation_runs", "raw_response_text", "TEXT")
+    changed |= ensure_column(conn, "generation_runs", "per_cue_top_k", "INTEGER")
+    changed |= ensure_column(conn, "generation_runs", "max_final_chunks", "INTEGER")
     changed |= ensure_column(conn, "overall_feedback", "overall_grade_band", "TEXT")
     changed |= ensure_column(conn, "overall_feedback", "final_mark", "REAL")
     changed |= ensure_column(conn, "assignment_specs", "retrieval_cues_json", "TEXT")

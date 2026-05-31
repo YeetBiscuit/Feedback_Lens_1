@@ -6,6 +6,9 @@ from feedback_lens.file_management.indexing.embedding import (
     query_collection,
 )
 
+DEFAULT_PER_CUE_TOP_K = 5
+DEFAULT_MAX_FINAL_CHUNKS = 10
+
 
 def _coerce_order(value: object, fallback: int) -> int:
     try:
@@ -146,8 +149,17 @@ def retrieve_relevant_chunks(
     conn: sqlite3.Connection,
     unit_row: sqlite3.Row,
     retrieval_cues: list[dict],
-    top_k: int = 5,
+    per_cue_top_k: int | None = None,
+    max_final_chunks: int = DEFAULT_MAX_FINAL_CHUNKS,
+    top_k: int | None = None,
 ) -> tuple[str, list[dict], list[dict]]:
+    if per_cue_top_k is not None:
+        resolved_per_cue_top_k = per_cue_top_k
+    elif top_k is not None:
+        resolved_per_cue_top_k = top_k
+    else:
+        resolved_per_cue_top_k = DEFAULT_PER_CUE_TOP_K
+
     collection_name = build_collection_name(
         unit_row["unit_code"],
         unit_row["year"],
@@ -162,7 +174,7 @@ def retrieve_relevant_chunks(
         query_results = query_collection(
             cue_query_text,
             collection_name,
-            n_results=max(top_k, 1),
+            n_results=max(resolved_per_cue_top_k, 1),
         )
         for rank_position, result in enumerate(query_results, start=1):
             raw_hits.append(
@@ -250,7 +262,8 @@ def retrieve_relevant_chunks(
     )
 
     final_chunks = []
-    for rank_position, chunk in enumerate(ranked_chunks[:top_k], start=1):
+    final_limit = max(max_final_chunks, 0)
+    for rank_position, chunk in enumerate(ranked_chunks[:final_limit], start=1):
         final_chunks.append({**chunk, "rank_position": rank_position})
 
     return collection_name, final_chunks, resolved_raw_hits

@@ -130,14 +130,16 @@ python generate_feedback.py 1 --provider nvidia_deepseek
 
 The feedback generation CLI exposes:
 
-- `--top-k` - how many unit-material chunks to retrieve
+- `--per-cue-top-k` - how many unit-material chunks to retrieve for each retrieval cue
+- `--max-final-chunks` - maximum deduplicated chunks to pass to the feedback generator
+- `--top-k` - backwards-compatible alias for `--per-cue-top-k`
 - `--strategy` - `baseline` for imported assignment-spec cues, or `planned` for LLM-generated retrieval cues
 - `--temperature` - model temperature during generation
 
 Example:
 
 ```bash
-python generate_feedback.py 1 --provider qwen --top-k 8 --temperature 0.1
+python generate_feedback.py 1 --provider qwen --per-cue-top-k 5 --max-final-chunks 10 --temperature 0.1
 ```
 
 Planned retrieval example:
@@ -150,7 +152,8 @@ Planned retrieval uses the selected provider and model to read the assignment sp
 
 Defaults:
 
-- `top_k = 5`
+- `per_cue_top_k = 5`
+- `max_final_chunks = 10`
 - `retrieval_strategy = baseline`
 - `temperature = 0.2`
 

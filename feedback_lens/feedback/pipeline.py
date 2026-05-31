@@ -7,6 +7,8 @@ from feedback_lens.db.connection import ensure_schema_updates, fetch_latest_vers
 from feedback_lens.feedback.llm.providers import generate_text, resolve_model_name
 from feedback_lens.feedback.prompt import build_feedback_prompt
 from feedback_lens.feedback.retrieval import (
+    DEFAULT_MAX_FINAL_CHUNKS,
+    DEFAULT_PER_CUE_TOP_K,
     load_assignment_spec_cues,
     retrieve_relevant_chunks,
 )
@@ -41,6 +43,8 @@ class FeedbackGenerationResult:
     pipeline_version: str
     prompt_template_version: str
     retrieval_strategy: str
+    per_cue_top_k: int
+    max_final_chunks: int
 
 
 def _normalise_context_mode(value: str) -> str:
@@ -84,6 +88,17 @@ def _normalise_retrieval_strategy(
             f"{', '.join(sorted(VALID_RETRIEVAL_STRATEGIES))}"
         )
     return strategy
+
+
+def _normalise_positive_int(value: int | None, default: int, label: str) -> int:
+    resolved_value = default if value is None else value
+    try:
+        resolved_int = int(resolved_value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"{label} must be a positive integer.") from err
+    if resolved_int < 1:
+        raise ValueError(f"{label} must be a positive integer.")
+    return resolved_int
 
 
 def _default_pipeline_version(context_mode: str, retrieval_strategy: str) -> str:
@@ -372,7 +387,9 @@ def generate_feedback_for_submission(
     submission_id: int,
     provider: str = "qwen",
     model: str | None = None,
-    top_k: int = 5,
+    top_k: int | None = None,
+    per_cue_top_k: int | None = None,
+    max_final_chunks: int | None = None,
     temperature: float = 0.2,
     pipeline_version: str | None = None,
     prompt_template_version: str | None = None,
@@ -397,6 +414,20 @@ def generate_feedback_for_submission(
         or _default_prompt_template_version(resolved_context_mode)
     )
     resolved_model = resolve_model_name(provider, model)
+    if resolved_context_mode == "direct":
+        resolved_per_cue_top_k = 0
+        resolved_max_final_chunks = 0
+    else:
+        resolved_per_cue_top_k = _normalise_positive_int(
+            per_cue_top_k if per_cue_top_k is not None else top_k,
+            DEFAULT_PER_CUE_TOP_K,
+            "per_cue_top_k",
+        )
+        resolved_max_final_chunks = _normalise_positive_int(
+            max_final_chunks,
+            DEFAULT_MAX_FINAL_CHUNKS,
+            "max_final_chunks",
+        )
     prompt = None
     raw_response = None
 
@@ -409,8 +440,8 @@ def generate_feedback_for_submission(
             INSERT INTO generation_runs
                 (submission_id, assignment_id, rubric_id, pipeline_version,
                  llm_provider, llm_model, prompt_template_version, retrieval_strategy,
-                 temperature, top_k, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'running')
+                 temperature, top_k, per_cue_top_k, max_final_chunks, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'running')
             """,
             (
                 inputs["submission"]["submission_id"],
@@ -422,7 +453,9 @@ def generate_feedback_for_submission(
                 resolved_prompt_template_version,
                 resolved_retrieval_strategy,
                 temperature,
-                0 if resolved_context_mode == "direct" else top_k,
+                resolved_per_cue_top_k,
+                resolved_per_cue_top_k,
+                resolved_max_final_chunks,
             ),
         )
         generation_id = cur.lastrowid
@@ -476,7 +509,8 @@ def generate_feedback_for_submission(
                 conn,
                 inputs["assignment"],
                 retrieval_cues,
-                top_k=top_k,
+                per_cue_top_k=resolved_per_cue_top_k,
+                max_final_chunks=resolved_max_final_chunks,
             )
             if not retrieved_chunks:
                 raise ValueError(
@@ -611,6 +645,8 @@ def generate_feedback_for_submission(
             pipeline_version=resolved_pipeline_version,
             prompt_template_version=resolved_prompt_template_version,
             retrieval_strategy=resolved_retrieval_strategy,
+            per_cue_top_k=resolved_per_cue_top_k,
+            max_final_chunks=resolved_max_final_chunks,
         )
     except Exception as err:
         if planning_record_id is not None:

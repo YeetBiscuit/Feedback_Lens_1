@@ -122,25 +122,25 @@ If you need more detail about providers and model selection, see [configuration.
 Run:
 
 ```powershell
-python generate_feedback.py <submission_id> --provider qwen --top-k 5
+python generate_feedback.py <submission_id> --provider qwen --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 Or with Gemini:
 
 ```powershell
-python generate_feedback.py <submission_id> --provider gemini --top-k 5
+python generate_feedback.py <submission_id> --provider gemini --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 Or with NVIDIA DeepSeek:
 
 ```powershell
-python generate_feedback.py <submission_id> --provider nvidia_deepseek --top-k 5
+python generate_feedback.py <submission_id> --provider nvidia_deepseek --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 Example:
 
 ```powershell
-python generate_feedback.py 1 --provider qwen --top-k 5
+python generate_feedback.py 1 --provider qwen --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 The default generation mode is `retrieval`, which uses assignment-spec cues to retrieve relevant unit-material chunks before prompting the LLM.
@@ -148,7 +148,7 @@ The default generation mode is `retrieval`, which uses assignment-spec cues to r
 You can also run the optional planned retrieval strategy:
 
 ```powershell
-python generate_feedback.py 1 --provider qwen --mode retrieval --strategy planned --top-k 5
+python generate_feedback.py 1 --provider qwen --mode retrieval --strategy planned --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 Planned retrieval adds an intermediate LLM planning step. The planner reads the assignment specification, rubric, and student submission, then generates targeted retrieval cues for the course-material search. The baseline retrieval strategy remains the default.
@@ -159,7 +159,7 @@ To generate a direct baseline without retrieved course context:
 python generate_feedback.py 1 --provider qwen --mode direct
 ```
 
-Direct mode sends only the assignment metadata, structured rubric criteria, assignment specification text, and student submission text to the LLM. It records `pipeline_version=baseline_direct_v1`, `retrieval_strategy=none_direct_v1`, and `top_k=0`.
+Direct mode sends only the assignment metadata, structured rubric criteria, assignment specification text, and student submission text to the LLM. It records `pipeline_version=baseline_direct_v1`, `retrieval_strategy=none_direct_v1`, `per_cue_top_k=0`, and `max_final_chunks=0`.
 
 What happens:
 
@@ -167,7 +167,7 @@ What happens:
 2. it loads the latest spec and latest rubric for that submission's assignment
 3. in baseline `retrieval` mode, it loads the retrieval cues prepared during spec import
 4. with `--strategy planned`, it asks the selected LLM to generate targeted retrieval cues from the spec, rubric, and submission
-5. in either retrieval strategy, it queries ChromaDB once per cue and deduplicates the matched unit-material chunks
+5. in either retrieval strategy, it queries ChromaDB once per cue, keeps `per_cue_top_k` hits for each cue, deduplicates the matches, and passes up to `max_final_chunks` chunks to the feedback generator
 6. in `direct` mode, it skips both ChromaDB and retrieval planning, then uses only the submission, rubric, and spec inputs
 7. it sends a strict JSON prompt to the selected provider
 8. it saves the result into SQLite
@@ -175,7 +175,7 @@ What happens:
 Expected output shape:
 
 ```text
-Completed generation_run=1 using qwen:qwen3.5-plus in retrieval mode. retrieval_strategy=assignment_spec_multi_cue_v1, retrieval_cues=5, deduplicated_chunks=5, criterion_count=4, overall_grade_band=D.
+Completed generation_run=1 using qwen:qwen3.5-plus in retrieval mode. retrieval_strategy=assignment_spec_multi_cue_v1, retrieval_cues=5, per_cue_top_k=5, max_final_chunks=10, deduplicated_chunks=10, criterion_count=4, overall_grade_band=D.
 ```
 
 ## 8. Inspect Results
@@ -284,5 +284,5 @@ python import_documents.py rubric 1 "documents/rubrics/assignment1_rubric.pdf"
 python ingest.py "documents/resources/week3_transcript.txt" 1 lecture_transcript "Week 3 Transcript" 3
 python ingest.py "documents/resources/week4_transcript.txt" 1 lecture_transcript "Week 4 Transcript" 4
 python import_documents.py submission 1 student_001 "documents/submissions/student_001.pdf"
-python generate_feedback.py 1 --provider qwen --top-k 5
+python generate_feedback.py 1 --provider qwen --per-cue-top-k 5 --max-final-chunks 10
 ```

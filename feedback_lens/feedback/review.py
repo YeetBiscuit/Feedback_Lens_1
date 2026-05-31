@@ -287,6 +287,11 @@ def _markdown_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
+def _run_retrieval_limit(run: dict[str, Any], key: str) -> Any:
+    value = run.get(key)
+    return run.get("top_k") if value is None else value
+
+
 def _html_value(value: Any) -> str:
     if value is None or value == "":
         return "None"
@@ -347,7 +352,8 @@ def _format_generation_review_html_section(export_payload: dict[str, Any]) -> st
         ("Pipeline", run.get("pipeline_version")),
         ("Prompt Template", run.get("prompt_template_version")),
         ("Retrieval Strategy", run.get("retrieval_strategy")),
-        ("Top K", run.get("top_k")),
+        ("Per Cue Top K", _run_retrieval_limit(run, "per_cue_top_k")),
+        ("Max Final Chunks", _run_retrieval_limit(run, "max_final_chunks")),
         ("Temperature", run.get("temperature")),
         ("Started", run.get("started_at")),
         ("Completed", run.get("completed_at")),
@@ -939,7 +945,8 @@ def format_generation_review_markdown(export_payload: dict[str, Any]) -> str:
         f"- Pipeline: {_markdown_value(run.get('pipeline_version'))}",
         f"- Prompt template: {_markdown_value(run.get('prompt_template_version'))}",
         f"- Retrieval strategy: {_markdown_value(run.get('retrieval_strategy'))}",
-        f"- Top K: {_markdown_value(run.get('top_k'))}",
+        f"- Per cue top K: {_markdown_value(_run_retrieval_limit(run, 'per_cue_top_k'))}",
+        f"- Max final chunks: {_markdown_value(_run_retrieval_limit(run, 'max_final_chunks'))}",
         f"- Temperature: {_markdown_value(run.get('temperature'))}",
         f"- Started: {_markdown_value(run.get('started_at'))}",
         f"- Completed: {_markdown_value(run.get('completed_at'))}",

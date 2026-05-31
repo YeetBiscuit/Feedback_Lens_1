@@ -111,6 +111,11 @@ def _row_value(row: sqlite3.Row, key: str) -> str | None:
     return row[key]
 
 
+def _row_limit_value(row: sqlite3.Row, key: str) -> str | None:
+    value = _row_value(row, key)
+    return _row_value(row, "top_k") if value is None else value
+
+
 def _connect_review_db() -> sqlite3.Connection:
     db_path = Path(DB_PATH).resolve()
     conn = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
@@ -170,7 +175,9 @@ def handle_show(
         f"Pipeline: {run['pipeline_version']} | Prompt template: {run['prompt_template_version']}"
     )
     print(
-        f"Retrieval: strategy={run['retrieval_strategy'] or 'None'}, top_k={run['top_k']}, "
+        f"Retrieval: strategy={run['retrieval_strategy'] or 'None'}, "
+        f"per_cue_top_k={_row_limit_value(run, 'per_cue_top_k')}, "
+        f"max_final_chunks={_row_limit_value(run, 'max_final_chunks')}, "
         f"temperature={run['temperature']}"
     )
     print(f"Started: {run['started_at']} | Completed: {run['completed_at'] or 'still running'}")

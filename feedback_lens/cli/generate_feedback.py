@@ -2,6 +2,10 @@ import argparse
 
 from feedback_lens.db.connection import connect_db
 from feedback_lens.feedback.pipeline import generate_feedback_for_submission
+from feedback_lens.feedback.retrieval import (
+    DEFAULT_MAX_FINAL_CHUNKS,
+    DEFAULT_PER_CUE_TOP_K,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -11,7 +15,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("submission_id", type=int)
     parser.add_argument("--provider", default="qwen")
     parser.add_argument("--model")
-    parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument(
+        "--per-cue-top-k",
+        "--top-k",
+        dest="per_cue_top_k",
+        type=int,
+        default=DEFAULT_PER_CUE_TOP_K,
+        help=(
+            "How many chunks to retrieve for each retrieval cue. "
+            "--top-k is kept as a backwards-compatible alias."
+        ),
+    )
+    parser.add_argument(
+        "--max-final-chunks",
+        type=int,
+        default=DEFAULT_MAX_FINAL_CHUNKS,
+        help="Maximum deduplicated chunks to pass to the feedback generator.",
+    )
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument(
         "--strategy",
@@ -51,7 +71,8 @@ def main() -> None:
             submission_id=args.submission_id,
             provider=args.provider,
             model=args.model,
-            top_k=args.top_k,
+            per_cue_top_k=args.per_cue_top_k,
+            max_final_chunks=args.max_final_chunks,
             temperature=args.temperature,
             context_mode=args.mode,
             retrieval_strategy=args.retrieval_strategy,
@@ -62,6 +83,8 @@ def main() -> None:
         f"{result.provider}:{result.model} in {result.context_mode} mode. "
         f"retrieval_strategy={result.retrieval_strategy}, "
         f"retrieval_cues={result.retrieval_cue_count}, "
+        f"per_cue_top_k={result.per_cue_top_k}, "
+        f"max_final_chunks={result.max_final_chunks}, "
         f"deduplicated_chunks={result.deduplicated_chunk_count}, "
         f"criterion_count={result.criterion_count}, "
         f"overall_grade_band={result.overall_grade_band or 'None'}."

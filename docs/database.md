@@ -72,7 +72,7 @@ The operator must type `YES` exactly to proceed.
 ### Student work and generated feedback
 
 - `student_submissions` - extracted submission text, versioned per assignment and student
-- `generation_runs` - one row per generation attempt, including provider, model, strategy, and status
+- `generation_runs` - one row per generation attempt, including provider, model, retrieval limits, strategy, and status
 - `retrieval_planning_records` - planner prompts, raw responses, and LLM-generated retrieval cues for planned retrieval runs
 - `retrieval_records` - retrieved chunks associated with a generation run
 - `criterion_feedback` - criterion-level generated comments
