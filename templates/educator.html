@@ -1,1 +1,123 @@
-<h1>Educator Dashboard</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Educator Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f4;min-height:100vh}
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{color:#fff;font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.nav-logo-icon{background:#fff;color:#2563eb;width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.nav-right{display:flex;align-items:center;gap:1rem}
+.nav-user{color:#fff;text-align:right}
+.nav-user-name{font-size:14px;font-weight:600}
+.nav-user-role{font-size:12px;opacity:.8}
+.nav-avatar{width:36px;height:36px;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.content{padding:2rem}
+.welcome{margin-bottom:2rem}
+.welcome h1{font-size:26px;font-weight:700;margin-bottom:4px}
+.welcome p{font-size:15px;color:#888}
+.section-title{font-size:18px;font-weight:700;margin-bottom:1rem}
+.units-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem}
+.unit-card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:1.25rem;cursor:pointer;transition:box-shadow .2s}
+.unit-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.card-tags{display:flex;gap:6px;margin-bottom:.75rem;align-items:center}
+.tag{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500}
+.tag-code{background:#eff6ff;color:#2563eb}
+.tag-sem{background:#eff6ff;color:#2563eb}
+.tag-progress{background:#dcfce7;color:#16a34a;margin-left:auto}
+.tag-completed{background:#f5f5f5;color:#888;margin-left:auto}
+.unit-name{font-size:16px;font-weight:700;margin-bottom:.75rem}
+.unit-meta{font-size:13px;color:#555;margin-bottom:4px}
+.unit-pending{font-size:13px;color:#d97706;margin-bottom:4px}
+.unit-done{font-size:13px;color:#16a34a;margin-bottom:.75rem}
+.view-link{font-size:14px;color:#2563eb;font-weight:500;margin-top:.5rem;display:block}
+.empty{color:#999;font-size:14px;padding:1rem 0}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-right">
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role" id="nav-role">Educator</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar">-</div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="welcome">
+    <h1 id="welcome-msg">Welcome back!</h1>
+    <p>Here's an overview of your teaching units and activities.</p>
+  </div>
+
+  <div class="section-title">In Progress Units</div>
+  <div class="units-grid" id="inprogress-grid">
+    <div class="empty">Loading...</div>
+  </div>
+
+  <div class="section-title">Completed Units</div>
+  <div class="units-grid" id="completed-grid">
+    <div class="empty">Loading...</div>
+  </div>
+</div>
+
+<script>
+function getInitials(name){
+  if(!name) return '?';
+  return name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase();
+}
+
+fetch('/api/educator/dashboard')
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    var user = data.user;
+    var units = data.units;
+
+    document.getElementById('nav-name').textContent = user.name || user.email;
+    document.getElementById('nav-role').textContent = user.role === 'educator' ? 'Educator' : user.role;
+    document.getElementById('nav-avatar').textContent = getInitials(user.name);
+    document.getElementById('welcome-msg').textContent = 'Welcome back, ' + (user.name || user.email) + '!';
+
+    var inProgress = units.filter(function(u){ return true; });
+    var completed = [];
+
+    var ipGrid = document.getElementById('inprogress-grid');
+    if(inProgress.length === 0){
+      ipGrid.innerHTML = '<div class="empty">No units assigned.</div>';
+    } else {
+      ipGrid.innerHTML = inProgress.map(function(u){
+        return '<div class="unit-card" onclick="window.location.href=\'/educator/feedback-review\'">'
+          + '<div class="card-tags">'
+          + '<span class="tag tag-code">'+u.unit_code+'</span>'
+          + '<span class="tag tag-sem">S'+u.semester+' '+u.year+'</span>'
+          + '<span class="tag tag-progress">In Progress</span>'
+          + '</div>'
+          + '<div class="unit-name">'+u.unit_name+'</div>'
+          + '<div class="unit-meta">📖 '+u.student_count+' Student(s)</div>'
+          + '<div class="unit-pending">🕐 '+u.pending_count+' Pending Task(s)</div>'
+          + '<div class="unit-done">✅ '+u.completed_count+' Completed</div>'
+          + '<span class="view-link">View Dashboard →</span>'
+          + '</div>';
+      }).join('');
+    }
+
+    var cGrid = document.getElementById('completed-grid');
+    if(completed.length === 0){
+      cGrid.innerHTML = '<div class="empty">No completed units.</div>';
+    }
+  })
+  .catch(function(e){
+    console.error(e);
+    document.getElementById('inprogress-grid').innerHTML = '<div class="empty" style="color:#c00">Error loading data.</div>';
+  });
+</script>
+</body>
+</html>

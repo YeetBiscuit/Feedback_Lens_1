@@ -111,7 +111,7 @@ textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;fon
     </div>
 
     <div class="bottom-nav">
-      <button class="btn-back" onclick="window.location.href='/educator/feedback-review'">&#8592; Back</button>
+      <button class="btn-back" onclick="window.location.href='/educator/feedback-review?q=4'">&#8592; Back</button>
       <button class="btn-save-review" onclick="saveReview()">Save as Review</button>
     </div>
   </div>
@@ -160,6 +160,10 @@ function loadFromDB(){
       document.getElementById('txt-overall').value = overall.overall_comment || '';
       document.getElementById('grade-badge').textContent = overall.overall_grade_band || '-';
       document.getElementById('final-mark').value = overall.final_mark || '';
+      var statusMap = {'pending':'Pending','ai_generated':'AI Generated','reviewed':'Reviewed'};
+      var colorMap = {'pending':'#fcd34d','ai_generated':'#93c5fd','reviewed':'#86efac'};
+      var s = run.status || 'ai_generated';
+      setStatus(statusMap[s] || 'AI Generated', colorMap[s] || '#93c5fd');
 
       var rationale = (overall.key_strengths || []).map(function(s){ return '• ' + s; }).join('\n')
         + '\n\nAreas to improve:\n'
@@ -200,10 +204,17 @@ function loadFromDB(){
 
 function saveReview(){
   if(!allData) return;
-  var payload = {
-    overall_comment: document.getElementById('txt-overall').value,
-    final_mark: document.getElementById('final-mark').value
+  var statusMap = {
+    'Pending': 'pending',
+    'AI Generated': 'ai_generated', 
+    'Reviewed': 'reviewed'
   };
+  var payload = {
+  overall_comment: document.getElementById('txt-overall').value,
+  final_mark: document.getElementById('final-mark').value || null,
+  status: 'reviewed'
+};
+setStatus('Reviewed', '#86efac');
   fetch('/api/feedback/1/save', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

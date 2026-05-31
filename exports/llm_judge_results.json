@@ -1,0 +1,44 @@
+{
+  "evaluated_file": "exports/generation_run_6_full_planner.json",
+  "evaluated_model": "gemini-3-flash-preview",
+  "pipeline_version": "planned_retrieval_v1",
+  "student_identifier": "a1-heuristic-evaluation-report_P_synthetic",
+  "gemini_judge": {
+    "judge_model": "gemini-3-flash-preview",
+    "note": "self-evaluation - same model, potential bias",
+    "scores": {
+      "grounding": {
+        "score": 5,
+        "reason": "The feedback is strongly grounded in both the assessment requirements (referencing report structure and APA) and course-specific materials (mentioning Week 2 concepts, ISO 9241 metrics, and tutorial worksheets). It demonstrates a clear understanding of how the submission relates to the unit's pedagogical goals."
+      },
+      "specificity": {
+        "score": 5,
+        "reason": "The feedback provides a precise analysis of the student's work, identifying specific strengths and weaknesses such as the misapplication of 'Visibility of System Status' to a navigation element (Issue 1). It avoids generic praise, focusing on the actual content of the QuickEats report."
+      },
+      "actionability": {
+        "score": 5,
+        "reason": "The improvement suggestions are concrete, prioritized, and easy to follow. By suggesting specific critical user paths and explaining how to better apply cognitive load theory, the feedback tells the student exactly what to change, why it matters, and how it will improve their performance."
+      },
+      "overall_quality": "This is an excellent example of high-quality feedback. It adheres to Hattie and Timperley\u2019s principles by addressing 'Where am I going?' (criteria), 'How am I going?' (specific performance), and 'Where to next?' (actionable steps) with professional clarity."
+    }
+  },
+  "qwen_judge": {
+    "judge_model": "qwen-plus",
+    "note": "cross-model evaluation - different model family",
+    "scores": {
+      "grounding": {
+        "score": 5,
+        "reason": "Feedback is strongly grounded in the assessment specification (e.g., explicit reference to tutorial worksheet tasks, required critical user paths, and the three primary tasks), the rubric criteria (Context and Methodological Framework; Usability Issue Analysis; Design Recommendations; Academic Structure), and course materials (Week 2 cognition concepts, ISO 9241, Nielsen\u2019s heuristics, APA standards). It accurately connects each comment to specific unit concepts, assessment expectations, and rubric descriptors\u2014such as distinguishing between 'Visibility of System Status' and 'Recognition rather than Recall' using precise heuristic definitions from the course."
+      },
+      "specificity": {
+        "score": 5,
+        "reason": "Feedback provides precise, student-specific analysis: it names a concrete issue ('Search Bar Visibility'), identifies its incorrect heuristic mapping, cites the exact heuristic misapplied ('Visibility of System Status'), proposes two more appropriate alternatives ('Recognition rather than Recall', 'Aesthetic and Minimalist Design'), references a specific design element ('error message placement'), and pinpoints a cognitive concept needing elaboration ('working memory capacity'). It avoids generic phrasing and instead anchors every observation in the student\u2019s actual submission (e.g., 'Issue 1', 'five distinct issues', 'visual evidence in appendices')."
+      },
+      "actionability": {
+        "score": 5,
+        "reason": "Feedback delivers highly concrete, prioritised, and assessment-relevant steps: e.g., 'explicitly define the critical user paths (e.g., \"searching for a specific restaurant\") before starting the evaluation', 'specify how the design change reduces extraneous load', and 'ensure visual evidence in appendices is more tightly integrated into the findings narrative'. Each suggestion clarifies what to revise, why it matters (e.g., 'to provide more focus', 'to demonstrate deeper mastery'), and how to improve (with illustrative examples and theoretical framing). The tiered structure (overall \u2192 criterion-level) further supports targeted revision."
+      },
+      "overall_quality": "Excellent"
+    }
+  }
+}
