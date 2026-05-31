@@ -109,7 +109,7 @@ python import_documents.py assignment-spec 1 "documents/specifications/assignmen
 
 During spec import, the system also prepares a list of retrieval-ready cues from the assignment brief. These cues are stored in `retrieval_cues_json` and later used to retrieve relevant unit materials from ChromaDB.
 
-Those imported cues are the default baseline retrieval strategy. If feedback generation is run with `--retrieval-strategy planned`, the system keeps the imported cues unchanged and instead asks an LLM planner to generate submission-specific retrieval cues at generation time.
+Those imported cues are the default baseline retrieval strategy. If feedback generation is run with `--strategy planned`, the system keeps the imported cues unchanged and instead asks an LLM planner to generate submission-specific retrieval cues at generation time.
 
 If you import a new spec for the same assignment, the version increases and the generation pipeline uses the latest version and its associated cue list.
 

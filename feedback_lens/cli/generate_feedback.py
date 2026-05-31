@@ -14,7 +14,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top-k", type=int, default=5)
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument(
-        "--retrieval-strategy",
+        "--strategy",
+        dest="retrieval_strategy",
         choices=[
             "baseline",
             "planned",
@@ -49,12 +50,12 @@ def main() -> None:
             conn,
             submission_id=args.submission_id,
             provider=args.provider,
-                model=args.model,
-                top_k=args.top_k,
-                temperature=args.temperature,
-                context_mode=args.mode,
-                retrieval_strategy=args.retrieval_strategy,
-            )
+            model=args.model,
+            top_k=args.top_k,
+            temperature=args.temperature,
+            context_mode=args.mode,
+            retrieval_strategy=args.retrieval_strategy,
+        )
 
     print(
         f"Completed generation_run={result.generation_id} using "

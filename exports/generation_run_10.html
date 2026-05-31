@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feedback Generation Run 10</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #eef2f6;
+      --text: #16202a;
+      --muted: #5d6b78;
+      --border: #d8dee6;
+      --accent: #2563eb;
+      --accent-2: #0f766e;
+      --shadow: 0 10px 30px rgba(22, 32, 42, 0.08);
+      --code-bg: #101827;
+      --code-text: #e6edf6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f141a;
+        --surface: #171e26;
+        --surface-2: #202a34;
+        --text: #eef3f8;
+        --muted: #a7b2bf;
+        --border: #2f3b48;
+        --accent: #7aa7ff;
+        --accent-2: #5bd3c7;
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        --code-bg: #080c12;
+        --code-text: #eef3f8;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f141a;
+      --surface: #171e26;
+      --surface-2: #202a34;
+      --text: #eef3f8;
+      --muted: #a7b2bf;
+      --border: #2f3b48;
+      --accent: #7aa7ff;
+      --accent-2: #5bd3c7;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      --code-bg: #080c12;
+      --code-text: #eef3f8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: var(--accent); }
+    .page-shell { max-width: 1180px; margin: 0 auto; padding: 28px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .topbar h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.5rem); letter-spacing: 0; }
+    .theme-controls {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .theme-controls button {
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+    }
+    .theme-controls button[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+    }
+    .run-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .run-nav a {
+      display: inline-flex;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+    .run-section {
+      margin-bottom: 34px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .run-hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 18px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { margin: 0 0 4px; color: var(--accent-2); font-weight: 700; text-transform: uppercase; font-size: 0.78rem; }
+    .run-hero h2 { margin: 0; font-size: 1.65rem; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .grade-badge { min-width: 58px; min-height: 58px; font-size: 1.1rem; }
+    .grade-hd { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+    .grade-d { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+    .grade-c { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .grade-p { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+    .grade-n, .grade-none { background: var(--surface-2); color: var(--muted); }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .meta-item {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .meta-label { display: block; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+    .meta-value { display: block; margin-top: 3px; overflow-wrap: anywhere; }
+    .section-block { margin-top: 24px; }
+    .section-block h2 { margin: 0 0 12px; font-size: 1.3rem; }
+    .overall-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .panel, .criterion-card, .retrieval-card, .text-details {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .panel { padding: 18px; }
+    .panel h3, .criterion-card h3, .retrieval-card h3 { margin: 0 0 10px; font-size: 1rem; }
+    .muted { color: var(--muted); }
+    .criteria-grid { display: grid; gap: 14px; }
+    .criterion-card { padding: 18px; }
+    .criterion-head, .retrieval-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .feedback-pairs {
+      display: grid;
+      grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+      gap: 10px 16px;
+      margin: 0;
+    }
+    .feedback-pairs dt { color: var(--muted); font-weight: 700; }
+    .feedback-pairs dd { margin: 0; }
+    .retrieval-list { display: grid; gap: 12px; }
+    .retrieval-card { padding: 16px; }
+    .retrieval-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .used-pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .query-label { margin: 14px 0 3px; color: var(--muted); font-weight: 700; }
+    .query-text { margin: 0; overflow-wrap: anywhere; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+    .text-details { padding: 16px; margin-top: 18px; }
+    pre {
+      margin: 12px 0 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 8px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 0.9rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    @media (max-width: 860px) {
+      .page-shell { padding: 18px; }
+      .topbar, .run-hero, .criterion-head, .retrieval-head { flex-direction: column; }
+      .overall-grid { grid-template-columns: 1fr; }
+      .feedback-pairs { grid-template-columns: 1fr; }
+      .grade-badge { min-width: 48px; min-height: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <h1>Feedback Generation Run 10</h1>
+      <div class="theme-controls" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+      </div>
+    </header>
+    <nav class="run-nav" aria-label="Generation runs">
+      <a href="#generation-run-10">Run 10</a>
+    </nav>
+    
+    <section class="run-section" id="generation-run-10">
+      <header class="run-hero">
+        <div>
+          <p class="eyebrow">Feedback Generation Run</p>
+          <h2>Run 10</h2>
+          <p class="subtitle">IT305 | Heuristic Evaluation Report | a1-heuristic-evaluation-report_P_synthetic_extra_04</p>
+        </div>
+        <span class="badge grade-badge grade-c">C</span>
+      </header>
+
+      <section class="meta-grid" aria-label="Run metadata">
+        <div class="meta-item"><span class="meta-label">Unit</span><span class="meta-value">IT305 - Software Usability</span></div><div class="meta-item"><span class="meta-label">Assignment</span><span class="meta-value">Heuristic Evaluation Report</span></div><div class="meta-item"><span class="meta-label">Student</span><span class="meta-value">a1-heuristic-evaluation-report_P_synthetic_extra_04</span></div><div class="meta-item"><span class="meta-label">Status</span><span class="meta-value">completed</span></div><div class="meta-item"><span class="meta-label">Provider</span><span class="meta-value">nvidia_deepseek:deepseek-ai/deepseek-v4-pro</span></div><div class="meta-item"><span class="meta-label">Pipeline</span><span class="meta-value">planned_retrieval_v1</span></div><div class="meta-item"><span class="meta-label">Prompt Template</span><span class="meta-value">baseline_feedback_json_v1</span></div><div class="meta-item"><span class="meta-label">Retrieval Strategy</span><span class="meta-value">llm_planned_cue_v1</span></div><div class="meta-item"><span class="meta-label">Top K</span><span class="meta-value">3</span></div><div class="meta-item"><span class="meta-label">Temperature</span><span class="meta-value">0.2</span></div><div class="meta-item"><span class="meta-label">Started</span><span class="meta-value">2026-05-29 20:19:21</span></div><div class="meta-item"><span class="meta-label">Completed</span><span class="meta-value">2026-05-29 20:21:08</span></div><div class="meta-item"><span class="meta-label">Submission File</span><span class="meta-value">documents\units\IT305\assignments\a1-heuristic-evaluation-report\submissions\submission_P_extra_04.pdf</span></div>
+      </section>
+
+      <section class="section-block">
+        <h2>Overall Feedback</h2>
+        
+        <div class="overall-grid">
+          <section class="panel">
+            <h3>Overall Comment</h3>
+            <p>This is a competent report that demonstrates a solid grasp of the heuristic evaluation method. The interface selection is appropriate, and the five issues are clearly mapped to Nielsen&#x27;s heuristics. However, the analysis often remains at a surface level, lacking the deep contextual and cognitive justification expected at higher grade bands. The recommendations, while practical, are not consistently grounded in usability theory or human cognition concepts from the course. The academic structure is generally sound, but the referencing is minimal and the methodology lacks nuance regarding evaluator effect and severity rating frameworks.</p>
+          </section>
+          <section class="panel">
+            <h3>Key Strengths</h3>
+            <ul><li>Clear and appropriate selection of Spotify&#x27;s free tier with a defined target audience and context of use.</li><li>Five distinct usability issues are correctly identified and mapped to specific Nielsen&#x27;s heuristics.</li><li>Severity ratings are provided for each issue with a basic justification based on frequency and impact.</li><li>Recommendations are practical and directly address the identified heuristic violations.</li><li>Report structure follows the required sections (Introduction, Methodology, Findings, Recommendations, Conclusion).</li></ul>
+          </section>
+          <section class="panel">
+            <h3>Priority Improvements</h3>
+            <ul><li>Deepen the user context analysis by linking specific user characteristics (e.g., cognitive load during commuting) directly to the severity and impact of each issue.</li><li>Explicitly integrate usability and cognition theories (e.g., working memory, recognition over recall, mental models) into the analysis of issues and the justification of recommendations.</li><li>Strengthen the methodology section by discussing the limitations of a single evaluator and referencing a formal severity rating framework (e.g., Nielsen&#x27;s 0-4 scale).</li><li>Expand academic referencing to include course materials beyond the NNG website, such as ISO 9241 definitions or cognitive theory sources.</li><li>Provide more precise and detailed visual evidence annotations that pinpoint the exact interface element causing the violation.</li></ul>
+          </section>
+        </div>
+        
+      </section>
+
+      <section class="section-block">
+        <h2>Criterion Feedback</h2>
+        <div class="criteria-grid">
+          
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>1. Context and Methodological Framework</h3>
+                <span class="badge grade-c">C</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The report selects a suitable interface (Spotify) and identifies a broad target audience. The context of use is described as casual and mobile, acknowledging distracted environments. Nielsen&#x27;s heuristics are correctly named as the evaluation framework.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The analysis of the target audience and context of use lacks depth. The audience is described as &#x27;very broad,&#x27; which is a missed opportunity to segment users (e.g., free-tier vs. premium, power-users vs. casual listeners) and analyze how their differing needs impact usability. The methodology mentions acting as a &#x27;sole evaluator&#x27; but does not discuss the implications of this for the reliability of findings, a key point from the Week 4 lecture on using 3-5 evaluators. The connection between the casual context and specific usability requirements is stated but not insightfully analyzed.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Refine the user analysis by creating distinct persona segments within the broad audience. For example, contrast a commuter&#x27;s need for one-handed, glanceable interaction with a fitness user&#x27;s need for quick, error-free playlist management. In the methodology, explicitly acknowledge the limitation of a single evaluator and reference Nielsen&#x27;s recommendation for multiple evaluators to improve validity. Integrate the ISO 9241 definition of usability (effectiveness, efficiency, satisfaction) from the course materials to frame the evaluation goals.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The submission states the interface purpose and audience but the analysis is generic (&#x27;very broad&#x27;). The heuristic framework is identified but the methodology section lacks a discussion of evaluator effect or a formal severity scale, missing the depth of contextual alignment required for a Distinction.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>2. Usability Issue Analysis and Evidence</h3>
+                <span class="badge grade-c">C</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>Five distinct usability issues are identified and correctly mapped to appropriate Nielsen heuristics. Each issue includes a description of the violation and a severity rating with a basic justification. The student mentions capturing screenshots, fulfilling the visual evidence requirement.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The justification for severity ratings is underdeveloped. For instance, Issue 2 (offline error) is rated &#x27;high&#x27; but the justification focuses on frequency and frustration; it does not quantify the impact on core metrics like task completion or efficiency. The analysis of each issue remains descriptive rather than analytical, often stating &#x27;this violates the heuristic&#x27; without a detailed explanation of *why* the design conflicts with the heuristic&#x27;s underlying principle. The visual evidence is mentioned but not described or annotated in the text, weakening its integration into the argument.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>For each issue, use a structured format that explicitly links the interface element, the heuristic definition, and the user impact. For severity, adopt a formal scale (e.g., Nielsen&#x27;s 0-4) and justify ratings by discussing both frequency and impact severity, perhaps using a table. Integrate the visual evidence directly into the analysis by describing what the screenshot shows (e.g., &#x27;As seen in Figure 1, the queue icon is a 3mm target in the top-right corner...&#x27;). This will make the evidence more compelling and the analysis more rigorous.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>Five issues are mapped to heuristics with severity ratings, meeting the Credit-level requirement. However, the justifications are weak and the analysis lacks the clarity and depth of evidence integration expected for a Distinction. The visual evidence is referenced but not described in a way that strengthens the analysis.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>3. Design Recommendations and Theory Application</h3>
+                <span class="badge grade-p">P</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>A specific recommendation is provided for each of the five issues, and each recommendation directly addresses the identified heuristic violation. The suggestion for Issue 1 briefly mentions mental models and long-term memory, showing an attempt to connect to course theory.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The connection to usability and cognition theory is superficial and inconsistent. Only one recommendation (Issue 1) makes a passing reference to cognitive concepts. The other recommendations are purely practical UI fixes (e.g., &#x27;make the button bigger&#x27;) without explaining *why* this improves user cognition, such as reducing Fitts&#x27; Law movement time or preventing working memory overload. The recommendations lack a discussion of trade-offs or implementation constraints, which would demonstrate a deeper understanding.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Ground every recommendation in a specific theoretical concept from the course. For example, for Issue 3 (small touch targets), explicitly reference Fitts&#x27; Law and the recommended 44px touch target from platform guidelines. For Issue 2 (error message), link the solution to the theory of recognition over recall by suggesting the error message should present actionable options (e.g., &#x27;Go to Downloads&#x27;) rather than requiring users to recall what is available offline. This will transform the recommendations from simple fixes to theory-backed design decisions.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>Recommendations are provided and resolve the violations, but they are generic and lack specific detail or clear grounding in usability theory. The single mention of &#x27;mental model&#x27; is insufficient for a Credit-level performance, which requires a solid connection to theory for most issues.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>4. Academic Structure and Referencing</h3>
+                <span class="badge grade-p">P</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The report follows the required structural conventions with an Introduction, Methodology, Findings, Recommendations, and Conclusion. The writing is generally clear and the word count appears appropriate for the task.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The referencing is a significant weakness. Only one source (Nielsen Norman Group website) is cited, and it is not in correct APA 7th edition format (missing retrieval date, italicization). The report fails to cite any other course materials, such as the Week 1 ISO definition, Week 2 cognition lectures, or Week 4 methodology discussions, which are essential for demonstrating academic engagement. The methodology section is underdeveloped and does not reference the established process from the literature.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Integrate and cite a minimum of 3-5 academic sources, including the prescribed course readings and lectures. For instance, cite the ISO 9241-11 standard when defining usability in the introduction, reference the Week 2 lecture on working memory when discussing cognitive load, and cite Nielsen&#x27;s original papers on heuristic evaluation and severity ratings in the methodology. Ensure all citations and the reference list strictly follow APA 7th edition formatting, including correct use of italics, DOIs/URLs, and retrieval dates.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The report structure is generally followed, but the referencing is critically weak. A single, incorrectly formatted source is insufficient and constitutes inconsistent or frequently incorrect referencing, aligning with a Pass-level descriptor. The lack of citations for core course concepts prevents this from reaching a Credit level.</dd>
+              </dl>
+            </article>
+            
+        </div>
+      </section>
+
+      <section class="section-block">
+        <h2>Retrieved Chunks</h2>
+        <div class="retrieval-list">
+          
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.559987</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Nielsen&#x27;s Ten Heuristics definitions
+Nielsen&#x27;s Ten Usability Heuristics full definitions and explanations as taught in IT305 Week 4, including Consistency and Standards, Error Prevention, Help Users Recognize Diagnose and Recover from Errors, Match Between System and the Real World, Flexibility and Efficiency of Use</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 41</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.646669</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Heuristic evaluation methodology
+Heuristic evaluation method procedure, expert review process, number of evaluators recommended, severity rating scales, and discount usability method as covered in IT305 Week 4 lectures and tutorials</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 5</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.562393</span>
+        <span>Source: Week 02 Human Cognition And Interaction | lecture_transcript | week 2</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Human cognition and interaction limits
+Human cognition concepts from IT305 Week 2: long-term memory, mental models, attention limits, motor control, Fitts&#x27; Law, touch target size recommendations, and cognitive load in mobile contexts</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 2</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.509172</span>
+        <span>Source: Week 01 Introduction To Usability | lecture_transcript | week 1</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Severity rating frameworks
+Usability issue severity rating scales and frameworks taught in IT305, including frequency, impact, and persistence criteria for assigning low, medium, high severity ratings</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 12</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.581708</span>
+        <span>Source: Week 04 Heuristic Evaluation | lecture_transcript | week 4</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Report structure requirements
+Required sections and structure for a heuristic evaluation report: Introduction, Methodology, Findings, Recommendations, Conclusion, and APA referencing format as specified in IT305 assignment guidelines and tutorials</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 9</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.578659</span>
+        <span>Source: Week 03 User Research Methods | lecture_transcript | week 3</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">User context and audience analysis
+IT305 Week 1 and Week 3 materials on analyzing user needs, target audience definition, context of use, and how user context informs heuristic evaluation scope</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 12</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.628182</span>
+        <span>Source: Week 04 Heuristic Evaluation | lecture_transcript | week 4</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Sample heuristic evaluations and examples
+Examples of heuristic evaluation reports, sample interface evaluations, and tutorial exercises from IT305 Weeks 1-4 demonstrating expected quality of issue identification, evidence presentation, and recommendation writing</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 12</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.539094</span>
+        <span>Source: Week 04 Heuristic Evaluation | lecture_transcript | week 4</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Usability theory for design recommendations
+IT305 course materials on usability theory, design principles, and how to formulate actionable design recommendations that resolve heuristic violations, including connection to cognitive principles</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 12</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.558793</span>
+        <span>Source: Week 04 Heuristic Evaluation | lecture_transcript | week 4</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Nielsen&#x27;s Ten Heuristics definitions
+Nielsen&#x27;s Ten Usability Heuristics full definitions and explanations as taught in IT305 Week 4, including Consistency and Standards, Error Prevention, Help Users Recognize Diagnose and Recover from Errors, Match Between System and the Real World, Flexibility and Efficiency of Use</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 12</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.611372</span>
+        <span>Source: Week 04 Heuristic Evaluation | lecture_transcript | week 4</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Heuristic evaluation methodology
+Heuristic evaluation method procedure, expert review process, number of evaluators recommended, severity rating scales, and discount usability method as covered in IT305 Week 4 lectures and tutorials</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 6</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.529283</span>
+        <span>Source: Week 02 Human Cognition And Interaction | lecture_transcript | week 2</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Human cognition and interaction limits
+Human cognition concepts from IT305 Week 2: long-term memory, mental models, attention limits, motor control, Fitts&#x27; Law, touch target size recommendations, and cognitive load in mobile contexts</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.484935</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Severity rating frameworks
+Usability issue severity rating scales and frameworks taught in IT305, including frequency, impact, and persistence criteria for assigning low, medium, high severity ratings</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.573638</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Report structure requirements
+Required sections and structure for a heuristic evaluation report: Introduction, Methodology, Findings, Recommendations, Conclusion, and APA referencing format as specified in IT305 assignment guidelines and tutorials</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 41</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.577447</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">User context and audience analysis
+IT305 Week 1 and Week 3 materials on analyzing user needs, target audience definition, context of use, and how user context informs heuristic evaluation scope</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.573076</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Sample heuristic evaluations and examples
+Examples of heuristic evaluation reports, sample interface evaluations, and tutorial exercises from IT305 Weeks 1-4 demonstrating expected quality of issue identification, evidence presentation, and recommendation writing</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.533002</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Usability theory for design recommendations
+IT305 course materials on usability theory, design principles, and how to formulate actionable design recommendations that resolve heuristic violations, including connection to cognitive principles</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 41</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.544895</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Nielsen&#x27;s Ten Heuristics definitions
+Nielsen&#x27;s Ten Usability Heuristics full definitions and explanations as taught in IT305 Week 4, including Consistency and Standards, Error Prevention, Help Users Recognize Diagnose and Recover from Errors, Match Between System and the Real World, Flexibility and Efficiency of Use</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.600218</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Heuristic evaluation methodology
+Heuristic evaluation method procedure, expert review process, number of evaluators recommended, severity rating scales, and discount usability method as covered in IT305 Week 4 lectures and tutorials</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 42</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.478534</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 2-3</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Human cognition and interaction limits
+Human cognition concepts from IT305 Week 2: long-term memory, mental models, attention limits, motor control, Fitts&#x27; Law, touch target size recommendations, and cognitive load in mobile contexts</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 45</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.481641</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 4-5</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Severity rating frameworks
+Usability issue severity rating scales and frameworks taught in IT305, including frequency, impact, and persistence criteria for assigning low, medium, high severity ratings</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 41</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.561718</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Report structure requirements
+Required sections and structure for a heuristic evaluation report: Introduction, Methodology, Findings, Recommendations, Conclusion, and APA referencing format as specified in IT305 assignment guidelines and tutorials</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 46</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.560519</span>
+        <span>Source: A1 Heuristic Evaluation Report Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">User context and audience analysis
+IT305 Week 1 and Week 3 materials on analyzing user needs, target audience definition, context of use, and how user context informs heuristic evaluation scope</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 41</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.567535</span>
+        <span>Source: A1 Heuristic Evaluation Report Sample Answers | sample_solution</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Sample heuristic evaluations and examples
+Examples of heuristic evaluation reports, sample interface evaluations, and tutorial exercises from IT305 Weeks 1-4 demonstrating expected quality of issue identification, evidence presentation, and recommendation writing</p>
+      
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 1</h3>
+        <span class="used-pill">Used: 0</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.53143</span>
+        <span>Source: Week 01 Introduction To Usability | lecture_transcript | week 1</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">Usability theory for design recommendations
+IT305 course materials on usability theory, design principles, and how to formulate actionable design recommendations that resolve heuristic violations, including connection to cognitive principles</p>
+      
+    </article>
+    
+        </div>
+      </section>
+
+      
+      
+    </section>
+    
+  </main>
+  <script>
+    const root = document.documentElement;
+    const buttons = Array.from(document.querySelectorAll("[data-theme-choice]"));
+    const storageKey = "feedbackLensTheme";
+    function applyTheme(theme) {
+      if (theme === "system") {
+        root.removeAttribute("data-theme");
+      } else {
+        root.setAttribute("data-theme", theme);
+      }
+      buttons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
+      });
+      localStorage.setItem(storageKey, theme);
+    }
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => applyTheme(button.dataset.themeChoice));
+    });
+    applyTheme(localStorage.getItem(storageKey) || "system");
+  </script>
+</body>
+</html>

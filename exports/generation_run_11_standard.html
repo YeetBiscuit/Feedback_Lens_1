@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Feedback Generation Run 11</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #eef2f6;
+      --text: #16202a;
+      --muted: #5d6b78;
+      --border: #d8dee6;
+      --accent: #2563eb;
+      --accent-2: #0f766e;
+      --shadow: 0 10px 30px rgba(22, 32, 42, 0.08);
+      --code-bg: #101827;
+      --code-text: #e6edf6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f141a;
+        --surface: #171e26;
+        --surface-2: #202a34;
+        --text: #eef3f8;
+        --muted: #a7b2bf;
+        --border: #2f3b48;
+        --accent: #7aa7ff;
+        --accent-2: #5bd3c7;
+        --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+        --code-bg: #080c12;
+        --code-text: #eef3f8;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f141a;
+      --surface: #171e26;
+      --surface-2: #202a34;
+      --text: #eef3f8;
+      --muted: #a7b2bf;
+      --border: #2f3b48;
+      --accent: #7aa7ff;
+      --accent-2: #5bd3c7;
+      --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      --code-bg: #080c12;
+      --code-text: #eef3f8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    a { color: var(--accent); }
+    .page-shell { max-width: 1180px; margin: 0 auto; padding: 28px; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .topbar h1 { margin: 0; font-size: clamp(1.7rem, 3vw, 2.5rem); letter-spacing: 0; }
+    .theme-controls {
+      display: inline-flex;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .theme-controls button {
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+    }
+    .theme-controls button[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+    }
+    .run-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+    .run-nav a {
+      display: inline-flex;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      text-decoration: none;
+      font-size: 0.92rem;
+    }
+    .run-section {
+      margin-bottom: 34px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid var(--border);
+    }
+    .run-hero {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 18px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .eyebrow { margin: 0 0 4px; color: var(--accent-2); font-weight: 700; text-transform: uppercase; font-size: 0.78rem; }
+    .run-hero h2 { margin: 0; font-size: 1.65rem; }
+    .subtitle { margin: 6px 0 0; color: var(--muted); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+    .grade-badge { min-width: 58px; min-height: 58px; font-size: 1.1rem; }
+    .grade-hd { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+    .grade-d { background: #ffedd5; color: #9a3412; border-color: #fed7aa; }
+    .grade-c { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .grade-p { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+    .grade-n, .grade-none { background: var(--surface-2); color: var(--muted); }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 10px;
+      margin: 18px 0;
+    }
+    .meta-item {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+    .meta-label { display: block; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; }
+    .meta-value { display: block; margin-top: 3px; overflow-wrap: anywhere; }
+    .section-block { margin-top: 24px; }
+    .section-block h2 { margin: 0 0 12px; font-size: 1.3rem; }
+    .section-details {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+    }
+    .section-details > summary {
+      display: flex;
+      align-items: center;
+      min-height: 54px;
+      color: var(--text);
+      font-size: 1.3rem;
+      font-weight: 700;
+      list-style-position: inside;
+    }
+    .section-details > .folded-content {
+      padding: 4px 0 18px;
+    }
+    .overall-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(220px, 1fr));
+      gap: 14px;
+    }
+    .panel, .criterion-card, .retrieval-card, .planning-card, .cue-card, .text-details {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .panel { padding: 18px; }
+    .panel h3, .criterion-card h3, .retrieval-card h3, .planning-card h3 { margin: 0 0 10px; font-size: 1rem; }
+    .planning-card h4 { margin: 18px 0 10px; font-size: 1rem; }
+    .cue-card h5 { margin: 0 0 8px; font-size: 0.95rem; }
+    .muted { color: var(--muted); }
+    .criteria-grid { display: grid; gap: 14px; }
+    .criterion-card { padding: 18px; }
+    .criterion-head, .retrieval-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .feedback-pairs {
+      display: grid;
+      grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+      gap: 10px 16px;
+      margin: 0;
+    }
+    .feedback-pairs dt { color: var(--muted); font-weight: 700; }
+    .feedback-pairs dd { margin: 0; }
+    .retrieval-list, .planning-list, .cue-list { display: grid; gap: 12px; }
+    .retrieval-card, .planning-card, .cue-card { padding: 16px; }
+    .meta-grid.compact { margin: 8px 0 0; }
+    .retrieval-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+    .used-pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .query-label { margin: 14px 0 3px; color: var(--muted); font-weight: 700; }
+    .query-text { margin: 0; overflow-wrap: anywhere; }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; font-weight: 700; color: var(--accent); }
+    .text-details { padding: 16px; margin-top: 18px; }
+    .text-details.nested { box-shadow: none; }
+    pre {
+      margin: 12px 0 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 8px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      white-space: pre-wrap;
+      word-break: break-word;
+      font: 0.9rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    @media (max-width: 860px) {
+      .page-shell { padding: 18px; }
+      .topbar, .run-hero, .criterion-head, .retrieval-head { flex-direction: column; }
+      .overall-grid { grid-template-columns: 1fr; }
+      .feedback-pairs { grid-template-columns: 1fr; }
+      .grade-badge { min-width: 48px; min-height: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="topbar">
+      <h1>Feedback Generation Run 11</h1>
+      <div class="theme-controls" role="group" aria-label="Theme">
+        <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+      </div>
+    </header>
+    <nav class="run-nav" aria-label="Generation runs">
+      <a href="#generation-run-11">Run 11</a>
+    </nav>
+    
+    <section class="run-section" id="generation-run-11">
+      <header class="run-hero">
+        <div>
+          <p class="eyebrow">Feedback Generation Run</p>
+          <h2>Run 11</h2>
+          <p class="subtitle">IT305 | Usability Design Project | a2-usability-design-project_D_synthetic_extra_02</p>
+        </div>
+        <span class="badge grade-badge grade-d">D</span>
+      </header>
+
+      <section class="meta-grid" aria-label="Run metadata">
+        <div class="meta-item"><span class="meta-label">Unit</span><span class="meta-value">IT305 - Software Usability</span></div><div class="meta-item"><span class="meta-label">Assignment</span><span class="meta-value">Usability Design Project</span></div><div class="meta-item"><span class="meta-label">Student</span><span class="meta-value">a2-usability-design-project_D_synthetic_extra_02</span></div><div class="meta-item"><span class="meta-label">Status</span><span class="meta-value">completed</span></div><div class="meta-item"><span class="meta-label">Provider</span><span class="meta-value">nvidia_deepseek:deepseek-ai/deepseek-v4-pro</span></div><div class="meta-item"><span class="meta-label">Pipeline</span><span class="meta-value">baseline_retrieval_v1</span></div><div class="meta-item"><span class="meta-label">Prompt Template</span><span class="meta-value">baseline_feedback_json_v1</span></div><div class="meta-item"><span class="meta-label">Retrieval Strategy</span><span class="meta-value">assignment_spec_multi_cue_v1</span></div><div class="meta-item"><span class="meta-label">Top K</span><span class="meta-value">3</span></div><div class="meta-item"><span class="meta-label">Temperature</span><span class="meta-value">0.2</span></div><div class="meta-item"><span class="meta-label">Started</span><span class="meta-value">2026-05-31 17:02:45</span></div><div class="meta-item"><span class="meta-label">Completed</span><span class="meta-value">2026-05-31 17:04:40</span></div><div class="meta-item"><span class="meta-label">Submission File</span><span class="meta-value">documents\units\IT305\assignments\a2-usability-design-project\submissions\submission_D_extra_02.pdf</span></div>
+      </section>
+
+      <section class="section-block">
+        <h2>Overall Feedback</h2>
+        
+        <div class="overall-grid">
+          <section class="panel">
+            <h3>Overall Comment</h3>
+            <p>This is a well-structured and comprehensive submission that clearly demonstrates the usability engineering lifecycle. The student has successfully connected design rationale to established standards (Material Design, WCAG) and provided a clear test plan with evidence-based recommendations. The triangulation of quantitative and qualitative data is a particular strength. However, the report would benefit from a more critical and nuanced application of accessibility principles beyond surface-level compliance, and the data analysis, while sound, could be deepened with richer synthesis and more sophisticated severity rating justification. The prototype functionality is described but not directly observable, so feedback is based on the reported evidence.</p>
+          </section>
+          <section class="panel">
+            <h3>Key Strengths</h3>
+            <ul><li>Excellent triangulation of quantitative metrics and qualitative think-aloud data to diagnose the root cause of the checkout usability issue.</li><li>Clear and well-justified alignment of design choices with Material Design guidelines and WCAG POUR principles.</li><li>Structured usability test plan with goal-oriented tasks, defined success metrics, and consideration of participant diversity beyond convenience sampling.</li><li>Actionable and specific design recommendations that directly address findings from the usability test.</li><li>Professional report structure with logical flow, clear headings, and appropriate appendices.</li></ul>
+          </section>
+          <section class="panel">
+            <h3>Priority Improvements</h3>
+            <ul><li>Deepen the accessibility analysis by moving beyond stating compliance to critically discussing the trade-offs and limitations of the implemented inclusive design features.</li><li>Strengthen the data analysis by providing a more detailed justification for severity ratings, explicitly linking them to frequency and impact metrics from the test data.</li><li>Provide more specific evidence of the interactive prototype&#x27;s complexity and functionality, such as detailing the number of screens, interactive states, or advanced features beyond the two tested tasks.</li><li>Expand the discussion of the usability test methodology to include reflections on facilitator technique, limitations of the think-aloud protocol, or potential biases introduced during the sessions.</li></ul>
+          </section>
+        </div>
+        
+      </section>
+
+      <section class="section-block">
+        <h2>Criterion Feedback</h2>
+        <div class="criteria-grid">
+          
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>1. Interactive Prototype Functionality</h3>
+                <span class="badge grade-c">C</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The submission provides a clear link to a Figma prototype and a video walkthrough, which is the expected format. The report describes a core user flow (browse, customise, checkout) that functions sufficiently to enable usability testing. The description of interactive feedback mechanisms, such as the &#x27;fly-in&#x27; animation and haptic pulse for &#x27;Add to Cart&#x27;, indicates attention to detailed interaction design beyond basic screen transitions.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The evidence for &#x27;complex user flows&#x27; and &#x27;mastery of industry-standard tools&#x27; is limited. The tested tasks cover a linear, single-path flow. There is no description of more complex interactions like error handling for payment failure, account creation, order history review, or advanced customisation states, which would demonstrate a fully functional prototype. The report mentions a video, but the functionality cannot be directly verified from the text alone.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>To reach a higher level, the prototype should demonstrate multiple, interconnected user flows with conditional logic (e.g., empty states, error states, loading states). The report should explicitly detail the number of unique screens, interactive components, and the use of advanced Figma features like auto-layout, variants, and interactive components to demonstrate tool mastery. A more detailed walkthrough of the prototype&#x27;s architecture in the report would strengthen this section.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The student provides prototype and video links. The report describes a functional core flow with specific interactive feedback (animation, haptic pulse, snackbar errors). However, the described functionality appears limited to a single, linear &#x27;happy path&#x27; without evidence of complex, branching user flows or advanced tool features, which aligns with a &#x27;basic functionality&#x27; descriptor.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>2. Design Rationale and Accessibility</h3>
+                <span class="badge grade-d">D</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The design rationale is well-articulated and directly linked to established principles. The justification for external consistency using Material Design and internal consistency with the branded teal button is clear and user-centred. The application of the WCAG POUR principles is comprehensive, addressing perceivability (alt-text, colour), operability (touch targets, keyboard nav), understandability (plain language), and robustness (semantic components). The consideration of accessibility &#x27;from the initial wireframing stage&#x27; is a strong conceptual point.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The accessibility discussion, while thorough, remains largely descriptive and checklist-like. It states compliance but lacks critical depth. For example, it mentions &#x27;a high-contrast mode was also considered&#x27; but does not confirm implementation or discuss the design challenges involved. The claim of full keyboard/switch navigability is stated but not evidenced in the test plan or results. The rationale for inclusive design could be strengthened by discussing how the design specifically addresses the needs of the recruited participant with a motor impairment beyond just touch target size.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Critically evaluate the accessibility implementation. Instead of just stating WCAG compliance, discuss specific design trade-offs. For instance, how did you balance aesthetic design with the 4.5:1 contrast ratio? Provide a specific example of a component&#x27;s design annotation for a screen reader. In the test plan, include a task or validation step specifically designed to assess an accessibility feature, such as testing the logical tab order or confirming alt-text is contextually appropriate.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The report provides a strong, well-justified alignment with Material Design and a comprehensive mapping to all four WCAG POUR principles. Inclusive design is evident in the consideration of touch targets and non-colour-dependent labels. However, the application lacks critical nuance and reads as a compliance checklist rather than a deeply integrated practice, preventing it from reaching the &#x27;comprehensive&#x27; and &#x27;seamlessly integrated&#x27; standard of an HD.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>3. Usability Testing Plan and Execution</h3>
+                <span class="badge grade-d">D</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The test plan is detailed and includes all necessary components: clear goals, well-written scenario-based tasks that avoid leading the user, defined quantitative and qualitative metrics, and a participant recruitment strategy that considers diversity beyond convenience sampling. The use of a screening questionnaire and the inclusion of a participant with a motor impairment demonstrates good planning. The methodology section correctly identifies key facilitation techniques like neutral prompting and informed consent.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The success metrics, while present, could be more precise. &#x27;Time on task&#x27; is recorded, but a benchmark for success (e.g., &#x27;task should be completed in under 45 seconds&#x27;) is not pre-defined. The test plan mentions only three participants, which is the bare minimum; a stronger plan would justify this number with reference to Nielsen&#x27;s curve or acknowledge the limitations of the small sample size. The execution details are somewhat generic; there is no reflection on how the facilitator handled specific moments, such as when P2 failed the task, or any deviations from the plan.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Define precise, benchmarked success metrics in the plan (e.g., &#x27;A task is considered a success if completed in under 60 seconds with fewer than 2 errors&#x27;). Justify the participant sample size with academic literature (e.g., Nielsen, 2000). In the results section, include a brief, critical reflection on the test execution itself—were there any leading questions accidentally asked? How did the facilitator&#x27;s presence affect P3&#x27;s performance? This demonstrates professional-level self-awareness.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The test plan is detailed with clear, goal-oriented tasks, a considered participant recruitment strategy, and a sound methodology using think-aloud protocol. The plan meets the requirements for a &#x27;detailed&#x27; and &#x27;competent&#x27; execution. It falls short of &#x27;rigorous&#x27; due to a lack of pre-defined, benchmarked success metrics and a limited justification for the small sample size, which are hallmarks of professional-level planning.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>4. Data Analysis and Recommendations</h3>
+                <span class="badge grade-c">C</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The analysis effectively triangulates quantitative data (task failure rate, time on task) with qualitative quotes to identify the root cause of the checkout button issue. This is a clear strength. The severity ratings are a good addition and the recommendations are specific, actionable, and directly traceable to the findings. The recommendation to increase the touch target size for the customisation icons is a precise, developer-ready instruction.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The analysis lacks depth in synthesizing the data. It focuses heavily on one major issue. The severity ratings, while present, are not deeply justified with a systematic analysis of frequency and impact across all participants. For example, the &#x27;Minor&#x27; rating for the touch target issue could be better justified by discussing its impact on task completion versus user comfort. The analysis is largely descriptive of what happened, rather than deeply interpretive of the underlying cognitive or perceptual failures. The recommendation for post-iteration testing is good but generic.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Deepen the analysis by creating an affinity diagram or a consolidated issue matrix in the appendix. For each issue, systematically report its frequency (how many users), impact (did it block the task?), and persistence. Use this matrix to more rigorously justify the severity ratings. When discussing the checkout button, analyse *why* the visual design failed based on Gestalt principles or visual hierarchy theory, not just user quotes. This moves the analysis from descriptive to deeply interpretive.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The analysis presents data clearly and connects findings to design changes, particularly through the triangulation of data types. However, the interpretation lacks depth, focusing on a single major issue without a broader synthesis of all findings. The severity ratings are a good start but lack rigorous, systematic justification. This aligns with an analysis that &#x27;presents data but lacks depth in connecting findings to design changes&#x27;.</dd>
+              </dl>
+            </article>
+            
+            <article class="criterion-card">
+              <div class="criterion-head">
+                <h3>5. Report Structure and Academic Integrity</h3>
+                <span class="badge grade-c">C</span>
+              </div>
+              <dl class="feedback-pairs">
+                <dt>Strengths</dt>
+                <dd>The report is professionally structured with logical headings, clear language, and a complete set of appendices. The writing is concise and easy to follow. APA referencing is attempted for key sources (Material Design, Nielsen, WCAG), and an academic integrity note is addressed. The inclusion of a test log sheet and consent form template in the appendices adds to the report&#x27;s credibility.</dd>
+                <dt>Areas For Improvement</dt>
+                <dd>The referencing is incomplete and contains formatting errors. The Nielsen (1994) reference is incorrectly dated (the article is from 1995 or later) and the URL is for a different article on severity ratings. The WCAG reference is generic and should specify the exact guideline used. In-text citations are sparse; key concepts like &#x27;Nielsen&#x27;s heuristics&#x27; and &#x27;affinity diagramming&#x27; are mentioned without citation. The word count cannot be verified but the report appears concise, potentially near the lower limit for a project of this weighting.</dd>
+                <dt>Improvement Suggestion</dt>
+                <dd>Conduct a thorough edit of all references to ensure APA 7th edition compliance. Verify all URLs and dates. Add in-text citations for all established usability principles and methods (e.g., Nielsen, 1994 for heuristics; Brooke, 1996 for SUS if used). Ensure the reference list matches the citations. If the report is under the 3000-word guideline, expand the analysis and rationale sections to add the necessary depth and demonstrate a more comprehensive engagement with the topic.</dd>
+                <dt>Evidence Summary</dt>
+                <dd>The report has a clear, professional structure and the writing is understandable. However, the referencing contains noticeable errors (incorrect dates, generic citations) and lacks completeness, which prevents it from being &#x27;correct&#x27; or &#x27;flawless&#x27;. The structure and writing are adequate, but the referencing issues align with a &#x27;mostly correct&#x27; descriptor.</dd>
+              </dl>
+            </article>
+            
+        </div>
+      </section>
+
+      
+      <details class="section-details">
+        <summary>Retrieval Planner</summary>
+        <div class="folded-content">
+          
+        <div class="planning-list">
+          <p class="muted">None for this run.</p>
+        </div>
+            
+        </div>
+      </details>
+    
+      
+      <details class="section-details">
+        <summary>Retrieved Chunks</summary>
+        <div class="folded-content">
+          
+        <div class="retrieval-list">
+          
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 1 | Chunk 29</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.515737</span>
+        <span>Source: Week 09 Planning Usability Testing | lecture_transcript | week 9</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">A Functional Interactive Prototype Created Using Industry-standard
+tools such as Figma or Adobe XD. 2. A written report of 3000 words excluding references and appendices. 3. Documentation of the design process including rationale for interface choices and alignment with standards. 4. A usability test plan detailing tasks, participants, and success metrics. 5. Analysis of test results including qualitative feedback and quantitative performance data such as time on task. 6. Recommendations for design iterations based on testing findings. 7. Evidence of accessibility considerations in the final design including contrast and navigation. SUBMISSION FORMAT Submit all files via the university learning management system portal. The report must be submitted as a single PDF document. The prototype should be submitted as a shareable link or video demonstration depending on the tool used. Name your files using the convention StudentID_IT305_A2. Ensure all links are accessible to unit staff before submission deadline. Late submissions will incur penalties as per unit policy. Only one submission attempt is permitted unless special consideration is granted. ACADEMIC INTEGRITY NOTE All work submitted must be your own original creation. Collusion or plagiarism will be treated according to university academic integrity policy. You may discuss general concepts with peers, but the design, testing, and writing must be completed individually without sharing files. Proper citation is required for any external sources or tools used during the project. Use APA style for all references. Breaches of academic integrity may result in failure of the assignment or the unit and further disciplinary action. SUPPORT RESOURCES Content from weeks 5 through 12 is directly relevant to this assignment. Key topics include Design Principles and Standards, Prototyping Techniques, Interaction Design, Accessibility and Inclusive Design, Planning Usability Testing, Conducting Usability Tests, Data Analysis and Reporting, and Emerging Trends in UX. Consult lecture materials and tutorial exercises from these weeks for guidance. Unit staff are available during consultation hours for specific queries. Additional reading lists are available on the library portal.</p>
+      
+        <details class="chunk-text">
+          <summary>Chunk Text</summary>
+          <pre>INTRODUCTION Good morning everyone and welcome to week nine of IT305 Software Usability. I hope you found the discussion on accessibility and inclusive design last week insightful because those considerations are not just a box to tick but fundamental to who we allow into our testing environments. Today we are shifting gears from theory and design into the empirical phase of our course. We are talking about planning usability testing. This is a critical juncture in the semester because it directly feeds into your second major assignment, the Usability Design Project. Up until now, you have been analyzing needs and creating prototypes, but without a solid plan for testing, you cannot validate whether those prototypes actually work for humans. Many students make the mistake of thinking they can just wing it, invite a few friends to click around, and call it data. That is not usability testing. That is casual feedback. In this lecture, we are going to look at how to construct a rigorous test plan, how to write tasks that do not lead the user, and how to recruit participants who actually represent your target audience. If you get this planning stage wrong, the data you collect in week ten will be flawed, and your analysis in week eleven will be built on sand. So, let&#x27;s dig into the mechanics of planning a study that yields actionable insights. SECTION 1: CORE CONCEPT At the heart of this week is the usability test plan document. You should think of this document as the script and the roadmap for your entire study. It ensures consistency, which is vital for validity. If you test five participants and you ask them different questions or give them different instructions, you cannot compare their performance. The core concept here is standardization. Your plan needs to outline the goals of the test, the hypotheses you are investigating, the metrics you will collect, and the equipment you will use. We are looking at both qualitative and quantitative data. Qualitative data tells you why a user struggled, perhaps through their think-aloud commentary, while quantitative data tells you how long it took them or how many errors they made. You need to decide beforehand what success looks like. Are you measuring task completion rates? Are you measuring time on task? Or are you measuring subjective satisfaction using a questionnaire like the System Usability Scale? Another key component of the plan is the consent process. You must ensure ethical standards are met. This means preparing informed consent forms that explain the purpose of the study, how data will be stored, and the participant&#x27;s right to withdraw at any time without penalty. This is not just bureaucratic red tape. It is about respecting the human beings who are giving you their time and cognitive effort. Without a written plan that covers these bases, you are not conducting science. You are just watching people use software. SECTION 2: APPLICATION AND NUANCE Now let&#x27;s move on to the application of these concepts,</pre>
+        </details>
+        
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 2 | Chunk 50</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.509582</span>
+        <span>Source: A2 Usability Design Project Worksheet | tutorial_sheet</span>
+        <span>Pages: 1-2</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">A Functional Interactive Prototype Created Using Industry-standard
+tools such as Figma or Adobe XD. 2. A written report of 3000 words excluding references and appendices. 3. Documentation of the design process including rationale for interface choices and alignment with standards. 4. A usability test plan detailing tasks, participants, and success metrics. 5. Analysis of test results including qualitative feedback and quantitative performance data such as time on task. 6. Recommendations for design iterations based on testing findings. 7. Evidence of accessibility considerations in the final design including contrast and navigation. SUBMISSION FORMAT Submit all files via the university learning management system portal. The report must be submitted as a single PDF document. The prototype should be submitted as a shareable link or video demonstration depending on the tool used. Name your files using the convention StudentID_IT305_A2. Ensure all links are accessible to unit staff before submission deadline. Late submissions will incur penalties as per unit policy. Only one submission attempt is permitted unless special consideration is granted. ACADEMIC INTEGRITY NOTE All work submitted must be your own original creation. Collusion or plagiarism will be treated according to university academic integrity policy. You may discuss general concepts with peers, but the design, testing, and writing must be completed individually without sharing files. Proper citation is required for any external sources or tools used during the project. Use APA style for all references. Breaches of academic integrity may result in failure of the assignment or the unit and further disciplinary action. SUPPORT RESOURCES Content from weeks 5 through 12 is directly relevant to this assignment. Key topics include Design Principles and Standards, Prototyping Techniques, Interaction Design, Accessibility and Inclusive Design, Planning Usability Testing, Conducting Usability Tests, Data Analysis and Reporting, and Emerging Trends in UX. Consult lecture materials and tutorial exercises from these weeks for guidance. Unit staff are available during consultation hours for specific queries. Additional reading lists are available on the library portal.</p>
+      
+        <details class="chunk-text">
+          <summary>Chunk Text</summary>
+          <pre>WORKSHEET TITLE: Usability Design Project Preparation Worksheet Prepares for: Assignment 2 - Usability Design Project (60% Weighting) LEARNING OBJECTIVES * Apply design principles and accessibility standards to prototype development. * Construct a rigorous usability test plan with appropriate tasks and metrics. * Analyze qualitative and quantitative data to formulate evidence-based design recommendations. WARM-UP 1. Define the difference between internal and external consistency in interface design. 2. List the four high-level principles of the WCAG guidelines using the POUR acronym. GUIDED ACTIVITIES 3. Task 1: Prototype Design and Interaction (Estimated Time: 45 minutes) Review your current low-fidelity sketches. Select one key user flow from your scenario. a) Identify two instances where you have applied external consistency based on platform standards (e.g., iOS or Material Design). b) Describe the feedback mechanism you have designed for a successful form submission and an error state. c) Explain how you will transition this flow from low-fidelity to high-fidelity without introducing polish bias during early testing. 4. Task 2: Usability Test Planning (Estimated Time: 45 minutes) Draft a section of your usability test plan. a) Write one scenario-based task for your participants. Ensure it describes a goal rather than specific instructions (e.g., do not say click the search bar). b) Define your participant recruitment criteria. Explain how you will ensure diversity beyond just university peers to meet inclusive design requirements. c) Select one quantitative metric and one qualitative method you will use to collect data during the session. 5. Task 3: Data Analysis and Reporting (Estimated Time: 60 minutes) Imagine you have completed testing with three participants. a) Describe how you would triangulate quantitative success rates with qualitative think-aloud comments to identify a root cause. b) Assign a severity rating to a hypothetical issue where users cannot find the checkout button. Justify your rating using impact and frequency. c) Draft one specific design recommendation based on this issue. Ensure it is actionable for a developer and not vague. REFLECTION PROMPT 6. How does considering accessibility constraints early in the prototyping phase change your approach to interaction design compared to retrofitting them later? EXTENSION TASK 7. Consider an emerging trend discussed in Week 12 such as Voice User Interfaces or Virtual Reality. How would you adapt your current usability test plan to accommodate the lack of visual affordances or physical comfort metrics in these environments?</pre>
+        </details>
+        
+    </article>
+    
+    <article class="retrieval-card">
+      <div class="retrieval-head">
+        <h3>Rank 3 | Chunk 35</h3>
+        <span class="used-pill">Used: 1</span>
+      </div>
+      <div class="retrieval-meta">
+        <span>Score: 0.505965</span>
+        <span>Source: Week 11 Data Analysis And Reporting | lecture_transcript | week 11</span>
+        <span>Pages: 1-1</span>
+      </div>
+      <p class="query-label">Query</p>
+      <p class="query-text">A Functional Interactive Prototype Created Using Industry-standard
+tools such as Figma or Adobe XD. 2. A written report of 3000 words excluding references and appendices. 3. Documentation of the design process including rationale for interface choices and alignment with standards. 4. A usability test plan detailing tasks, participants, and success metrics. 5. Analysis of test results including qualitative feedback and quantitative performance data such as time on task. 6. Recommendations for design iterations based on testing findings. 7. Evidence of accessibility considerations in the final design including contrast and navigation. SUBMISSION FORMAT Submit all files via the university learning management system portal. The report must be submitted as a single PDF document. The prototype should be submitted as a shareable link or video demonstration depending on the tool used. Name your files using the convention StudentID_IT305_A2. Ensure all links are accessible to unit staff before submission deadline. Late submissions will incur penalties as per unit policy. Only one submission attempt is permitted unless special consideration is granted. ACADEMIC INTEGRITY NOTE All work submitted must be your own original creation. Collusion or plagiarism will be treated according to university academic integrity policy. You may discuss general concepts with peers, but the design, testing, and writing must be completed individually without sharing files. Proper citation is required for any external sources or tools used during the project. Use APA style for all references. Breaches of academic integrity may result in failure of the assignment or the unit and further disciplinary action. SUPPORT RESOURCES Content from weeks 5 through 12 is directly relevant to this assignment. Key topics include Design Principles and Standards, Prototyping Techniques, Interaction Design, Accessibility and Inclusive Design, Planning Usability Testing, Conducting Usability Tests, Data Analysis and Reporting, and Emerging Trends in UX. Consult lecture materials and tutorial exercises from these weeks for guidance. Unit staff are available during consultation hours for specific queries. Additional reading lists are available on the library portal.</p>
+      
+        <details class="chunk-text">
+          <summary>Chunk Text</summary>
+          <pre>INTRODUCTION Welcome back everyone to week eleven of IT305 Software Usability. I hope you managed to get your usability testing sessions completed over the last few days. I know it can be quite stressful to coordinate participants and record sessions, but you should now have a substantial amount of raw data sitting on your drives. Last week we talked about the logistics of facilitating those sessions and collecting the raw data without influencing the user. Today we move into the critical phase of making sense of that data. This is often where students struggle the most because you have hours of video footage and pages of notes and you need to turn that chaos into actionable insights. We are focusing specifically on interpreting test results to identify usability issues and recommend design improvements. This directly supports learning outcome four and is absolutely essential for your final report which is due next week. You cannot simply dump data into a document. You have to synthesize it. SECTION 1: CORE CONCEPT So what do we actually mean by analysis in this specific context. It is not just summarizing what happened in a chronological order. It is about triangulation of evidence. You need to bring together quantitative metrics and qualitative observations to build a robust argument. The quantitative data gives you the what and the how much. This includes success rates, time on task, error counts, and perhaps system usability scale scores. If eighty percent of users failed to complete the checkout process, that is a hard metric that indicates a major problem. But that number does not tell you why they failed. That is where the qualitative data comes in to save the day. This includes your think aloud protocols, facial expressions, hesitation markers, and post-test interview comments. When a user sighs heavily or says I am completely lost, that is qualitative evidence of frustration. The core concept here is that neither data type is sufficient on its own for a high quality report. You need the metrics to identify the magnitude and frequency of the problem and the observations to understand the root cause. Without this combination, your analysis is shallow. You might know something is broken but not know how to fix it effectively. SECTION 2: APPLICATION AND NUANCE Now let&#x27;s look at how you apply this practically in your assignment. Once you have your data, you need to code it systematically. A common method used in the industry is affinity diagramming where you group similar observations together on a wall or digital board. You might notice that five different users struggled with the search bar functionality. That becomes a cluster of evidence. But here is the nuance that separates good analysis from great analysis. You must distinguish between user error and design error. If a user clicks the wrong button, is it because they were careless or because the button looked clickable when it was not. You cannot simply blame the user to protect your design. In usability engineering,</pre>
+        </details>
+        
+    </article>
+    
+        </div>
+            
+        </div>
+      </details>
+    
+      
+      <details class="section-details">
+        <summary>Raw LLM Details</summary>
+        <div class="folded-content">
+          
+        <details class="text-details">
+          <summary>Feedback Generation Prompt</summary>
+          <pre>You are generating personalised, rubric-aligned feedback for a higher-education assignment.
+
+Return valid JSON only. Do not wrap the JSON in markdown fences. Do not add commentary before or after the JSON.
+
+Required JSON schema:
+{
+  &quot;overall_feedback&quot;: {
+    &quot;overall_comment&quot;: &quot;string&quot;,
+    &quot;key_strengths&quot;: [
+      &quot;string&quot;
+    ],
+    &quot;priority_improvements&quot;: [
+      &quot;string&quot;
+    ],
+    &quot;overall_grade_band&quot;: &quot;N|P|C|D|HD&quot;
+  },
+  &quot;criterion_feedback&quot;: [
+    {
+      &quot;criterion_id&quot;: 123,
+      &quot;criterion_name&quot;: &quot;string&quot;,
+      &quot;strengths&quot;: &quot;string&quot;,
+      &quot;areas_for_improvement&quot;: &quot;string&quot;,
+      &quot;improvement_suggestion&quot;: &quot;string&quot;,
+      &quot;suggested_level&quot;: &quot;N|P|C|D|HD&quot;,
+      &quot;evidence_summary&quot;: &quot;string&quot;
+    }
+  ]
+}
+
+Rules:
+- Include exactly one `criterion_feedback` item for each criterion_id listed below.
+- Preserve the provided `criterion_id` values exactly.
+- Base the feedback on the assignment specification, rubric, student submission, and retrieved course context.
+- If the retrieved course context is weak or incomplete for a point, say that plainly instead of inventing evidence.
+- Use concise, tutor-facing academic feedback language.
+- `overall_grade_band` and each `suggested_level` must be one of: N, P, C, D, HD.
+- `key_strengths` and `priority_improvements` should each contain 2 to 5 short items.
+
+Assignment metadata:
+{
+  &quot;assignment_id&quot;: 2,
+  &quot;assignment_name&quot;: &quot;Usability Design Project&quot;,
+  &quot;assignment_type&quot;: &quot;project&quot;,
+  &quot;description&quot;: null,
+  &quot;due_date&quot;: null
+}
+
+Rubric criteria:
+[
+  {
+    &quot;criterion_id&quot;: 5,
+    &quot;criterion_name&quot;: &quot;Interactive Prototype Functionality&quot;,
+    &quot;criterion_description&quot;: null,
+    &quot;performance_levels&quot;: {
+      &quot;WEIGH T&quot;: &quot;25%&quot;,
+      &quot;HD (85–100%)&quot;: &quot;Prototype is fully functional with complex user flows and demonstrates mastery of industry-standard tools. All key features operate smoothly without errors or broken links.&quot;,
+      &quot;D (75–84%)&quot;: &quot;Prototype is functional with most user flows working correctly using industry-standard tools. Minor errors exist but do not significantly hinder demonstration of key functionality.&quot;,
+      &quot;C (65–74%)&quot;: &quot;Prototype demonstrates basic functionality with some incomplete user flows or navigation issues. Tool usage is adequate but lacks polish or advanced interaction details.&quot;,
+      &quot;P (50–64%)&quot;: &quot;Prototype is partially functional with significant broken links or missing key user flows. Tool usage is evident but the interactive element is limited or difficult to navigate.&quot;,
+      &quot;FAIL (&lt;50%)&quot;: &quot;Prototype is non-functional or missing entirely. No evidence of industry-standard tool usage or interactive elements is provided.&quot;
+    }
+  },
+  {
+    &quot;criterion_id&quot;: 6,
+    &quot;criterion_name&quot;: &quot;Design Rationale and Accessibility&quot;,
+    &quot;criterion_description&quot;: null,
+    &quot;performance_levels&quot;: {
+      &quot;WEIGH T&quot;: &quot;25%&quot;,
+      &quot;HD (85–100%)&quot;: &quot;Design choices are critically justified with strong alignment to usability standards and comprehensive accessibility compliance. Inclusive design practices are seamlessly integrated throughout the interface.&quot;,
+      &quot;D (75–84%)&quot;: &quot;Design choices are well justified with clear alignment to usability standards and good accessibility compliance. Inclusive design practices are evident in most interface components.&quot;,
+      &quot;C (65–74%)&quot;: &quot;Design choices are described with some reference to standards and basic accessibility considerations. Inclusive design practices are mentioned but inconsistently applied.&quot;,
+      &quot;P (50–64%)&quot;: &quot;Design rationale is weak with limited reference to standards or accessibility requirements. Inclusive design practices are overlooked or poorly implemented.&quot;,
+      &quot;FAIL (&lt;50%)&quot;: &quot;No design rationale is provided or choices contradict usability standards and accessibility guidelines. Inclusive design practices are absent.&quot;
+    }
+  },
+  {
+    &quot;criterion_id&quot;: 7,
+    &quot;criterion_name&quot;: &quot;Usability Testing Plan and Execution&quot;,
+    &quot;criterion_description&quot;: null,
+    &quot;performance_levels&quot;: {
+      &quot;WEIGH T&quot;: &quot;20%&quot;,
+      &quot;HD (85–100%)&quot;: &quot;Test plan is rigorous with well-defined tasks, appropriate participants, and precise success metrics. Execution demonstrates professional recruitment and facilitation techniques.&quot;,
+      &quot;D (75–84%)&quot;: &quot;Test plan is detailed with clear tasks, suitable participants, and defined success metrics. Execution shows competent recruitment and facilitation techniques.&quot;,
+      &quot;C (65–74%)&quot;: &quot;Test plan outlines tasks and participants but metrics are vague or generic. Execution meets minimum participant requirements but lacks professional facilitation.&quot;,
+      &quot;P (50–64%)&quot;: &quot;Test plan is incomplete with unclear tasks or insufficient participants. Execution shows significant gaps in methodology or facilitation approach.&quot;,
+      &quot;FAIL (&lt;50%)&quot;: &quot;Test plan is missing or fails to meet minimum participant requirements. No evidence of structured testing methodology is provided.&quot;
+    }
+  },
+  {
+    &quot;criterion_id&quot;: 8,
+    &quot;criterion_name&quot;: &quot;Data Analysis and Recommendations&quot;,
+    &quot;criterion_description&quot;: null,
+    &quot;performance_levels&quot;: {
+      &quot;WEIGH T&quot;: &quot;20%&quot;,
+      &quot;HD (85–100%)&quot;: &quot;Analysis synthesizes qualitative and quantitative data deeply to drive evidence-based design iterations. Recommendations are highly specific and directly address identified usability issues.&quot;,
+      &quot;D (75–84%)&quot;: &quot;Analysis interprets qualitative and quantitative data effectively to support design iterations. Recommendations are clear and address most identified usability issues.&quot;,
+      &quot;C (65–74%)&quot;: &quot;Analysis presents data but lacks depth in connecting findings to design changes. Recommendations are general and only partially address identified usability issues.&quot;,
+      &quot;P (50–64%)&quot;: &quot;Analysis is descriptive with little interpretation of data or connection to design changes. Recommendations are vague or not supported by testing findings.&quot;,
+      &quot;FAIL (&lt;50%)&quot;: &quot;No analysis of test results is provided or recommendations contradict the data collected. Evidence of design iteration based on feedback is absent.&quot;
+    }
+  },
+  {
+    &quot;criterion_id&quot;: 9,
+    &quot;criterion_name&quot;: &quot;Report Structure and Academic Integrity&quot;,
+    &quot;criterion_description&quot;: null,
+    &quot;performance_levels&quot;: {
+      &quot;WEIGH T&quot;: &quot;10%&quot;,
+      &quot;HD (85–100%)&quot;: &quot;Report exceeds word count expectations with flawless structure, APA referencing, and strict academic integrity. Writing is professional, concise, and perfectly edited.&quot;,
+      &quot;D (75–84%)&quot;: &quot;Report meets word count requirements with clear structure, correct APA referencing, and adherence to academic integrity. Writing is clear with minor editing errors.&quot;,
+      &quot;C (65–74%)&quot;: &quot;Report is near word count limits with adequate structure and mostly correct referencing. Writing is understandable but contains noticeable errors or stylistic issues.&quot;,
+      &quot;P (50–64%)&quot;: &quot;Report falls short of word count or lacks clear structure with referencing errors. Writing is difficult to follow or contains significant grammatical errors.&quot;,
+      &quot;FAIL (&lt;50%)&quot;: &quot;Report is significantly under word count or missing entirely with major referencing or integrity breaches. Writing is incoherent or plagiarized.&quot;
+    }
+  }
+]
+
+Retrieved course context that could be helpful:
+[
+  {
+    &quot;rank_position&quot;: 1,
+    &quot;chunk_id&quot;: 29,
+    &quot;title&quot;: &quot;Week 09 Planning Usability Testing&quot;,
+    &quot;material_type&quot;: &quot;lecture_transcript&quot;,
+    &quot;week_number&quot;: 9,
+    &quot;page_number_start&quot;: 1,
+    &quot;page_number_end&quot;: 1,
+    &quot;matched_cues&quot;: [
+      &quot;A Functional Interactive Prototype Created Using Industry-standard&quot;
+    ],
+    &quot;chunk_text&quot;: &quot;INTRODUCTION Good morning everyone and welcome to week nine of IT305 Software Usability. I hope you found the discussion on accessibility and inclusive design last week insightful because those considerations are not just a box to tick but fundamental to who we allow into our testing environments. Today we are shifting gears from theory and design into the empirical phase of our course. We are talking about planning usability testing. This is a critical juncture in the semester because it directly feeds into your second major assignment, the Usability Design Project. Up until now, you have been analyzing needs and creating prototypes, but without a solid plan for testing, you cannot validate whether those prototypes actually work for humans. Many students make the mistake of thinking they can just wing it, invite a few friends to click around, and call it data. That is not usability testing. That is casual feedback. In this lecture, we are going to look at how to construct a rigorous test plan, how to write tasks that do not lead the user, and how to recruit participants who actually represent your target audience. If you get this planning stage wrong, the data you collect in week ten will be flawed, and your analysis in week eleven will be built on sand. So, let&#x27;s dig into the mechanics of planning a study that yields actionable insights. SECTION 1: CORE CONCEPT At the heart of this week is the usability test plan document. You should think of this document as the script and the roadmap for your entire study. It ensures consistency, which is vital for validity. If you test five participants and you ask them different questions or give them different instructions, you cannot compare their performance. The core concept here is standardization. Your plan needs to outline the goals of the test, the hypotheses you are investigating, the metrics you will collect, and the equipment you will use. We are looking at both qualitative and quantitative data. Qualitative data tells you why a user struggled, perhaps through their think-aloud commentary, while quantitative data tells you how long it took them or how many errors they made. You need to decide beforehand what success looks like. Are you measuring task completion rates? Are you measuring time on task? Or are you measuring subjective satisfaction using a questionnaire like the System Usability Scale? Another key component of the plan is the consent process. You must ensure ethical standards are met. This means preparing informed consent forms that explain the purpose of the study, how data will be stored, and the participant&#x27;s right to withdraw at any time without penalty. This is not just bureaucratic red tape. It is about respecting the human beings who are giving you their time and cognitive effort. Without a written plan that covers these bases, you are not conducting science. You are just watching people use software. SECTION 2: APPLICATION AND NUANCE Now let&#x27;s move on to the application of these concepts,&quot;
+  },
+  {
+    &quot;rank_position&quot;: 2,
+    &quot;chunk_id&quot;: 50,
+    &quot;title&quot;: &quot;A2 Usability Design Project Worksheet&quot;,
+    &quot;material_type&quot;: &quot;tutorial_sheet&quot;,
+    &quot;week_number&quot;: null,
+    &quot;page_number_start&quot;: 1,
+    &quot;page_number_end&quot;: 2,
+    &quot;matched_cues&quot;: [
+      &quot;A Functional Interactive Prototype Created Using Industry-standard&quot;
+    ],
+    &quot;chunk_text&quot;: &quot;WORKSHEET TITLE: Usability Design Project Preparation Worksheet Prepares for: Assignment 2 - Usability Design Project (60% Weighting) LEARNING OBJECTIVES * Apply design principles and accessibility standards to prototype development. * Construct a rigorous usability test plan with appropriate tasks and metrics. * Analyze qualitative and quantitative data to formulate evidence-based design recommendations. WARM-UP 1. Define the difference between internal and external consistency in interface design. 2. List the four high-level principles of the WCAG guidelines using the POUR acronym. GUIDED ACTIVITIES 3. Task 1: Prototype Design and Interaction (Estimated Time: 45 minutes) Review your current low-fidelity sketches. Select one key user flow from your scenario. a) Identify two instances where you have applied external consistency based on platform standards (e.g., iOS or Material Design). b) Describe the feedback mechanism you have designed for a successful form submission and an error state. c) Explain how you will transition this flow from low-fidelity to high-fidelity without introducing polish bias during early testing. 4. Task 2: Usability Test Planning (Estimated Time: 45 minutes) Draft a section of your usability test plan. a) Write one scenario-based task for your participants. Ensure it describes a goal rather than specific instructions (e.g., do not say click the search bar). b) Define your participant recruitment criteria. Explain how you will ensure diversity beyond just university peers to meet inclusive design requirements. c) Select one quantitative metric and one qualitative method you will use to collect data during the session. 5. Task 3: Data Analysis and Reporting (Estimated Time: 60 minutes) Imagine you have completed testing with three participants. a) Describe how you would triangulate quantitative success rates with qualitative think-aloud comments to identify a root cause. b) Assign a severity rating to a hypothetical issue where users cannot find the checkout button. Justify your rating using impact and frequency. c) Draft one specific design recommendation based on this issue. Ensure it is actionable for a developer and not vague. REFLECTION PROMPT 6. How does considering accessibility constraints early in the prototyping phase change your approach to interaction design compared to retrofitting them later? EXTENSION TASK 7. Consider an emerging trend discussed in Week 12 such as Voice User Interfaces or Virtual Reality. How would you adapt your current usability test plan to accommodate the lack of visual affordances or physical comfort metrics in these environments?&quot;
+  },
+  {
+    &quot;rank_position&quot;: 3,
+    &quot;chunk_id&quot;: 35,
+    &quot;title&quot;: &quot;Week 11 Data Analysis And Reporting&quot;,
+    &quot;material_type&quot;: &quot;lecture_transcript&quot;,
+    &quot;week_number&quot;: 11,
+    &quot;page_number_start&quot;: 1,
+    &quot;page_number_end&quot;: 1,
+    &quot;matched_cues&quot;: [
+      &quot;A Functional Interactive Prototype Created Using Industry-standard&quot;
+    ],
+    &quot;chunk_text&quot;: &quot;INTRODUCTION Welcome back everyone to week eleven of IT305 Software Usability. I hope you managed to get your usability testing sessions completed over the last few days. I know it can be quite stressful to coordinate participants and record sessions, but you should now have a substantial amount of raw data sitting on your drives. Last week we talked about the logistics of facilitating those sessions and collecting the raw data without influencing the user. Today we move into the critical phase of making sense of that data. This is often where students struggle the most because you have hours of video footage and pages of notes and you need to turn that chaos into actionable insights. We are focusing specifically on interpreting test results to identify usability issues and recommend design improvements. This directly supports learning outcome four and is absolutely essential for your final report which is due next week. You cannot simply dump data into a document. You have to synthesize it. SECTION 1: CORE CONCEPT So what do we actually mean by analysis in this specific context. It is not just summarizing what happened in a chronological order. It is about triangulation of evidence. You need to bring together quantitative metrics and qualitative observations to build a robust argument. The quantitative data gives you the what and the how much. This includes success rates, time on task, error counts, and perhaps system usability scale scores. If eighty percent of users failed to complete the checkout process, that is a hard metric that indicates a major problem. But that number does not tell you why they failed. That is where the qualitative data comes in to save the day. This includes your think aloud protocols, facial expressions, hesitation markers, and post-test interview comments. When a user sighs heavily or says I am completely lost, that is qualitative evidence of frustration. The core concept here is that neither data type is sufficient on its own for a high quality report. You need the metrics to identify the magnitude and frequency of the problem and the observations to understand the root cause. Without this combination, your analysis is shallow. You might know something is broken but not know how to fix it effectively. SECTION 2: APPLICATION AND NUANCE Now let&#x27;s look at how you apply this practically in your assignment. Once you have your data, you need to code it systematically. A common method used in the industry is affinity diagramming where you group similar observations together on a wall or digital board. You might notice that five different users struggled with the search bar functionality. That becomes a cluster of evidence. But here is the nuance that separates good analysis from great analysis. You must distinguish between user error and design error. If a user clicks the wrong button, is it because they were careless or because the button looked clickable when it was not. You cannot simply blame the user to protect your design. In usability engineering,&quot;
+  }
+]
+
+Assignment specification text:
+ASSIGNMENT OVERVIEW
+Assignment Title: Usability Design Project. Assignment Type: Project.
+Weighting: 60 percent. Due Week: 12. Word Count: Interactive Prototype
+and 3000 word report.
+LEARNING OUTCOMES ASSESSED
+This assignment assesses the following learning outcomes. LO3: Develop
+interactive prototypes based on usability principles. LO4: Conduct and
+report on usability testing sessions.
+TASK DESCRIPTION
+Students are required to design, prototype, and evaluate a software
+interface for a specified user group. You must apply design principles
+and standards to create a solution that addresses specific user needs
+identified in the scenario provided on the unit website. The project
+involves creating an interactive prototype that demonstrates key
+functionality and user flows. Following prototype development, you must
+plan and conduct usability testing sessions with at least three real
+participants. Finally, you will analyze the data collected from these
+sessions to identify usability issues and propose evidence-based
+improvements. The work should reflect inclusive design practices and
+accessibility standards discussed throughout the latter half of the unit.
+This comprehensive project simulates a professional usability engineering
+lifecycle. You are expected to demonstrate critical thinking in your
+design choices and rigor in your testing methodology. The final
+deliverable must demonstrate a clear connection between user feedback and
+design refinement.
+SPECIFIC REQUIREMENTS
+1. A functional interactive prototype created using industry-standard
+tools such as Figma or Adobe XD. 2. A written report of 3000 words
+excluding references and appendices. 3. Documentation of the design
+process including rationale for interface choices and alignment with
+standards. 4. A usability test plan detailing tasks, participants, and
+success metrics. 5. Analysis of test results including qualitative
+feedback and quantitative performance data such as time on task. 6.
+Recommendations for design iterations based on testing findings. 7.
+Evidence of accessibility considerations in the final design including
+contrast and navigation.
+SUBMISSION FORMAT
+Submit all files via the university learning management system portal.
+The report must be submitted as a single PDF document. The prototype
+should be submitted as a shareable link or video demonstration depending
+on the tool used. Name your files using the convention
+StudentID_IT305_A2. Ensure all links are accessible to unit staff before
+
+submission deadline. Late submissions will incur penalties as per unit
+policy. Only one submission attempt is permitted unless special
+consideration is granted.
+ACADEMIC INTEGRITY NOTE
+All work submitted must be your own original creation. Collusion or
+plagiarism will be treated according to university academic integrity
+policy. You may discuss general concepts with peers, but the design,
+testing, and writing must be completed individually without sharing
+files. Proper citation is required for any external sources or tools used
+during the project. Use APA style for all references. Breaches of
+academic integrity may result in failure of the assignment or the unit
+and further disciplinary action.
+SUPPORT RESOURCES
+Content from weeks 5 through 12 is directly relevant to this assignment.
+Key topics include Design Principles and Standards, Prototyping
+Techniques, Interaction Design, Accessibility and Inclusive Design,
+Planning Usability Testing, Conducting Usability Tests, Data Analysis and
+Reporting, and Emerging Trends in UX. Consult lecture materials and
+tutorial exercises from these weeks for guidance. Unit staff are
+available during consultation hours for specific queries. Additional
+reading lists are available on the library portal.
+
+Student submission text:
+Student ID: 20481562_IT305_A2
+**Usability Design Project: CampusEats Mobile Application**
+**Interactive Prototype Link:**
+[Figma Prototype Link - CampusEats](https://www.figma.com/proto/exampleCam
+pusEats)
+**Video Demonstration Link:**
+[Video Walkthrough of Key User Flows](https://www.examplevideo.com/campuse
+ats)
+---
+### 1.0 Introduction
+This report details the design, prototyping, and evaluation of
+CampusEats, a mobile application designed to streamline food ordering for
+university students on campus. The project was undertaken as part of the
+IT305 Usability Design Project, addressing the specific user need
+identified in the unit scenario: reducing wait times and cognitive load
+associated with ordering food during peak university hours. The primary
+user group is time-poor students who require a quick, accessible, and
+reliable way to browse menus, customize orders, and pay without
+navigating complex interfaces or waiting in long physical queues. This
+report documents the full usability engineering lifecycle, from initial
+design rationale through to evidence-based recommendations for iteration.
+The design process was guided by established usability principles and
+accessibility standards, with a focus on creating an interactive
+prototype that demonstrates key functionality. Subsequent usability
+testing with three participants provided both qualitative and
+quantitative data, which was analysed to identify critical usability
+issues and propose targeted design refinements.
+### 2.0 Design Rationale and Accessibility
+The design of CampusEats was driven by the core principles of consistency
+and feedback, as discussed in Week 5 lecture materials. The goal was to
+create an interface that feels immediately familiar to the target user
+group, thereby reducing the learning curve and allowing students to
+complete their primary task?ordering food?with maximum efficiency.
+**2.1 Consistency and Platform Standards**
+A key design decision was to adhere strictly to external consistency by
+aligning the prototype with Google?s Material Design guidelines. This was
+a deliberate choice, as the majority of the target user group uses
+Android devices, and leveraging their existing mental models of how
+Android applications behave would minimise cognitive friction. For
+instance, the primary navigation employs a standard bottom navigation bar
+with clearly labelled icons for ?Home?, ?Search?, ?Orders?, and
+?Profile?. This pattern is ubiquitous in mobile applications, and placing
+
+it at the bottom of the screen ensures it is reachable with a thumb, a
+key ergonomic consideration. Internal consistency was maintained by using
+a uniform design language for all interactive elements. All primary
+call-to-action buttons, such as ?Add to Cart? or ?Place Order?, are the
+same shade of campus-branded teal (#008080) and are consistently placed
+at the bottom-right of the screen. This predictability means that once a
+user learns the function of this button on one screen, they can transfer
+that knowledge to every other screen in the application.
+**2.2 Feedback Mechanisms**
+Feedback was integrated into every interactive state to ensure the
+system?s visibility, a concept central to Nielsen?s heuristics. When a
+user taps ?Add to Cart?, a clear animation occurs: the item appears to
+fly into the cart icon in the navigation bar, and a subtle haptic pulse
+is triggered. This multimodal feedback confirms the action without
+requiring the user to navigate away from the menu. For error states, the
+design avoids generic alerts. If a user tries to submit an order with an
+empty cart, a contextual snackbar appears at the bottom of the screen
+with the message, ?Your cart is empty. Add items before placing an
+order.? This snackbar automatically dismisses after a few seconds,
+providing clear guidance without blocking the user?s flow. A progress
+indicator is displayed during payment processing, directly addressing the
+user?s need to know the system is working and preventing duplicate
+submissions.
+**2.3 Accessibility and Inclusive Design**
+Accessibility was considered from the initial wireframing stage, not as a
+retrofit. The design was evaluated against the four WCAG POUR principles
+discussed in Week 8. To ensure the interface is *Perceivable*, all
+non-text content, such as food images and icons, includes descriptive
+alt-text labels in the prototype?s design annotations. Colour is never
+used as the sole means of conveying information; for example, dietary
+labels like ?Vegan? or ?GF? (Gluten-Free) use both a coloured tag and a
+text label. To make the interface *Operable*, all interactive elements
+meet a minimum touch target size of 48x48dp, as recommended by Material
+Design, to accommodate users with motor impairments. The entire core
+flow, from browsing a menu to placing an order, was designed to be fully
+navigable using a keyboard or switch device, with a logical tab order.
+For *Understandable*, the language used throughout the interface is plain
+and direct, avoiding jargon. Error messages are written to be
+constructive, not punitive. Finally, to ensure the design is *Robust*,
+the prototype was built using standard Figma components that can be
+easily translated into semantic code, ensuring compatibility with screen
+readers like TalkBack. A high-contrast mode was also considered, with the
+primary text maintaining a contrast ratio of at least 4.5:1 against its
+background, verified using a contrast checker plugin.
+### 3.0 Usability Test Plan
+The usability test was designed to evaluate the efficiency and
+learnability of the core ordering flow within the CampusEats prototype.
+
+The plan was structured to gather both quantitative performance data and
+qualitative insight into user behaviour and satisfaction.
+**3.1 Test Goals and Objectives**
+The primary goal was to identify usability obstacles that prevent users
+from successfully completing a food order. The specific objectives were
+to:
+- Measure the task success rate for the primary ?order a meal? flow.
+- Identify points of friction or confusion within the navigation and
+checkout process.
+- Assess user satisfaction with the overall ordering experience.
+**3.2 Participant Recruitment**
+Three participants were recruited for this study. To move beyond a
+convenience sample of peers, a screening questionnaire was used to select
+participants who matched the target demographic of university students
+but with varying levels of experience with food ordering apps. The final
+participant group consisted of:
+- **Participant 1 (P1):** A 20-year-old design student who uses food
+delivery apps daily.
+- **Participant 2 (P2):** A 25-year-old postgraduate engineering student
+who rarely uses mobile ordering apps.
+- **Participant 3 (P3):** A 22-year-old commerce student who uses apps
+weekly and self-identified as having a repetitive strain injury, making
+keyboard navigation a preference on their laptop, though they used a
+touchscreen for this mobile test.
+This mix provided a range of technology proficiency and physical
+considerations, aligning with inclusive design testing practices.
+**3.3 Tasks and Success Metrics**
+Participants were given two scenario-based tasks to complete. The tasks
+were designed to be goal-oriented, avoiding step-by-step instructions
+that would lead the user.
+- **Task 1 (Browsing and Customisation):** ?You?re looking for a healthy
+lunch option that is under $12. Find a salad that fits your budget,
+customise it to remove an ingredient you don?t like, and add it to your
+cart.? The success metric was the ability to add the correctly customised
+item to the cart. Time on task was recorded.
+- **Task 2 (Checkout and Payment):** ?You?ve decided you?re ready to eat.
+Go to your cart and place the order for pickup, paying with a credit
+card.? The success metric was reaching the final order confirmation
+screen. The number of errors, defined as deviations from the optimal
+path, was recorded.
+**3.4 Methodology**
+The test sessions were conducted in a quiet, private room. Participants
+were given an informed consent form to sign, which outlined the study?s
+purpose, data handling procedures, and their right to withdraw. A
+concurrent think-aloud protocol was employed, where participants were
+asked to verbalise their thoughts as they navigated the prototype. The
+facilitator used neutral prompts like ?What are you looking at now?? when
+
+participants fell silent, carefully avoiding leading questions. Each
+session was screen-recorded, and the facilitator took structured notes on
+a log sheet, capturing task completion, time, errors, and critical
+incidents.
+### 4.0 Analysis of Test Results
+The data from the three usability sessions was collated and analysed to
+identify patterns. The analysis triangulates quantitative performance
+metrics with qualitative observations to uncover the root causes of
+usability issues.
+**4.1 Task Performance Summary**
+The quantitative results revealed a clear usability issue with the
+checkout process.
+- **Task 1 (Browsing and Customisation):** All three participants
+completed this task successfully and efficiently. The average time on
+task was 28 seconds. P2, the least experienced user, commented, ?Oh, the
+filter is right there, that?s easy,? indicating the menu navigation was
+intuitive.
+- **Task 2 (Checkout and Payment):** This task presented significant
+problems. Only one out of three participants (P1) completed the task
+without assistance. P2 failed to locate the checkout button entirely
+within the allotted two minutes, and P3 succeeded only after a period of
+visible hesitation and exploratory tapping. The average time on task for
+the two who completed it was 65 seconds, more than double the time for
+Task 1.
+**4.2 Qualitative Findings and Triangulation**
+The high failure rate on Task 2 was triangulated with the think-aloud
+data to identify the root cause. The quantitative data showed *what* was
+happening (failure to checkout), and the qualitative data explained *why*.
+P2, while staring at the cart screen, said, ?Okay, I see my salad? I want
+to pay for it, but I don?t see a ?pay now? or ?next? button. Is it hidden
+in a menu?? This was a critical incident. P3 also expressed confusion,
+muttering, ?I?m looking for the checkout? maybe it?s up top? No? down
+here? Oh, there it is,? before finally tapping the correct button after a
+15-second delay. The triangulation of the 66% failure/hesitation rate
+with these direct quotes clearly indicates that the ?Place Order?
+button?s visual design and placement did not match the users? mental
+models. It lacked sufficient visual prominence and was not located where
+users expected a primary action button to be. A secondary finding was
+that P3, who has a motor impairment, found the small ?remove? icon on the
+customisation screen slightly difficult to tap precisely, though they did
+not fail the task.
+**4.3 Severity Ratings**
+Identified issues were rated using a severity scale adapted from
+Nielsen?s model, considering both impact and frequency.
+- **Issue 1: Checkout Button Discoverability (Severity: 3 - Major).**
+This issue prevented two users from completing the primary task
+
+efficiently and caused significant delay for a third. It is a major
+problem that must be fixed as a high priority because it directly blocks
+the core transaction.
+- **Issue 2: Small Touch Target for Customisation (Severity: 2 -
+Minor).** This caused slight physical difficulty for one user but did not
+lead to task failure. It is a minor usability irritant that should be
+addressed to improve the experience for users with motor impairments,
+aligning with inclusive design goals.
+### 5.0 Recommendations for Design Iterations
+Based on the analysis, the following evidence-based recommendations are
+proposed for the next design iteration. These are specific and
+actionable, directly addressing the usability issues uncovered during
+testing.
+**5.1 Recommendation for Checkout Button (Addresses Issue 1)**
+The primary recommendation is to redesign the cart screen to increase the
+discoverability of the checkout action. The current design places a
+text-only ?Place Order? button within the cart summary. This should be
+replaced with a highly visible, fixed call-to-action button at the bottom
+of the screen. The button should be the branded teal colour, fill the
+full width of the screen, and include both a clear text label (?Place
+Order - $11.50?) and a forward arrow icon. This change leverages the
+external consistency of standard e-commerce patterns where the primary
+action is a large, sticky button at the bottom. This will ensure the
+button is immediately visible and reachable, directly resolving the
+mental model mismatch identified by P2 and P3.
+**5.2 Recommendation for Customisation Touch Targets (Addresses Issue 2)**
+To improve accessibility for users with motor impairments, the touch
+target size for the ?remove? and ?add? icons in the customisation flow
+should be increased from the current 24x24dp to at least 48x48dp. The
+visual icon size can remain the same, but the interactive hit area should
+be expanded. This is a simple, high-impact change that adheres to WCAG
+Operable guidelines and will prevent accidental taps and physical strain,
+as experienced by P3.
+**5.3 Recommendation for Post-Iteration Testing**
+Following these changes, a second round of usability testing is
+recommended, focusing specifically on the checkout flow. This test should
+recruit at least one new participant who relies on a screen reader to
+further validate the robustness of the design, ensuring the new button is
+properly labelled and announced by assistive technology.
+### 6.0 Conclusion
+This project successfully simulated a professional usability engineering
+lifecycle, from applying design principles to an interactive prototype
+through to conducting empirical testing and proposing evidence-based
+iterations. The initial design for CampusEats was grounded in Material
+
+Design standards and WCAG accessibility principles, resulting in an
+intuitive browsing experience. However, the usability testing was crucial
+in revealing a significant flaw in the checkout process discoverability
+that was not apparent during the design phase. The triangulation of
+quantitative failure rates with qualitative user commentary provided a
+clear, unbiased diagnosis of the problem. The resulting recommendations
+are not subjective opinions but direct responses to observed user
+behaviour. This process demonstrates that a user-centred design approach,
+even with a small sample size, is invaluable for identifying and
+rectifying critical usability barriers before development, ultimately
+saving resources and ensuring a more equitable and efficient product for
+all students.
+---
+### References
+Google. (n.d.). *Material Design*. https://material.io/design
+Nielsen, J. (1994). Severity Ratings for Usability Problems. *Nielsen
+Norman Group*. https://www.nngroup.com/articles/how-to-rate-the-severity-o
+f-usability-problems/
+World Wide Web Consortium. (2018). *Web Content Accessibility Guidelines
+(WCAG) 2.1*. https://www.w3.org/TR/WCAG21/
+---
+### Appendix A: Usability Test Log Sheet (Sample)
+| Participant | Task | Success (Y/N) | Time (sec) | Errors | Critical
+Incidents / Quotes |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| P1 | Task 1 | Y | 22 | 0 | ?The filter is easy to find.? |
+| P1 | Task 2 | Y | 45 | 0 | Hesitated briefly at cart screen. |
+| P2 | Task 1 | Y | 35 | 0 | ?Oh, the filter is right there, that?s
+easy.? |
+| P2 | Task 2 | N | 120+ | 3 | ?I don?t see a ?pay now? or ?next? button.
+Is it hidden in a menu?? |
+| P3 | Task 1 | Y | 27 | 1 | Minor difficulty tapping the small ?remove?
+icon. |
+| P3 | Task 2 | Y | 85 | 2 | ?I?m looking for the checkout? maybe it?s up
+top? No? down here? Oh, there it is.? |
+### Appendix B: Informed Consent Form Template
+[Standard university consent form template would be attached here]</pre>
+        </details>
+            
+        <details class="text-details">
+          <summary>Feedback Generation Raw Response</summary>
+          <pre>{
+  &quot;overall_feedback&quot;: {
+    &quot;overall_comment&quot;: &quot;This is a well-structured and comprehensive submission that clearly demonstrates the usability engineering lifecycle. The student has successfully connected design rationale to established standards (Material Design, WCAG) and provided a clear test plan with evidence-based recommendations. The triangulation of quantitative and qualitative data is a particular strength. However, the report would benefit from a more critical and nuanced application of accessibility principles beyond surface-level compliance, and the data analysis, while sound, could be deepened with richer synthesis and more sophisticated severity rating justification. The prototype functionality is described but not directly observable, so feedback is based on the reported evidence.&quot;,
+    &quot;key_strengths&quot;: [
+      &quot;Excellent triangulation of quantitative metrics and qualitative think-aloud data to diagnose the root cause of the checkout usability issue.&quot;,
+      &quot;Clear and well-justified alignment of design choices with Material Design guidelines and WCAG POUR principles.&quot;,
+      &quot;Structured usability test plan with goal-oriented tasks, defined success metrics, and consideration of participant diversity beyond convenience sampling.&quot;,
+      &quot;Actionable and specific design recommendations that directly address findings from the usability test.&quot;,
+      &quot;Professional report structure with logical flow, clear headings, and appropriate appendices.&quot;
+    ],
+    &quot;priority_improvements&quot;: [
+      &quot;Deepen the accessibility analysis by moving beyond stating compliance to critically discussing the trade-offs and limitations of the implemented inclusive design features.&quot;,
+      &quot;Strengthen the data analysis by providing a more detailed justification for severity ratings, explicitly linking them to frequency and impact metrics from the test data.&quot;,
+      &quot;Provide more specific evidence of the interactive prototype&#x27;s complexity and functionality, such as detailing the number of screens, interactive states, or advanced features beyond the two tested tasks.&quot;,
+      &quot;Expand the discussion of the usability test methodology to include reflections on facilitator technique, limitations of the think-aloud protocol, or potential biases introduced during the sessions.&quot;
+    ],
+    &quot;overall_grade_band&quot;: &quot;D&quot;
+  },
+  &quot;criterion_feedback&quot;: [
+    {
+      &quot;criterion_id&quot;: 5,
+      &quot;criterion_name&quot;: &quot;Interactive Prototype Functionality&quot;,
+      &quot;strengths&quot;: &quot;The submission provides a clear link to a Figma prototype and a video walkthrough, which is the expected format. The report describes a core user flow (browse, customise, checkout) that functions sufficiently to enable usability testing. The description of interactive feedback mechanisms, such as the &#x27;fly-in&#x27; animation and haptic pulse for &#x27;Add to Cart&#x27;, indicates attention to detailed interaction design beyond basic screen transitions.&quot;,
+      &quot;areas_for_improvement&quot;: &quot;The evidence for &#x27;complex user flows&#x27; and &#x27;mastery of industry-standard tools&#x27; is limited. The tested tasks cover a linear, single-path flow. There is no description of more complex interactions like error handling for payment failure, account creation, order history review, or advanced customisation states, which would demonstrate a fully functional prototype. The report mentions a video, but the functionality cannot be directly verified from the text alone.&quot;,
+      &quot;improvement_suggestion&quot;: &quot;To reach a higher level, the prototype should demonstrate multiple, interconnected user flows with conditional logic (e.g., empty states, error states, loading states). The report should explicitly detail the number of unique screens, interactive components, and the use of advanced Figma features like auto-layout, variants, and interactive components to demonstrate tool mastery. A more detailed walkthrough of the prototype&#x27;s architecture in the report would strengthen this section.&quot;,
+      &quot;suggested_level&quot;: &quot;C&quot;,
+      &quot;evidence_summary&quot;: &quot;The student provides prototype and video links. The report describes a functional core flow with specific interactive feedback (animation, haptic pulse, snackbar errors). However, the described functionality appears limited to a single, linear &#x27;happy path&#x27; without evidence of complex, branching user flows or advanced tool features, which aligns with a &#x27;basic functionality&#x27; descriptor.&quot;
+    },
+    {
+      &quot;criterion_id&quot;: 6,
+      &quot;criterion_name&quot;: &quot;Design Rationale and Accessibility&quot;,
+      &quot;strengths&quot;: &quot;The design rationale is well-articulated and directly linked to established principles. The justification for external consistency using Material Design and internal consistency with the branded teal button is clear and user-centred. The application of the WCAG POUR principles is comprehensive, addressing perceivability (alt-text, colour), operability (touch targets, keyboard nav), understandability (plain language), and robustness (semantic components). The consideration of accessibility &#x27;from the initial wireframing stage&#x27; is a strong conceptual point.&quot;,
+      &quot;areas_for_improvement&quot;: &quot;The accessibility discussion, while thorough, remains largely descriptive and checklist-like. It states compliance but lacks critical depth. For example, it mentions &#x27;a high-contrast mode was also considered&#x27; but does not confirm implementation or discuss the design challenges involved. The claim of full keyboard/switch navigability is stated but not evidenced in the test plan or results. The rationale for inclusive design could be strengthened by discussing how the design specifically addresses the needs of the recruited participant with a motor impairment beyond just touch target size.&quot;,
+      &quot;improvement_suggestion&quot;: &quot;Critically evaluate the accessibility implementation. Instead of just stating WCAG compliance, discuss specific design trade-offs. For instance, how did you balance aesthetic design with the 4.5:1 contrast ratio? Provide a specific example of a component&#x27;s design annotation for a screen reader. In the test plan, include a task or validation step specifically designed to assess an accessibility feature, such as testing the logical tab order or confirming alt-text is contextually appropriate.&quot;,
+      &quot;suggested_level&quot;: &quot;D&quot;,
+      &quot;evidence_summary&quot;: &quot;The report provides a strong, well-justified alignment with Material Design and a comprehensive mapping to all four WCAG POUR principles. Inclusive design is evident in the consideration of touch targets and non-colour-dependent labels. However, the application lacks critical nuance and reads as a compliance checklist rather than a deeply integrated practice, preventing it from reaching the &#x27;comprehensive&#x27; and &#x27;seamlessly integrated&#x27; standard of an HD.&quot;
+    },
+    {
+      &quot;criterion_id&quot;: 7,
+      &quot;criterion_name&quot;: &quot;Usability Testing Plan and Execution&quot;,
+      &quot;strengths&quot;: &quot;The test plan is detailed and includes all necessary components: clear goals, well-written scenario-based tasks that avoid leading the user, defined quantitative and qualitative metrics, and a participant recruitment strategy that considers diversity beyond convenience sampling. The use of a screening questionnaire and the inclusion of a participant with a motor impairment demonstrates good planning. The methodology section correctly identifies key facilitation techniques like neutral prompting and informed consent.&quot;,
+      &quot;areas_for_improvement&quot;: &quot;The success metrics, while present, could be more precise. &#x27;Time on task&#x27; is recorded, but a benchmark for success (e.g., &#x27;task should be completed in under 45 seconds&#x27;) is not pre-defined. The test plan mentions only three participants, which is the bare minimum; a stronger plan would justify this number with reference to Nielsen&#x27;s curve or acknowledge the limitations of the small sample size. The execution details are somewhat generic; there is no reflection on how the facilitator handled specific moments, such as when P2 failed the task, or any deviations from the plan.&quot;,
+      &quot;improvement_suggestion&quot;: &quot;Define precise, benchmarked success metrics in the plan (e.g., &#x27;A task is considered a success if completed in under 60 seconds with fewer than 2 errors&#x27;). Justify the participant sample size with academic literature (e.g., Nielsen, 2000). In the results section, include a brief, critical reflection on the test execution itself—were there any leading questions accidentally asked? How did the facilitator&#x27;s presence affect P3&#x27;s performance? This demonstrates professional-level self-awareness.&quot;,
+      &quot;suggested_level&quot;: &quot;D&quot;,
+      &quot;evidence_summary&quot;: &quot;The test plan is detailed with clear, goal-oriented tasks, a considered participant recruitment strategy, and a sound methodology using think-aloud protocol. The plan meets the requirements for a &#x27;detailed&#x27; and &#x27;competent&#x27; execution. It falls short of &#x27;rigorous&#x27; due to a lack of pre-defined, benchmarked success metrics and a limited justification for the small sample size, which are hallmarks of professional-level planning.&quot;
+    },
+    {
+      &quot;criterion_id&quot;: 8,
+      &quot;criterion_name&quot;: &quot;Data Analysis and Recommendations&quot;,
+      &quot;strengths&quot;: &quot;The analysis effectively triangulates quantitative data (task failure rate, time on task) with qualitative quotes to identify the root cause of the checkout button issue. This is a clear strength. The severity ratings are a good addition and the recommendations are specific, actionable, and directly traceable to the findings. The recommendation to increase the touch target size for the customisation icons is a precise, developer-ready instruction.&quot;,
+      &quot;areas_for_improvement&quot;: &quot;The analysis lacks depth in synthesizing the data. It focuses heavily on one major issue. The severity ratings, while present, are not deeply justified with a systematic analysis of frequency and impact across all participants. For example, the &#x27;Minor&#x27; rating for the touch target issue could be better justified by discussing its impact on task completion versus user comfort. The analysis is largely descriptive of what happened, rather than deeply interpretive of the underlying cognitive or perceptual failures. The recommendation for post-iteration testing is good but generic.&quot;,
+      &quot;improvement_suggestion&quot;: &quot;Deepen the analysis by creating an affinity diagram or a consolidated issue matrix in the appendix. For each issue, systematically report its frequency (how many users), impact (did it block the task?), and persistence. Use this matrix to more rigorously justify the severity ratings. When discussing the checkout button, analyse *why* the visual design failed based on Gestalt principles or visual hierarchy theory, not just user quotes. This moves the analysis from descriptive to deeply interpretive.&quot;,
+      &quot;suggested_level&quot;: &quot;C&quot;,
+      &quot;evidence_summary&quot;: &quot;The analysis presents data clearly and connects findings to design changes, particularly through the triangulation of data types. However, the interpretation lacks depth, focusing on a single major issue without a broader synthesis of all findings. The severity ratings are a good start but lack rigorous, systematic justification. This aligns with an analysis that &#x27;presents data but lacks depth in connecting findings to design changes&#x27;.&quot;
+    },
+    {
+      &quot;criterion_id&quot;: 9,
+      &quot;criterion_name&quot;: &quot;Report Structure and Academic Integrity&quot;,
+      &quot;strengths&quot;: &quot;The report is professionally structured with logical headings, clear language, and a complete set of appendices. The writing is concise and easy to follow. APA referencing is attempted for key sources (Material Design, Nielsen, WCAG), and an academic integrity note is addressed. The inclusion of a test log sheet and consent form template in the appendices adds to the report&#x27;s credibility.&quot;,
+      &quot;areas_for_improvement&quot;: &quot;The referencing is incomplete and contains formatting errors. The Nielsen (1994) reference is incorrectly dated (the article is from 1995 or later) and the URL is for a different article on severity ratings. The WCAG reference is generic and should specify the exact guideline used. In-text citations are sparse; key concepts like &#x27;Nielsen&#x27;s heuristics&#x27; and &#x27;affinity diagramming&#x27; are mentioned without citation. The word count cannot be verified but the report appears concise, potentially near the lower limit for a project of this weighting.&quot;,
+      &quot;improvement_suggestion&quot;: &quot;Conduct a thorough edit of all references to ensure APA 7th edition compliance. Verify all URLs and dates. Add in-text citations for all established usability principles and methods (e.g., Nielsen, 1994 for heuristics; Brooke, 1996 for SUS if used). Ensure the reference list matches the citations. If the report is under the 3000-word guideline, expand the analysis and rationale sections to add the necessary depth and demonstrate a more comprehensive engagement with the topic.&quot;,
+      &quot;suggested_level&quot;: &quot;C&quot;,
+      &quot;evidence_summary&quot;: &quot;The report has a clear, professional structure and the writing is understandable. However, the referencing contains noticeable errors (incorrect dates, generic citations) and lacks completeness, which prevents it from being &#x27;correct&#x27; or &#x27;flawless&#x27;. The structure and writing are adequate, but the referencing issues align with a &#x27;mostly correct&#x27; descriptor.&quot;
+    }
+  ]
+}</pre>
+        </details>
+            
+        </div>
+      </details>
+    
+    </section>
+    
+  </main>
+  <script>
+    const root = document.documentElement;
+    const buttons = Array.from(document.querySelectorAll("[data-theme-choice]"));
+    const storageKey = "feedbackLensTheme";
+    function applyTheme(theme) {
+      if (theme === "system") {
+        root.removeAttribute("data-theme");
+      } else {
+        root.setAttribute("data-theme", theme);
+      }
+      buttons.forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.themeChoice === theme));
+      });
+      localStorage.setItem(storageKey, theme);
+    }
+    buttons.forEach((button) => {
+      button.addEventListener("click", () => applyTheme(button.dataset.themeChoice));
+    });
+    applyTheme(localStorage.getItem(storageKey) || "system");
+  </script>
+</body>
+</html>

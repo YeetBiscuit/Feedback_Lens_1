@@ -5,11 +5,15 @@ import textwrap
 from pathlib import Path
 
 from feedback_lens.feedback.review import (
+    DETAIL_FULL,
+    DETAIL_RESULT_ONLY,
     fetch_generation_review,
     format_generation_review_markdown,
+    format_generation_reviews_html,
     generation_review_to_export_dict,
     list_generation_run_ids,
     list_generation_runs,
+    parse_json_value,
     parse_json_text_list,
 )
 from feedback_lens.paths import DB_PATH
@@ -31,17 +35,14 @@ def build_parser() -> argparse.ArgumentParser:
         "show",
         help="Show one generation run in detail.",
     )
-    show_parser.add_argument("generation_id", nargs="?", type=int)
-    show_parser.add_argument("--show-prompt", action="store_true")
-    show_parser.add_argument("--show-response", action="store_true")
-    show_parser.add_argument("--full-chunks", action="store_true")
-    show_parser.add_argument("--chunk-chars", type=int, default=240)
+    show_parser.add_argument("generation_id", nargs="?", type=int, metavar="generation_run_id")
+    _add_detail_mode_options(show_parser)
 
     export_parser = subparsers.add_parser(
         "export",
-        help="Export one or more generation runs as JSON or Markdown.",
+        help="Export one or more generation runs as JSON, Markdown, or HTML.",
     )
-    export_parser.add_argument("generation_id", nargs="?", type=int)
+    export_parser.add_argument("generation_id", nargs="?", type=int, metavar="generation_run_id")
     export_parser.add_argument(
         "--all",
         action="store_true",
@@ -55,7 +56,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     export_parser.add_argument(
         "--format",
-        choices=["json", "markdown", "md"],
+        choices=["json", "markdown", "md", "html"],
         default="json",
         help="Export format. Defaults to json.",
     )
@@ -64,22 +65,24 @@ def build_parser() -> argparse.ArgumentParser:
         "-o",
         help="Write the export to this file. Defaults to standard output.",
     )
-    export_parser.add_argument("--include-prompt", action="store_true")
-    export_parser.add_argument("--include-response", action="store_true")
-    export_parser.add_argument(
-        "--include-chunks",
-        action="store_true",
-        help="Include retrieved chunk text in the export.",
-    )
-    export_parser.add_argument(
-        "--full-chunks",
-        action="store_true",
-        help="Include full chunk text instead of previews when --include-chunks is set.",
-    )
-    export_parser.add_argument("--chunk-chars", type=int, default=240)
+    _add_detail_mode_options(export_parser)
 
     parser.set_defaults(command="show")
     return parser
+
+
+def _add_detail_mode_options(subparser: argparse.ArgumentParser) -> None:
+    subparser.add_argument(
+        "--full",
+        action="store_const",
+        dest="detail_mode",
+        const=DETAIL_FULL,
+        default=DETAIL_RESULT_ONLY,
+        help=(
+            "Include all saved prompts, raw LLM responses, retrieval planner output, "
+            "and full retrieved chunk text."
+        ),
+    )
 
 
 def _print_wrapped(label: str, value: str | None, indent: str = "  ") -> None:
@@ -96,13 +99,6 @@ def _print_wrapped(label: str, value: str | None, indent: str = "  ") -> None:
         replace_whitespace=False,
     )
     print(wrapped)
-
-
-def _format_chunk_text(text: str, limit: int, full_chunks: bool) -> str:
-    cleaned = " ".join(text.split())
-    if full_chunks or len(cleaned) <= limit:
-        return cleaned
-    return f"{cleaned[:limit].rstrip()}..."
 
 
 def _terminal_safe(text: str) -> str:
@@ -142,10 +138,7 @@ def handle_list(limit: int) -> None:
 
 def handle_show(
     generation_id: int | None,
-    show_prompt: bool,
-    show_response: bool,
-    full_chunks: bool,
-    chunk_chars: int,
+    detail_mode: str,
 ) -> None:
     with _connect_review_db() as conn:
         if generation_id is None:
@@ -161,6 +154,7 @@ def handle_show(
     overall = review["overall_feedback"]
     criteria = review["criterion_feedback"]
     retrievals = review["retrieval_records"]
+    planning_records = review.get("retrieval_planning_records", [])
 
     print(f"Generation Run {run['generation_id']}")
     print(
@@ -222,6 +216,45 @@ def handle_show(
             _print_wrapped("Evidence summary", row["evidence_summary"])
             print()
 
+    if detail_mode != DETAIL_FULL:
+        return
+
+    print("Retrieval Planner")
+    if not planning_records:
+        print("(none for this run)")
+    else:
+        for row in planning_records:
+            print(
+                f"- planner_record_id={row['planning_record_id']} status={row['status']} "
+                f"strategy={row['strategy']} provider={row['provider']}:{row['model']}"
+            )
+            print(f"  Prompt template: {row['prompt_template_version']}")
+            print(f"  Started: {row['started_at']} | Completed: {row['completed_at'] or 'still running'}")
+            if row["error_message"]:
+                _print_wrapped("Error", row["error_message"])
+
+            planned_cues = parse_json_value(row["planned_cues_json"])
+            print("  Planned cues:")
+            if isinstance(planned_cues, list) and planned_cues:
+                for cue in planned_cues:
+                    if isinstance(cue, dict):
+                        print(
+                            f"  - {cue.get('order')}. {cue.get('label')} "
+                            f"criteria={cue.get('rubric_criterion_ids')}"
+                        )
+                        _print_wrapped("Cue text", cue.get("text"), indent="    ")
+                        _print_wrapped("Rationale", cue.get("rationale"), indent="    ")
+                    else:
+                        print(f"  - {cue}")
+            else:
+                print("  (none)")
+
+            print("Retrieval Planner Prompt")
+            print(_terminal_safe(row["prompt_text"]) if row["prompt_text"] else "(none)")
+            print("Retrieval Planner Raw Response")
+            print(_terminal_safe(row["raw_response_text"]) if row["raw_response_text"] else "(none)")
+            print()
+
     print("Retrieved Chunks")
     if not retrievals:
         print("(none)")
@@ -241,29 +274,24 @@ def handle_show(
                 f"used_in_prompt={row['used_in_prompt']} | {material_label}{page_label}"
             )
             _print_wrapped("Query", row["query_text"])
-            _print_wrapped(
-                "Chunk text",
-                _format_chunk_text(row["chunk_text"], chunk_chars, full_chunks),
-            )
+            _print_wrapped("Chunk text", row["chunk_text"])
             print()
 
-    if show_prompt:
-        print("Prompt Text")
-        prompt_text = _row_value(run, "prompt_text")
-        if prompt_text is None:
-            print("(not available in this database schema)")
-        else:
-            print(_terminal_safe(prompt_text) if prompt_text else "(none)")
-        print()
+    print("Feedback Generation Prompt")
+    prompt_text = _row_value(run, "prompt_text")
+    if prompt_text is None:
+        print("(not available in this database schema)")
+    else:
+        print(_terminal_safe(prompt_text) if prompt_text else "(none)")
+    print()
 
-    if show_response:
-        print("Raw Response Text")
-        raw_response_text = _row_value(run, "raw_response_text")
-        if raw_response_text is None:
-            print("(not available in this database schema)")
-        else:
-            print(_terminal_safe(raw_response_text) if raw_response_text else "(none)")
-        print()
+    print("Feedback Generation Raw Response")
+    raw_response_text = _row_value(run, "raw_response_text")
+    if raw_response_text is None:
+        print("(not available in this database schema)")
+    else:
+        print(_terminal_safe(raw_response_text) if raw_response_text else "(none)")
+    print()
 
 
 def _write_or_print_export(content: str, output: str | None) -> None:
@@ -284,7 +312,7 @@ def _resolve_export_generation_ids(
     limit: int | None,
 ) -> list[int]:
     if export_all and generation_id is not None:
-        raise ValueError("Provide either a generation_id or --all, not both.")
+        raise ValueError("Provide either a generation_run_id or --all, not both.")
 
     if export_all:
         return list_generation_run_ids(conn, limit=limit)
@@ -304,11 +332,7 @@ def handle_export(
     limit: int | None,
     export_format: str,
     output: str | None,
-    include_prompt: bool,
-    include_response: bool,
-    include_chunks: bool,
-    full_chunks: bool,
-    chunk_chars: int,
+    detail_mode: str,
 ) -> None:
     with _connect_review_db() as conn:
         generation_ids = _resolve_export_generation_ids(
@@ -320,11 +344,7 @@ def handle_export(
         payloads = [
             generation_review_to_export_dict(
                 fetch_generation_review(conn, item),
-                include_prompt=include_prompt,
-                include_response=include_response,
-                include_chunk_text=include_chunks,
-                full_chunks=full_chunks,
-                chunk_chars=chunk_chars,
+                detail_mode=detail_mode,
             )
             for item in generation_ids
         ]
@@ -335,11 +355,17 @@ def handle_export(
 
     if export_format == "json":
         data = (
-            {"export_version": 1, "generation_runs": payloads}
+            {
+                "export_version": 2,
+                "export_mode": detail_mode,
+                "generation_runs": payloads,
+            }
             if export_all
             else payloads[0]
         )
         content = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
+    elif export_format == "html":
+        content = format_generation_reviews_html(payloads)
     else:
         content = "\n---\n\n".join(
             format_generation_review_markdown(payload) for payload in payloads
@@ -364,11 +390,7 @@ def main() -> None:
                 limit=args.limit,
                 export_format=args.format,
                 output=args.output,
-                include_prompt=args.include_prompt,
-                include_response=args.include_response,
-                include_chunks=args.include_chunks,
-                full_chunks=args.full_chunks,
-                chunk_chars=args.chunk_chars,
+                detail_mode=args.detail_mode,
             )
         except ValueError as err:
             parser.error(str(err))
@@ -376,10 +398,7 @@ def main() -> None:
 
     handle_show(
         generation_id=getattr(args, "generation_id", None),
-        show_prompt=getattr(args, "show_prompt", False),
-        show_response=getattr(args, "show_response", False),
-        full_chunks=getattr(args, "full_chunks", False),
-        chunk_chars=getattr(args, "chunk_chars", 240),
+        detail_mode=getattr(args, "detail_mode", DETAIL_RESULT_ONLY),
     )
 
 

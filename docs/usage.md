@@ -148,7 +148,7 @@ The default generation mode is `retrieval`, which uses assignment-spec cues to r
 You can also run the optional planned retrieval strategy:
 
 ```powershell
-python generate_feedback.py 1 --provider qwen --mode retrieval --retrieval-strategy planned --top-k 5
+python generate_feedback.py 1 --provider qwen --mode retrieval --strategy planned --top-k 5
 ```
 
 Planned retrieval adds an intermediate LLM planning step. The planner reads the assignment specification, rubric, and student submission, then generates targeted retrieval cues for the course-material search. The baseline retrieval strategy remains the default.
@@ -166,7 +166,7 @@ What happens:
 1. the system loads the specified submission
 2. it loads the latest spec and latest rubric for that submission's assignment
 3. in baseline `retrieval` mode, it loads the retrieval cues prepared during spec import
-4. with `--retrieval-strategy planned`, it asks the selected LLM to generate targeted retrieval cues from the spec, rubric, and submission
+4. with `--strategy planned`, it asks the selected LLM to generate targeted retrieval cues from the spec, rubric, and submission
 5. in either retrieval strategy, it queries ChromaDB once per cue and deduplicates the matched unit-material chunks
 6. in `direct` mode, it skips both ChromaDB and retrieval planning, then uses only the submission, rubric, and spec inputs
 7. it sends a strict JSON prompt to the selected provider
@@ -198,16 +198,10 @@ Show a specific run:
 python review_generation.py show 1
 ```
 
-Include the full prompt and raw model response:
+Show all captured details for a specific run:
 
 ```powershell
-python review_generation.py show 1 --show-prompt --show-response
-```
-
-Show full retrieved chunk text instead of a preview:
-
-```powershell
-python review_generation.py show 1 --full-chunks
+python review_generation.py show 1 --full
 ```
 
 The review command prints:
@@ -215,8 +209,8 @@ The review command prints:
 - generation metadata such as provider, model, prompt template, status, and timestamps
 - overall feedback and grade band
 - per-criterion feedback in rubric order
-- retrieved chunks with source title, week, rank, score, query text, and chunk preview
-- optional full `prompt_text` and `raw_response_text`
+- by default, only the saved feedback and run metadata
+- with `--full`, the retrieval planner prompt and result if the run used planned retrieval, retrieved chunks with full text, and the raw prompt and response for the feedback generation LLM
 
 Export the latest generation run as JSON:
 
@@ -224,11 +218,19 @@ Export the latest generation run as JSON:
 python review_generation.py export --output exports/latest_generation_run.json
 ```
 
-Export a specific run as Markdown:
+Export a specific run by typing the `generation_run` id after `export`:
 
 ```powershell
 python review_generation.py export 1 --format markdown --output exports/generation_run_1.md
 ```
+
+Export the same run as a self-contained HTML report with light, dark, and system theme controls:
+
+```powershell
+python review_generation.py export 1 --format html --output exports/generation_run_1.html
+```
+
+Full HTML exports keep the feedback results visible and fold the retrieval planner, retrieved chunks, and raw LLM prompt/response details behind expandable sections.
 
 Export all runs as one JSON file:
 
@@ -236,13 +238,13 @@ Export all runs as one JSON file:
 python review_generation.py export --all --output exports/generation_runs.json
 ```
 
-Include the saved prompt, raw model response, and retrieved chunk text:
+Capture all details for a selected run:
 
 ```powershell
-python review_generation.py export 1 --include-prompt --include-response --include-chunks --output exports/generation_run_1_full.json
+python review_generation.py export 1 --full --output exports/generation_run_1_full.json
 ```
 
-By default, exports include generation metadata, overall feedback, criterion feedback, and retrieved chunk metadata. Prompt text, raw model responses, and retrieved chunk text are opt-in because they can be long and may contain sensitive student or assessment content.
+By default, export produces a result-only file with generation metadata, overall feedback, and criterion feedback. `--full` additionally includes the retrieval planner prompt, raw planner response, normalized planned cues, retrieved chunks with full text, and the raw prompt and response for the feedback generation LLM. Full exports can be long and may contain sensitive student or assessment content.
 
 If you still want raw SQL, `python main.py` option `9` remains available.
 
