@@ -1,44 +1,374 @@
-{
-  "evaluated_file": "exports/generation_run_6_full_planner.json",
-  "evaluated_model": "gemini-3-flash-preview",
-  "pipeline_version": "planned_retrieval_v1",
-  "student_identifier": "a1-heuristic-evaluation-report_P_synthetic",
-  "gemini_judge": {
-    "judge_model": "gemini-3-flash-preview",
-    "note": "self-evaluation - same model, potential bias",
-    "scores": {
-      "grounding": {
-        "score": 5,
-        "reason": "The feedback is strongly grounded in both the assessment requirements (referencing report structure and APA) and course-specific materials (mentioning Week 2 concepts, ISO 9241 metrics, and tutorial worksheets). It demonstrates a clear understanding of how the submission relates to the unit's pedagogical goals."
+[
+  {
+    "input_file": "exports/generation_run_6_full_planner.json",
+    "student_identifier": "a1-heuristic-evaluation-report_P_synthetic",
+    "evaluated_model": "gemini-3-flash-preview",
+    "pipeline_version": "planned_retrieval_v1",
+    "ai_grade_band": "D",
+    "judges": {
+      "gemini": {
+        "model": "gemini-3-flash-preview",
+        "note": "self-evaluation - same model family, potential bias",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is exceptionally well-grounded in both the assessment context and the course materials. It references specific week-by-week concepts (Week 1 ISO metrics, Week 2 cognitive limits, and Week 4 heuristics) that align with the lecture transcripts and sample solutions. Furthermore, it utilizes the 'tutorial_sheet' to provide a specific, actionable suggestion for the methodology section, showing it is deeply integrated with the provided unit resources. The feedback also correctly identifies a subtle misapplication of Nielsen's heuristics\u2014distinguishing between 'Visibility of System Status' and 'Recognition rather than Recall'\u2014which demonstrates high-quality grounding in the specific usability theory taught in the course.",
+            "evidence": "The mapping for Issue 1 (Search Bar Visibility) to 'Visibility of System Status' is slightly inaccurate, as that heuristic usually refers to the system's current state... explicitly listing the three primary tasks (as suggested in the tutorial worksheet)... The connection to human cognition (Week 2) is present but could be more detailed regarding specific cognitive limits like working memory capacity."
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback is highly precise and directly references the unique content of the student's submission. It identifies the specific application evaluated (QuickEats), mentions specific user contexts described by the student (the 'distracted' mobile user), and provides a targeted critique of the student's application of a specific heuristic to a specific interface element (Search Bar Visibility). It goes beyond generic praise by identifying exactly which mapping was inaccurate and suggesting specific, relevant alternatives based on the student's findings.",
+            "evidence": "\u201cThe mapping for Issue 1 (Search Bar Visibility) to 'Visibility of System Status' is slightly inaccurate, as that heuristic usually refers to the system's current state...\u201d, \u201c...correctly identifying the 'distracted' context of use for mobile users.\u201d, and \u201c...explicitly listing the three primary tasks (as suggested in the tutorial worksheet)...\u201d"
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback is exceptionally actionable as it provides concrete, specific, and prioritized steps for improvement. Rather than offering vague advice, it suggests precise alternative heuristics to use, specific cognitive psychology terms to include, and methodological additions that directly align with the rubric and course materials. It clearly explains the 'how' and 'why' for each suggestion.",
+            "evidence": "Improvement suggestions include: \"Consider mapping hidden navigation or search elements to 'Recognition rather than Recall' or 'Aesthetic and Minimalist Design' for greater precision\", \"specify how the design change reduces extraneous load to demonstrate a deeper mastery\", and \"explicitly define the critical user paths (e.g., 'searching for a specific restaurant') before starting the evaluation to provide more focus.\""
+          }
+        }
       },
-      "specificity": {
-        "score": 5,
-        "reason": "The feedback provides a precise analysis of the student's work, identifying specific strengths and weaknesses such as the misapplication of 'Visibility of System Status' to a navigation element (Issue 1). It avoids generic praise, focusing on the actual content of the QuickEats report."
-      },
-      "actionability": {
-        "score": 5,
-        "reason": "The improvement suggestions are concrete, prioritized, and easy to follow. By suggesting specific critical user paths and explaining how to better apply cognitive load theory, the feedback tells the student exactly what to change, why it matters, and how it will improve their performance."
-      },
-      "overall_quality": "This is an excellent example of high-quality feedback. It adheres to Hattie and Timperley\u2019s principles by addressing 'Where am I going?' (criteria), 'How am I going?' (specific performance), and 'Where to next?' (actionable steps) with professional clarity."
+      "qwen": {
+        "model": "qwen-plus",
+        "note": "cross-model evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is strongly grounded in both the assessment specification and course materials. It consistently references explicit requirements from the assignment brief (e.g., 'distracted context of use for mobile users', 'three primary tasks', 'critical user paths'), rubric criteria (e.g., 'Context and Methodological Framework', 'Usability Issue Analysis and Evidence'), and specific course resources (e.g., 'tutorial worksheet', 'Week 2' cognition concepts, 'ISO 9241 metrics'). Critiques are precise and theory-accurate \u2014 for example, correcting the heuristic mapping for Issue 1 by citing conceptual distinctions between Nielsen\u2019s heuristics ('Visibility of System Status' vs. 'Recognition rather than Recall' or 'Aesthetic and Minimalist Design'), which reflects accurate engagement with taught material and avoids hallucination. No unsupported claims, generic advice, or out-of-scope expectations appear; all suggestions (e.g., defining critical user paths, specifying working memory capacity) directly align with stated learning outcomes (LO1, LO2), unit scope, and provided resources like the tutorial_sheet and lecture_transcript.",
+            "evidence": [
+              "'distracted' context of use for mobile users",
+              "explicitly listing the three primary tasks (as suggested in the tutorial worksheet)",
+              "mapping for Issue 1 (Search Bar Visibility) to 'Visibility of System Status' is slightly inaccurate, as that heuristic usually refers to the system's current state rather than element placement",
+              "Consider mapping hidden navigation or search elements to 'Recognition rather than Recall' or 'Aesthetic and Minimalist Design' for greater precision",
+              "connection to human cognition (Week 2) is present but could be more detailed regarding specific cognitive limits like working memory capacity",
+              "integration of ISO 9241 metrics and cognitive concepts from the course materials"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 4,
+            "reason": "The feedback demonstrates strong specificity by directly referencing the student\u2019s actual submission \u2014 including the selected app (QuickEats), the exact issue (Issue 1: Search Bar Visibility), its location ('on the home screen... below the fold'), and the student\u2019s own reasoning ('violates the heuristic of Visibility of System Status'). It identifies a concrete misalignment (mapping hidden search to 'Visibility of System Status' instead of more appropriate heuristics like 'Recognition rather than Recall') and grounds the critique in course materials (e.g., tutorial worksheet\u2019s emphasis on defining primary tasks). While it does not quote verbatim from the student\u2019s incomplete Issue 1 description (which cuts off mid-sentence), it accurately infers and engages with the student\u2019s stated observation and rationale. The suggestions are tied to observable, localized features\u2014not generic advice.",
+            "evidence": [
+              "'Issue 1 (Search Bar Visibility) to 'Visibility of System Status' is slightly inaccurate, as that heuristic usually refers to the system's current state rather than element placement.'",
+              "'The mapping for Issue 1 (Search Bar Visibility) to 'Visibility of System Status' is slightly inaccurate...'",
+              "'Consider mapping hidden navigation or search elements to 'Recognition rather than Recall' or 'Aesthetic and Minimalist Design' for greater precision.'",
+              "'You provided a clear description of the QuickEats app and its target audience, correctly identifying the 'distracted' context of use for mobile users.'",
+              "'explicitly define the critical user paths (e.g., 'searching for a specific restaurant') before starting the evaluation'"
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 4,
+            "reason": "The feedback provides clear, practical, and assessment-aligned guidance for improvement across all rubric criteria. Each 'Improvement suggestion' directly tells the student *what* to do (e.g., 'explicitly define the critical user paths', 'consider mapping hidden navigation... to Recognition rather than Recall', 'specify how the design change reduces extraneous load') and *why* it matters (e.g., 'to provide more focus', 'for greater precision', 'to demonstrate a deeper mastery of the theory'). Suggestions are grounded in course materials (e.g., referencing the tutorial worksheet\u2019s emphasis on primary tasks) and rubric expectations (e.g., linking fixes to 'D'-level refinements). However, while highly usable, the suggestions are not *fully prioritised* (e.g., no indication of which revision is most urgent or high-impact for grade improvement), and one suggestion ('Consider mapping...') offers an alternative heuristic without explaining *how* to justify the new mapping \u2014 leaving some ambiguity about implementation steps.",
+            "evidence": [
+              "'In future reports, explicitly define the critical user paths (e.g., 'searching for a specific restaurant') before starting the evaluation to provide more focus.'",
+              "'Consider mapping hidden navigation or search elements to 'Recognition rather than Recall' or 'Aesthetic and Minimalist Design' for greater precision.'",
+              "'When discussing cognitive load, specify how the design change reduces extraneous load to demonstrate a deeper mastery of the theory.'"
+            ]
+          }
+        }
+      }
     }
   },
-  "qwen_judge": {
-    "judge_model": "qwen-plus",
-    "note": "cross-model evaluation - different model family",
-    "scores": {
-      "grounding": {
-        "score": 5,
-        "reason": "Feedback is strongly grounded in the assessment specification (e.g., explicit reference to tutorial worksheet tasks, required critical user paths, and the three primary tasks), the rubric criteria (Context and Methodological Framework; Usability Issue Analysis; Design Recommendations; Academic Structure), and course materials (Week 2 cognition concepts, ISO 9241, Nielsen\u2019s heuristics, APA standards). It accurately connects each comment to specific unit concepts, assessment expectations, and rubric descriptors\u2014such as distinguishing between 'Visibility of System Status' and 'Recognition rather than Recall' using precise heuristic definitions from the course."
+  {
+    "input_file": "exports/generation_run_9_full_planner.json",
+    "student_identifier": "a1-heuristic-evaluation-report_P_synthetic_extra_04",
+    "evaluated_model": "qwen3.5-plus",
+    "pipeline_version": "planned_retrieval_v1",
+    "ai_grade_band": "D",
+    "judges": {
+      "gemini": {
+        "model": "gemini-3-flash-preview",
+        "note": "self-evaluation - same model family, potential bias",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is exceptionally well-grounded in the assessment context and course materials. It accurately references specific requirements from the assignment specification (the 2000-word count, the use of Nielsen's heuristics, and the application of human cognition theory from Week 2). It also adheres strictly to the provided rubric, using the correct criterion names and mapping performance to the described levels (e.g., noting the 'five issues' threshold for Criterion 2). Furthermore, the feedback demonstrates deep alignment with the course scope by referencing specific lecture topics (Week 2 and Week 4) and even the specific guidance found in the provided tutorial worksheet.",
+            "evidence": "Critique of word count: 'the report appears to fall significantly short of the 2000-word requirement'; Aligment with rubric: 'Five distinct usability issues identified and mapped to heuristics' (aligns with Criterion 2 HD level); Alignment with lectures: 'Include APA citations for course lectures (Week 2, Week 4)'; Alignment with worksheet: 'The Worksheet guidance suggests linking at least two issues to cognition (e.g., working memory, attention).'"
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback is exceptionally tailored to the student's work. It identifies the specific application (Spotify), the specific version (free tier), and the specific usability issues raised (e.g., the Queue button). It provides precise critiques tied to the rubric, such as noting the absence of APA citations for specific course weeks (Week 2 and Week 4) and suggesting theoretical links for specific findings (Issues 3 and 5). It avoids generic praise, instead highlighting concrete strengths in the introduction's context analysis and pinpointing exact performance gaps regarding word count and cognitive theory application.",
+            "evidence": "\u201cThe introduction insightfully analyzes the target audience and context of use (mobile, casual, free tier).\u201d and \u201cInclude APA citations for course lectures (Week 2, Week 4) referenced in text.\u201d and \u201cExpand the theoretical justification for Issues 3 and 5 by referencing cognitive load or attention limits discussed in Week 2 lectures.\u201d"
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides highly concrete and prioritized steps for improvement that are directly linked to the rubric and course materials. Each criterion includes a specific 'Improvement suggestion' that tells the student exactly what content to add or modify (e.g., linking specific issues to cognitive load theory from Week 2). The guidance moves beyond generic advice by naming specific tasks, lecture weeks, and formatting requirements (APA citations and annotated screenshots) needed to reach the next grade level.",
+            "evidence": "Specific examples include: 'Expand the theoretical justification for Issues 3 and 5 by referencing cognitive load or attention limits discussed in Week 2 lectures', 'Explicitly connect the constraints of the free tier (e.g., ads, limited skips) to the specific usability tasks selected', and 'Ensure each issue in the final report includes an annotated screenshot highlighting the specific interface element'."
+          }
+        }
       },
-      "specificity": {
-        "score": 5,
-        "reason": "Feedback provides precise, student-specific analysis: it names a concrete issue ('Search Bar Visibility'), identifies its incorrect heuristic mapping, cites the exact heuristic misapplied ('Visibility of System Status'), proposes two more appropriate alternatives ('Recognition rather than Recall', 'Aesthetic and Minimalist Design'), references a specific design element ('error message placement'), and pinpoints a cognitive concept needing elaboration ('working memory capacity'). It avoids generic phrasing and instead anchors every observation in the student\u2019s actual submission (e.g., 'Issue 1', 'five distinct issues', 'visual evidence in appendices')."
+      "qwen": {
+        "model": "qwen-plus",
+        "note": "cross-model evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is strongly grounded in both the assessment specification and rubric, as well as relevant course materials. It consistently ties observations to specific criteria (e.g., 'Context and Methodological Framework' and 'Usability Issue Analysis and Evidence'), cites exact course weeks (Week 2, Week 4), references the tutorial worksheet, and aligns suggestions with taught concepts like human cognition (long-term memory, working memory, attention limits). It avoids hallucinated sources or out-of-scope expectations, and all recommendations are justified by explicit links to assignment requirements (e.g., 'free tier context', 'annotated screenshots', 'five issues', 'Nielsen\u2019s heuristics') and course resources (lectures, worksheet). The feedback never invokes generic usability advice absent course grounding.",
+            "evidence": [
+              "'aligning with Week 4 lecture content'",
+              "'human cognition concepts (Week 2)'",
+              "'Worksheet guidance suggests linking at least two issues to cognition (e.g., working memory, attention)'",
+              "'Explicitly connect the constraints of the free tier [...] to the specific usability tasks selected in the methodology section'",
+              "'Ensure each issue in the final report includes an annotated screenshot highlighting the specific interface element causing the violation'",
+              "'Add APA entries for Week 2 and Week 4 lecture materials cited in the text'"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback demonstrates excellent specificity by consistently anchoring every comment to concrete, student-specific elements of Chen\u2019s submission. It identifies exact sections (e.g., 'Introduction', 'Methodology', 'Findings'), references precise content ('free tier context', 'queue button inconsistency', 'Autoplay issue', 'Issue 1 linking to long-term memory'), and pinpoints where improvements are needed *within the student\u2019s actual text* (e.g., 'elaborate on how the free tier context specifically influenced task selection', 'expand discussion in Findings and Recommendations', 'ensure each issue includes an annotated screenshot'). It further ties gaps to specific course materials cited *by the student* (Week 2 and Week 4 lectures) and even notes the exact word count shortfall (1100 vs. 2000 words). No generic advice is offered without direct linkage to what Chen wrote, where it appears, and how it relates to rubric criteria.",
+            "evidence": [
+              "The introduction insightfully analyzes the target audience and context of use (mobile, casual, free tier). Nielsen's heuristics are explicitly established as the framework, aligning with Week 4 lecture content.",
+              "The methodology could further elaborate on how the 'free tier' context specifically influenced the selection of tasks beyond the initial statement.",
+              "Some heuristic mappings (e.g., Autoplay) could be more precisely justified.",
+              "Only one issue explicitly links to human cognition concepts (Week 2). The Worksheet guidance suggests linking at least two issues to cognition (e.g., working memory, attention).",
+              "The text provided is approximately 1100 words, significantly below the 2000-word requirement."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides highly concrete, prioritised, and assessment-relevant improvement steps. For each criterion, it specifies *exactly what* to revise (e.g., 'Explicitly connect the constraints of the free tier [...] to the specific usability tasks selected'), *why it matters* (e.g., 'to align with Week 4 lecture content' or 'as suggested by the Worksheet guidance'), and *how to do it* (e.g., 'reference cognitive load or attention limits discussed in Week 2 lectures', 'add APA entries for Week 2 and Week 4 lecture materials'). Suggestions are consistently tied to rubric performance levels (e.g., 'Suggested level: HD') and course materials (lecture transcripts, tutorial worksheet), ensuring alignment with unit expectations. The priority improvements section further reinforces actionability by listing four discrete, executable tasks \u2014 all with clear rationale and direct linkage to formal requirements (word count, citations, theory application, visual evidence).",
+            "evidence": [
+              "Improvement suggestion: Explicitly connect the constraints of the free tier (e.g., ads, limited skips) to the specific usability tasks selected in the methodology section.",
+              "Improvement suggestion: Ensure each issue in the final report includes an annotated screenshot highlighting the specific interface element causing the violation.",
+              "Improvement suggestion: Expand the theoretical justification for Issues 3 and 5 by referencing cognitive load or attention limits discussed in Week 2 lectures.",
+              "Improvement suggestion: Expand the discussion in Findings and Recommendations to meet word count. Add APA entries for Week 2 and Week 4 lecture materials cited in the text.",
+              "Priority improvements: - Expand analysis to meet the 2000-word count requirement - Include APA citations for course lectures (Week 2, Week 4) referenced in text - Deepen human cognition theory application across more than one issue - Ensure visual evidence is clearly annotated in the final PDF submission"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "exports/generation_run_10_full_planner.json",
+    "student_identifier": "a1-heuristic-evaluation-report_P_synthetic_extra_04",
+    "evaluated_model": "deepseek-ai/deepseek-v4-pro",
+    "pipeline_version": "planned_retrieval_v1",
+    "ai_grade_band": "C",
+    "judges": {
+      "gemini": {
+        "model": "gemini-3-flash-preview",
+        "note": "self-evaluation - same model family, potential bias",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is exceptionally well-grounded in both the assessment requirements and the specific course context. It evaluates the student's work against the rubric levels and the assignment brief's specific requirements (e.g., Nielsen's heuristics, five issues). Crucially, it demonstrates strong awareness of the course materials by referencing specific lecture content, such as the ISO 9241-11 standard mentioned in the Week 1 sample solution and the '3-5 evaluators' recommendation from the Week 4 lecture transcript. It also holds the student accountable for the 'human cognition' requirement in the brief by suggesting specific theories like Fitts' Law and working memory.",
+            "evidence": "The feedback states: 'The methodology mentions acting as a \u201csole evaluator\u201d but does not discuss the implications... a key point from the Week 4 lecture on using 3-5 evaluators.' It also suggests: 'Integrate the ISO 9241 definition of usability (effectiveness, efficiency, satisfaction) from the course materials' and 'explicitly reference Fitts' Law and the recommended 44px touch target from platform guidelines.'"
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback is exceptionally tailored to the student's individual submission. It goes beyond generic advice by identifying the specific application (Spotify's free tier), referencing specific issues identified by the student (e.g., Issue 1: Queue Button, Issue 2: Offline Error, Issue 3: Small Touch Targets), and quoting the student's own language (e.g., describing the audience as 'very broad'). Furthermore, it links specific gaps in the submission to specific course materials, such as the Week 4 lecture on multiple evaluators and the ISO 9241 definition. It provides concrete examples of how to improve specific sections, such as suggesting Fitts' Law as a theoretical basis for Issue 3.",
+            "evidence": "Quotes from the feedback: 'Issue 2 (offline error) is rated 'high' but the justification focuses on frequency and frustration', 'The audience is described as 'very broad,' which is a missed opportunity', 'The suggestion for Issue 1 briefly mentions mental models and long-term memory', and 'For example, for Issue 3 (small touch targets), explicitly reference Fitts' Law'."
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback is exceptionally actionable as it moves beyond identifying what is wrong to providing specific, concrete 'how-to' instructions for every section. It offers clear examples of how to apply theory (e.g., Fitts' Law for touch targets), suggests specific structural changes (e.g., using a table for severity ratings), and provides examples of user personas to deepen the analysis. The suggestions are directly tied to the rubric and offer a clear roadmap for the student to move from a 'C' grade to a higher band.",
+            "evidence": "Refine the user analysis by creating distinct persona segments... contrast a commuter's need for one-handed, glanceable interaction with a fitness user's need; Adopt a formal scale (e.g., Nielsen's 0-4) and justify ratings by... using a table; Ground every recommendation in a specific theoretical concept... for Issue 3 (small touch targets), explicitly reference Fitts' Law and the recommended 44px touch target."
+          }
+        }
       },
-      "actionability": {
-        "score": 5,
-        "reason": "Feedback delivers highly concrete, prioritised, and assessment-relevant steps: e.g., 'explicitly define the critical user paths (e.g., \"searching for a specific restaurant\") before starting the evaluation', 'specify how the design change reduces extraneous load', and 'ensure visual evidence in appendices is more tightly integrated into the findings narrative'. Each suggestion clarifies what to revise, why it matters (e.g., 'to provide more focus', 'to demonstrate deeper mastery'), and how to improve (with illustrative examples and theoretical framing). The tiered structure (overall \u2192 criterion-level) further supports targeted revision."
+      "qwen": {
+        "model": "qwen-plus",
+        "note": "cross-model evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is strongly grounded in both the assignment specification and rubric, and consistently references relevant course materials (e.g., Week 1 ISO 9241 definitions, Week 2 cognition lectures, Week 4 lecture on evaluator numbers and heuristic evaluation, A1 worksheet, sample answers). It accurately connects rubric criteria (e.g., 'Context and Methodological Framework' HD descriptor requiring 'insightful analysis of interface context and target audience') to specific gaps in the student work, while avoiding hallucinated or out-of-scope expectations. Every improvement suggestion explicitly ties back to taught concepts: e.g., citing Nielsen\u2019s recommendation for 3\u20135 evaluators (Week 4 lecture), referencing ISO 9241-11 usability metrics (course materials), invoking Fitts\u2019 Law and recognition-over-recall (Week 2 cognition content), and requiring APA 7th citations of prescribed sources like the NNG site *and* course lectures \u2014 all of which are retrievable and aligned with the unit scope. No generic advice or unsupported claims appear; all recommendations are theory-anchored and assessment-aligned.",
+            "evidence": "\u2018In the methodology, explicitly acknowledge the limitation of a single evaluator and reference Nielsen's recommendation for multiple evaluators to improve validity.\u2019; \u2018Integrate the ISO 9241 definition of usability (effectiveness, efficiency, satisfaction) from the course materials to frame the evaluation goals.\u2019; \u2018For Issue 3 (small touch targets), explicitly reference Fitts' Law and the recommended 44px touch target from platform guidelines.\u2019; \u2018For Issue 2 (error message), link the solution to the theory of recognition over recall...\u2019; \u2018cite the ISO 9241-11 standard when defining usability in the introduction, reference the Week 2 lecture on working memory when discussing cognitive load, and cite Nielsen's original papers on heuristic evaluation and severity ratings in the methodology.\u2019"
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback demonstrates excellent specificity by consistently anchoring every strength and weakness to concrete, student-specific elements of Chen\u2019s submission \u2014 including exact interface behaviors (e.g., 'queue icon is a 3mm target in the top-right corner'), task contexts ('commuter\u2019s need for one-handed, glanceable interaction'), named issues ('Issue 1: Inconsistent Placement of the Queue Button'), and precise structural features of the report (e.g., 'mentions capturing screenshots' but 'does not describe or annotate them in the text'). It identifies where in the student\u2019s work deficiencies occur (e.g., 'the audience is described as \"very broad\"', 'only one recommendation... makes a passing reference to cognitive concepts'), links feedback directly to rubric criteria (e.g., 'Suggested level: C' for Context and Methodological Framework), and even references course materials used *by this student* (e.g., 'Week 4 lecture on using 3\u20135 evaluators', 'ISO 9241 definition from course materials'). No generic advice is offered without explicit connection to Chen\u2019s actual text, structure, or omissions.",
+            "evidence": [
+              "'As seen in Figure 1, the queue icon is a 3mm target in the top-right corner...'",
+              "'the audience is described as \"very broad,\" which is a missed opportunity to segment users'",
+              "'Only one recommendation (Issue 1) makes a passing reference to cognitive concepts'",
+              "'Issue 2 (offline error) is rated \"high\" but the justification focuses on frequency and frustration; it does not quantify the impact on core metrics like task completion'",
+              "'mentions capturing screenshots, fulfilling the visual evidence requirement' but 'visual evidence is mentioned but not described or annotated in the text'",
+              "'Suggested level: C' for Criterion: Context and Methodological Framework",
+              "'reference Nielsen's recommendation for multiple evaluators to improve validity' \u2014 explicitly tied to 'the Week 4 lecture'"
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides highly concrete, prioritised, and assessment-relevant improvement steps that directly align with the rubric criteria and course materials. For each criterion, it specifies *exactly what* to revise (e.g., 'create distinct persona segments', 'adopt Nielsen's 0-4 severity scale', 'reference Fitts' Law and the recommended 44px touch target'), *why* it matters (e.g., 'to transform recommendations from simple fixes to theory-backed design decisions', 'to make the evidence more compelling and the analysis more rigorous'), and *how* to implement it (e.g., 'use a structured format that explicitly links the interface element, the heuristic definition, and the user impact', 'integrate the visual evidence directly into the analysis by describing what the screenshot shows'). Suggestions are consistently tied to specific course content (e.g., ISO 9241, Week 2 lecture on working memory, Week 4 lecture on evaluator effect) and rubric expectations (e.g., 'insightfully analyzed' for HD in Criterion 1, 'rigorous' analysis for HD in Criterion 2). The 'Priority improvements' section further reinforces actionability by listing five clear, ordered, and executable actions.",
+            "evidence": [
+              "Refine the user analysis by creating distinct persona segments within the broad audience. For example, contrast a commuter's need for one-handed, glanceable interaction with a fitness user's need for quick, error-free playlist management.",
+              "For each issue, use a structured format that explicitly links the interface element, the heuristic definition, and the user impact.",
+              "For Issue 3 (small touch targets), explicitly reference Fitts' Law and the recommended 44px touch target from platform guidelines.",
+              "Integrate the visual evidence directly into the analysis by describing what the screenshot shows (e.g., 'As seen in Figure 1, the queue icon is a 3mm target in the top-right corner...').",
+              "Priority improvements: - Deepen the user context analysis by linking specific user characteristics... - Explicitly integrate usability and cognition theories... - Strengthen the methodology section by discussing the limitations of a single evaluator and referencing a formal severity rating framework...",
+              "cite the ISO 9241-11 standard when defining usability in the introduction, reference the Week 2 lecture on working memory when discussing cognitive load, and cite Nielsen's original papers on heuristic evaluation and severity ratings in the methodology."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_LOW_QUALITY",
+    "student_identifier": "synthetic_test",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "gemini": {
+        "model": "gemini-3-flash-preview",
+        "note": "self-evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback is extremely generic and fails to meaningfully connect with the assignment specification, rubric, or the specific content of the student's work. While it mentions 'the app' or 'issues,' it never references 'QuickEats,' the ISO 9241 standards cited by the student, or Nielsen\u2019s heuristics which are the core of the assignment. The feedback consists of vague placeholders ('Could be better', 'Add more detail') rather than evaluating the student's work against the specific performance levels defined in the rubric (e.g., HD requires five issues mapped to heuristics). It relies entirely on generic judgments that could be applied to any assignment, showing no integration of the provided course materials.",
+            "evidence": "Quotes such as 'The student described the app', 'Good effort', 'Could be better', 'Be more specific', and 'Use more theory' demonstrate a complete lack of specific grounding in the student's actual analysis of the QuickEats interface or the unit-specific content regarding human cognition and interaction limits."
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is highly generic and consists almost entirely of placeholder phrases that could apply to any student submission regardless of the subject matter. It fails to mention the specific application evaluated (QuickEats), the specific heuristic discussed (Visibility of System Status), or any of the student's concrete arguments. Furthermore, it provides no actionable or tailored advice, offering instead vague instructions like 'Add more detail' and 'Be more specific' without explaining where or how.",
+            "evidence": "Quotes such as 'Good effort', 'Completed the assignment', 'The student described the app', 'Issues were identified', and 'Add more detail' demonstrate a complete lack of engagement with the specific content of the student's report."
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback provided falls squarely into the 'Poor' category as defined by the criteria. It offers improvement suggestions that are extremely vague and provide no clear path for the student to follow. Phrases like 'Add more detail' and 'Be more specific' are used without any explanation of where the detail is lacking or how to provide it. The student is left knowing which sections are weak but has no practical guidance on how to improve them to meet the assessment requirements.",
+            "evidence": "Improvement suggestion: Add more detail.; Improvement suggestion: Be more specific.; Improvement suggestion: Use more theory.; Improvement suggestion: Fix references."
+          }
+        }
       },
-      "overall_quality": "Excellent"
+      "qwen": {
+        "model": "qwen-plus",
+        "note": "cross-model",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback is not meaningfully connected to the assignment specification, rubric, or course materials. It relies entirely on generic, vague, and unsupported judgments (e.g., 'Could be better', 'Needs more detail', 'Be more specific') with no reference to Nielsen\u2019s Ten Heuristics, ISO 9241, human cognition concepts from Weeks 1\u20132, or any rubric performance descriptors (e.g., HD/D/C/P/FAIL criteria). None of the suggestions align with the explicit requirements \u2014 such as mapping issues to specific heuristics, justifying severity ratings, providing visual evidence, or grounding recommendations in usability theory. The feedback ignores the student\u2019s actual content (e.g., the partially described Issue 1 referencing Visibility of System Status) and makes no attempt to evaluate against rubric weightings (20%/40%/etc.) or learning outcomes (LO1, LO2). It also hallucinates a non-existent criterion ('Academic Structure and Referencing') not listed in the provided rubric.",
+            "evidence": [
+              "'Could add more context.'",
+              "'The analysis could be deeper.'",
+              "'Be more specific.'",
+              "'Use more theory.'",
+              "'Fix references.'",
+              "'Overall comment: The student did an okay job on this assignment. There are some areas that could be improved. Overall a decent submission.'"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is highly generic and contains no references to the student's actual submission. It avoids naming any concrete elements from Alex Johnson's report\u2014such as the selected app (QuickEats), the identified issue (Search Bar Visibility), the heuristic violated (Visibility of System Status), the context described (young adults/busy professionals, distracted use), or the incomplete sentence in the Findings section. Phrases like 'Could add more context', 'The analysis could be deeper', 'Be more specific', and 'Fix references' are entirely non-diagnostic and could apply to any student\u2019s work. Even the 'strengths' listed ('described the app', 'issues were identified', 'recommendations were provided') are vague assertions that ignore how the student actually performed\u2014e.g., the student *did* describe QuickEats\u2019 target audience and context, yet the feedback says only 'The student described the app', offering zero specificity about *what* was described or *how well*. No part of the feedback identifies where in the submission a strength or weakness occurs, nor links any comment to rubric criteria with precision.",
+            "evidence": [
+              "The student described the app.",
+              "Could add more context.",
+              "The analysis could be deeper.",
+              "Be more specific.",
+              "Recommendations were provided.",
+              "Link to theory better.",
+              "Fix references."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 1,
+            "reason": "The feedback provides virtually no usable guidance for improvement. Every improvement suggestion is vague, non-instructional, and devoid of concrete steps, rationale, or alignment with the rubric or assignment requirements. Phrases like 'Could add more context', 'Be more specific', 'Use more theory', and 'Fix references' give the student zero insight into *what* context is missing, *how* to be more specific (e.g., which heuristic mapping lacks justification, what visual evidence is needed), *which* theories to apply or *how*, or *what* referencing errors exist. The feedback fails to connect suggestions to the rubric descriptors (e.g., does not reference HD/D/C level expectations for 'Context and Methodological Framework' such as 'insightfully analyzed' or 'explicitly and correctly established'), nor does it indicate *why* those improvements matter for usability practice. The student would have no actionable next step based on this feedback.",
+            "evidence": [
+              "Could add more context.",
+              "Improvement suggestion: Add more detail.",
+              "Improvement suggestion: Be more specific.",
+              "Improvement suggestion: Use more theory.",
+              "Improvement suggestion: Fix references."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_MEDIUM_QUALITY",
+    "student_identifier": "synthetic_test",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "gemini": {
+        "model": "gemini-3-flash-preview",
+        "note": "self-evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 4,
+            "reason": "The feedback is clearly grounded in the assignment specification and rubric. It accurately identifies the specific heuristic framework required (Nielsen's Ten Heuristics) and refers to course-specific concepts like cognitive theory (Week 2) and ISO 9241. It correctly critiques a conceptual error in the student's application of usability principles (Issue 1's mapping). However, it receives a 4 instead of a 5 because it contains a factual inaccuracy regarding the student's work: it claims primary tasks were not explicitly listed, whereas the student submission clearly states them (searching, adding to cart, checking out).",
+            "evidence": "The feedback references 'Nielsen heuristics' and 'Visibility of System Status' which are central to the task description. It also suggests remapping to 'Recognition rather than Recall', showing alignment with the taught framework. The grounding error is found in the statement: 'Primary tasks not explicitly listed as required by methodology section,' which contradicts the student's text: 'the main tasks, which are searching for a restaurant, adding items to the cart, and checking out.'"
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 4,
+            "reason": "The feedback is strongly tailored to the student's individual submission rather than being a generic template. It correctly identifies the specific application analyzed (QuickEats) and the exact number of issues found. Most significantly, it pinpoints a specific logical error in the student's 'Issue 1' analysis (misapplying 'Visibility of System Status') and provides a concrete alternative ('Recognition rather than Recall'). It also identifies a specific structural omission in the methodology section regarding primary tasks. It misses a score of 5 because some sections, such as the feedback on APA formatting and cognitive theory, are more general and do not point to specific sentences or examples within the text.",
+            "evidence": "Quotes: 'The QuickEats app context and target audience were described', 'Issue 1 mapping to Visibility of System Status is inaccurate', 'Remap Issue 1 to Recognition rather than Recall', and 'Explicitly define three primary tasks before evaluation.'"
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 4,
+            "reason": "The feedback is rated as Good because it provides several direct, practical, and highly specific instructions that the student can immediately implement to improve their work. It identifies a specific error in heuristic mapping and provides the correct alternative, and it points out a missing structural requirement regarding task definition. While some overarching advice like 'improve specificity' is slightly meta, the criterion-specific suggestions are concrete and aligned with the rubric.",
+            "evidence": "Improvement suggestion: Explicitly define three primary tasks before evaluation.; Improvement suggestion: Remap Issue 1 to Recognition rather than Recall.; Improvement suggestion: Specify how recommendations reduce cognitive load."
+          }
+        }
+      },
+      "qwen": {
+        "model": "qwen-plus",
+        "note": "cross-model",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 4,
+            "reason": "The feedback is clearly grounded in both the assignment specification and rubric, and shows consistent alignment with course materials. It correctly references Nielsen's Ten Heuristics as the required framework (matching Rubric Criterion 1), identifies the need to explicitly list primary tasks (a requirement stated in the assignment specification under 'TASK DESCRIPTION': 'analyze the software in the context of its intended user base and primary tasks' and reinforced in the [tutorial_sheet] which emphasizes identifying 'user context and primary tasks'). The critique of Issue 1\u2019s heuristic mapping \u2014 suggesting remapping from 'Visibility of System Status' to 'Recognition rather than Recall' \u2014 reflects accurate engagement with Nielsen\u2019s heuristics and connects to human cognition concepts taught in Week 2 (as noted in the assignment spec: 'human cognition and interaction limits as discussed in the early weeks'). This correction is pedagogically sound and avoids hallucination: 'Recognition rather than Recall' is indeed one of Nielsen\u2019s Ten Heuristics, and misplacing a hidden search bar under 'Visibility of System Status' (which concerns feedback about system state, not discoverability) is a common conceptual error addressed in course instruction (e.g., [lecture_transcript] Week 04 distinguishes between visibility, recognition, and feedback heuristics). While the feedback does not explicitly cite Week 2 lecture content or the ISO 9241 standard mentioned in the student submission and [sample_solution], it stays within unit scope and avoids out-of-scope expectations \u2014 all suggestions are directly traceable to stated requirements and rubric descriptors.",
+            "evidence": [
+              "'Primary tasks not explicitly listed as required by methodology section.'",
+              "'Remap Issue 1 to Recognition rather than Recall.'",
+              "'Explicitly define three primary tasks before evaluation.'",
+              "'Cognitive theory connections are surface level.'",
+              "'Specify how recommendations reduce cognitive load.'"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 3,
+            "reason": "The feedback identifies some specific elements of the student's submission (e.g., 'Issue 1 mapping to Visibility of System Status is inaccurate', 'QuickEats app context and target audience were described', 'Primary tasks not explicitly listed'), which shows engagement with the actual work. However, several comments remain under-specified: it states Issue 1 is 'inaccurate' but does not explain *why* Visibility of System Status is incorrect or *how* the search bar\u2019s placement relates to Recognition rather than Recall; it notes 'some APA formatting errors' without citing examples (e.g., missing URLs, incorrect author formatting); and 'cognitive theory connections are surface level' lacks reference to where in the student\u2019s text those shallow connections occur (e.g., which paragraph or recommendation fails to cite Miller\u2019s Law or working memory limits). The feedback thus provides uneven specificity\u2014concrete in places but generic or unsupported in others.",
+            "evidence": [
+              "Issue 1 mapping to Visibility of System Status is inaccurate.",
+              "Primary tasks not explicitly listed as required by methodology section.",
+              "Some APA formatting errors present.",
+              "Cognitive theory connections are surface level."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 3,
+            "reason": "The feedback provides some useful, concrete suggestions (e.g., 'Explicitly define three primary tasks before evaluation', 'Remap Issue 1 to Recognition rather than Recall', 'Specify how recommendations reduce cognitive load'), which give the student direction. However, these suggestions are incomplete or lack sufficient practical guidance: it does not explain *how* to identify or articulate primary tasks beyond naming them; it asserts a remapping without justifying *why* Recognition rather than Recall applies (e.g., no reference to interface elements like hidden navigation or lack of labels); and it instructs the student to 'specify how recommendations reduce cognitive load' without modeling what such a specification looks like (e.g., citing working memory limits or Miller\u2019s Law) or linking to course concepts like attentional bottlenecks from Week 2. The suggestions are generic enough that the student would have only a partial understanding of how to implement them effectively in alignment with the rubric.",
+            "evidence": [
+              "Explicitly define three primary tasks before evaluation.",
+              "Remap Issue 1 to Recognition rather than Recall.",
+              "Specify how recommendations reduce cognitive load."
+            ]
+          }
+        }
+      }
     }
   }
-}
+]
