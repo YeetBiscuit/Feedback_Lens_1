@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>General Feedback</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f5f5f4;min-height:100vh;padding:1.25rem;font-size:16px}
+.top-bar{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
+.meta{display:flex;gap:2.5rem;align-items:center}
+.meta-item label{font-size:13px;color:#888;display:block;margin-bottom:2px}
+.meta-item span{font-size:17px;font-weight:600}
+.status-wrap{position:relative}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #e5e5e5;border-radius:20px;font-size:14px;font-weight:500;background:#fff;cursor:pointer}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#93c5fd}
+.status-dropdown{position:absolute;top:110%;left:0;background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:.5rem;min-width:160px;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+.status-option{padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;margin-bottom:4px}
+.status-option.pending{color:#d97706;background:#fefce8}
+.status-option.ai{color:#2563eb;background:#eff6ff}
+.status-option.reviewed{color:#16a34a;background:#f0fdf4}
+.hidden{display:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:17px;font-weight:600;margin-bottom:1rem}
+.q-preview{border:1px solid #e5e5e5;border-radius:8px;padding:.85rem 1rem;margin-bottom:.75rem;cursor:pointer}
+.q-preview:hover{background:#f9f9f9}
+.q-preview-title{font-size:15px;font-weight:600;margin-bottom:4px}
+.q-preview-body{font-size:13px;color:#888;line-height:1.5}
+.word-count{font-size:14px;color:#888;margin-top:.5rem}
+.word-count strong{color:#333}
+.form-label{font-size:14px;color:#666;display:block;margin-bottom:4px}
+.form-group{margin-bottom:1rem}
+select,input[type=number]{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff}
+.btn-generate{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:500;cursor:pointer}
+.btn-generate:hover{background:#1d4ed8}
+.btn-generate:disabled{background:#ccc;cursor:not-allowed}
+textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;line-height:1.6;resize:vertical;min-height:160px;font-family:inherit}
+.grade-toggle{font-size:14px;color:#2563eb;cursor:pointer;background:none;border:none;padding:0;margin-bottom:6px;display:block}
+.grade-badge{font-size:28px;font-weight:700;color:#7c3aed;margin-right:8px}
+.bottom-nav{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
+.btn-back{padding:9px 24px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:15px;cursor:pointer}
+.btn-save-review{padding:9px 24px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer}
+.btn-save-review:hover{background:#15803d}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="meta">
+    <div class="meta-item"><label>Student ID</label><span id="student-id">-</span></div>
+    <div class="meta-item"><label>Assignment Name</label><span id="assignment-name">-</span></div>
+    <div class="meta-item">
+      <label>Status</label>
+      <div class="status-wrap">
+        <div class="status-badge" onclick="toggleStatus(event)">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text">AI Generated</span>
+          <span>&#8964;</span>
+        </div>
+        <div class="status-dropdown hidden" id="status-dropdown">
+          <div class="status-option pending" onclick="setStatus('Pending','#fcd34d')">Pending</div>
+          <div class="status-option ai" onclick="setStatus('AI Generated','#93c5fd')">AI Generated</div>
+          <div class="status-option reviewed" onclick="setStatus('Reviewed','#86efac')">Reviewed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-title">Submission Preview</div>
+    <div id="q-previews"></div>
+    <div class="word-count">Total Word Count: <strong id="total-wc">-</strong></div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title">Feedback Generation Control</div>
+      <div class="form-group">
+        <label class="form-label">Feedback Type</label>
+        <select id="fb-type">
+          <option value="short">Short</option>
+          <option value="medium" selected>Medium</option>
+          <option value="detailed">Detailed</option>
+        </select>
+      </div>
+      <button class="btn-generate" id="gen-btn" onclick="loadFromDB()">&#10024; Generate</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">AI Feedback</div>
+      <div class="form-group">
+        <textarea id="txt-overall" style="min-height:160px"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">AI Estimate Grade</label>
+        <button class="grade-toggle" id="grade-toggle-btn" onclick="toggleGrade()">Show AI grade</button>
+        <div class="hidden" id="grade-area">
+          <span class="grade-badge" id="grade-badge">-</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rationale</label>
+        <textarea id="txt-rationale" style="min-height:100px"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Final Total Mark (out of 100)</label>
+        <input type="number" id="final-mark" min="0" max="100">
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <button class="btn-back" onclick="window.location.href='/educator/feedback-review?q=4'">&#8592; Back</button>
+      <button class="btn-save-review" onclick="saveReview()">Save as Review</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var gradeVisible = false;
+var statusOpen = false;
+var allData = null;
+
+function toggleStatus(e){
+  e.stopPropagation();
+  statusOpen = !statusOpen;
+  document.getElementById('status-dropdown').classList.toggle('hidden', !statusOpen);
+}
+function setStatus(s, color){
+  document.getElementById('status-text').textContent = s;
+  document.getElementById('status-dot').style.background = color;
+  document.getElementById('status-dropdown').classList.add('hidden');
+  statusOpen = false;
+}
+document.addEventListener('click', function(){
+  document.getElementById('status-dropdown').classList.add('hidden');
+  statusOpen = false;
+});
+
+function toggleGrade(){
+  gradeVisible = !gradeVisible;
+  document.getElementById('grade-area').classList.toggle('hidden', !gradeVisible);
+  document.getElementById('grade-toggle-btn').textContent = gradeVisible ? 'Hide AI grade' : 'Show AI grade';
+}
+
+function loadFromDB(){
+  var btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.textContent = 'Loading...';
+  fetch('/api/feedback/1')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      allData = data;
+      var overall = data.overall_feedback;
+      var run = data.run;
+
+      document.getElementById('student-id').textContent = run.student_identifier || '-';
+      document.getElementById('assignment-name').textContent = run.assignment_name || '-';
+      document.getElementById('txt-overall').value = overall.overall_comment || '';
+      document.getElementById('grade-badge').textContent = overall.overall_grade_band || '-';
+      document.getElementById('final-mark').value = overall.final_mark || '';
+      var statusMap = {'pending':'Pending','ai_generated':'AI Generated','reviewed':'Reviewed'};
+      var colorMap = {'pending':'#fcd34d','ai_generated':'#93c5fd','reviewed':'#86efac'};
+      var s = run.status || 'ai_generated';
+      setStatus(statusMap[s] || 'AI Generated', colorMap[s] || '#93c5fd');
+
+      var rationale = (overall.key_strengths || []).map(function(s){ return '• ' + s; }).join('\n')
+        + '\n\nAreas to improve:\n'
+        + (overall.priority_improvements || []).map(function(s){ return '• ' + s; }).join('\n');
+      document.getElementById('txt-rationale').value = rationale;
+
+      if(run.submission_text){
+        var text = run.submission_text;
+        var parts = text.split(/\n(?=Question \d+:)/);
+        var questions = parts.filter(function(p){ return p.match(/^Question \d+:/); });
+        var totalWords = 0;
+        var html = questions.map(function(p){
+          var lines = p.trim().split('\n');
+          var title = lines[0].trim();
+          var body = lines.slice(1).filter(function(l){ return l.trim(); }).join(' ');
+          totalWords += p.trim().split(/\s+/).length;
+            var preview = body.substring(0, 100) + (body.length > 100 ? '...' : '');
+            var idx = questions.indexOf(p);
+            return '<div class="q-preview" onclick="togglePreview('+idx+')">'
+            + '<div class="q-preview-title">'+title+' <span style="font-size:12px;color:#2563eb" id="toggle-'+idx+'">Show more</span></div>'
+            + '<div class="q-preview-body" id="preview-short-'+idx+'">'+preview+'</div>'
+            + '<div class="hidden" id="preview-full-'+idx+'" style="font-size:13px;color:#444;line-height:1.7;margin-top:6px">'+body+'</div>'
+            + '</div>';
+        }).join('');
+        document.getElementById('q-previews').innerHTML = html;
+        document.getElementById('total-wc').textContent = totalWords + ' words';
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Generate';
+    })
+    .catch(function(e){
+      console.error(e);
+      btn.disabled = false;
+      btn.textContent = 'Generate';
+    });
+}
+
+function saveReview(){
+  if(!allData) return;
+  var statusMap = {
+    'Pending': 'pending',
+    'AI Generated': 'ai_generated', 
+    'Reviewed': 'reviewed'
+  };
+  var payload = {
+  overall_comment: document.getElementById('txt-overall').value,
+  final_mark: document.getElementById('final-mark').value || null,
+  status: 'reviewed'
+};
+setStatus('Reviewed', '#86efac');
+  fetch('/api/feedback/1/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).then(function(r){ return r.json(); })
+    .then(function(){ alert('Saved as Review!'); })
+    .catch(function(e){ console.error(e); });
+}
+
+window.onload = loadFromDB;
+
+function togglePreview(idx){
+  var short = document.getElementById('preview-short-'+idx);
+  var full = document.getElementById('preview-full-'+idx);
+  var toggle = document.getElementById('toggle-'+idx);
+  var isHidden = full.classList.contains('hidden');
+  full.classList.toggle('hidden', !isHidden);
+  short.classList.toggle('hidden', isHidden);
+  toggle.textContent = isHidden ? 'Show less' : 'Show more';
+}
+</script>
+</body>
+</html>
