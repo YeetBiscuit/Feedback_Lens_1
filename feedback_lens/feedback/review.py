@@ -129,7 +129,8 @@ def fetch_generation_review(
             cf.areas_for_improvement,
             cf.improvement_suggestion,
             cf.suggested_level,
-            cf.evidence_summary
+            cf.evidence_summary,
+            cf.mark
         FROM criterion_feedback AS cf
         JOIN rubric_criteria AS rc ON rc.criterion_id = cf.criterion_id
         WHERE cf.generation_id = ?

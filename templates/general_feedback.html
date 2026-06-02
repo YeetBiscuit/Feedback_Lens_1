@@ -162,7 +162,7 @@ function loadFromDB(){
       document.getElementById('final-mark').value = overall.final_mark || '';
       var statusMap = {'pending':'Pending','ai_generated':'AI Generated','reviewed':'Reviewed'};
       var colorMap = {'pending':'#fcd34d','ai_generated':'#93c5fd','reviewed':'#86efac'};
-      var s = run.status || 'ai_generated';
+      var s = run.review_status || 'ai_generated';
       setStatus(statusMap[s] || 'AI Generated', colorMap[s] || '#93c5fd');
 
       var rationale = (overall.key_strengths || []).map(function(s){ return '• ' + s; }).join('\n')

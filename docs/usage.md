@@ -4,6 +4,10 @@ This guide shows the normal operator workflow from database setup through feedba
 
 ## Typical Workflow
 
+There are two supported ways to prepare data before feedback generation.
+
+Manual workflow:
+
 1. Initialise your local database
 2. Create a unit
 3. Create an assignment linked to that unit
@@ -13,6 +17,14 @@ This guide shows the normal operator workflow from database setup through feedba
 7. Import a student submission
 8. Generate feedback
 9. Review the saved results
+
+Whole-unit workflow:
+
+1. Initialise your local database
+2. Prepare a unit folder under `documents/units/{COURSE_CODE}/`
+3. Import the reviewed unit package with `ingest_unit.py`
+4. Generate feedback for the imported `submission_id` values
+5. Review the saved results
 
 ## 1. Initialise Your Local Environment
 
@@ -58,7 +70,11 @@ The assignment flow prompts for:
 - description
 - due date
 
-## 3. Import Assignment Documents
+## 3. Option A: Manual Import
+
+Use this path when you want to add one assignment, rubric, material file, or submission at a time.
+
+### Import Assignment Documents
 
 Import the assignment specification:
 
@@ -74,7 +90,7 @@ python import_documents.py rubric 1 "documents/rubrics/assignment1_rubric.pdf"
 
 The `1` in both commands is the `assignment_id`.
 
-## 4. Ingest Unit Materials
+### Ingest Unit Materials
 
 Example:
 
@@ -85,7 +101,7 @@ python ingest.py "documents/resources/week4_transcript.txt" 1 lecture_transcript
 
 The `1` here is the `unit_id`.
 
-## 5. Import A Student Submission
+### Import A Student Submission
 
 Example:
 
@@ -95,7 +111,60 @@ python import_documents.py submission 1 student_001 "documents/submissions/stude
 
 The command will print the new `submission_id`. That is the ID you use for feedback generation.
 
-## 6. Configure The LLM Provider
+## 4. Option B: Whole-Unit Ingestion
+
+Use this path when you already have a complete unit folder, such as one produced by `generate_unit.py` or prepared manually.
+
+Expected folder shape:
+
+```text
+documents/units/{COURSE_CODE}/
+  schema.json
+  unit_manifest.json
+  lectures/
+  tutorials/
+  assignments/
+    {assignment_slug}/
+      spec.pdf
+      rubric.pdf
+      submissions/
+        student_001.pdf
+  resources/
+```
+
+Import the reviewed package:
+
+```powershell
+python ingest_unit.py documents/units/{COURSE_CODE}
+```
+
+What `ingest_unit.py` imports:
+
+- unit metadata from `schema.json` and `unit_manifest.json`
+- assignments
+- assignment specifications
+- rubrics and rubric criteria
+- student submissions
+- unit materials
+- ChromaDB embeddings for imported unit materials
+
+By default, unchanged files are skipped using content hashes. Use `--force` only when you intentionally want to import recognized files as new versions:
+
+```powershell
+python ingest_unit.py documents/units/{COURSE_CODE} --force
+```
+
+The command prints imported `submission_id` values. Use those IDs for feedback generation.
+
+If you are unsure whether the folder layout or manifest is correct, run an optional dry run first. This scans and reports planned imports without writing to SQLite or ChromaDB:
+
+```powershell
+python ingest_unit.py documents/units/{COURSE_CODE} --dry-run
+```
+
+For generated unit packages, see [unit_generation.md](unit_generation.md).
+
+## 5. Configure The LLM Provider
 
 For Qwen:
 
@@ -117,7 +186,7 @@ $env:NVIDIA_API_KEY="your_key_here"
 
 If you need more detail about providers and model selection, see [configuration.md](configuration.md).
 
-## 7. Generate Feedback
+## 6. Generate Feedback
 
 Run:
 
@@ -178,7 +247,7 @@ Expected output shape:
 Completed generation_run=1 using qwen:qwen3.5-plus in retrieval mode. retrieval_strategy=assignment_spec_multi_cue_v1, retrieval_cues=5, per_cue_top_k=5, max_final_chunks=10, deduplicated_chunks=10, criterion_count=4, overall_grade_band=D.
 ```
 
-## 8. Inspect Results
+## 7. Inspect Results
 
 List recent generation runs:
 

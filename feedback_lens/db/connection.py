@@ -1,6 +1,8 @@
 import sqlite3
 from pathlib import Path
 
+from werkzeug.security import generate_password_hash
+
 from feedback_lens.paths import DB_PATH
 
 
@@ -13,6 +15,8 @@ def connect_db(
     conn.execute("PRAGMA foreign_keys = ON;")
     if ensure_updates:
         ensure_schema_updates(conn)
+        if is_default_db_path(db_path):
+            seed_local_demo_accounts(conn)
     return conn
 
 
@@ -57,6 +61,37 @@ def ensure_table(conn: sqlite3.Connection, table_name: str, table_sql: str) -> b
     return True
 
 
+def trigger_exists(conn: sqlite3.Connection, trigger_name: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1
+        FROM sqlite_master
+        WHERE type = 'trigger' AND name = ?
+        """,
+        (trigger_name,),
+    ).fetchone()
+    return row is not None
+
+
+def ensure_trigger(
+    conn: sqlite3.Connection,
+    trigger_name: str,
+    trigger_sql: str,
+) -> bool:
+    if trigger_exists(conn, trigger_name):
+        return False
+
+    conn.execute(trigger_sql)
+    return True
+
+
+def is_default_db_path(db_path: str | Path) -> bool:
+    if str(db_path) == ":memory:" or str(db_path).startswith("file:"):
+        return False
+
+    return Path(db_path).resolve() == DB_PATH.resolve()
+
+
 def ensure_schema_updates(conn: sqlite3.Connection) -> None:
     changed = False
     changed |= ensure_column(conn, "units", "level", "TEXT")
@@ -82,11 +117,46 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
     changed |= ensure_column(conn, "generation_runs", "max_final_chunks", "INTEGER")
     changed |= ensure_column(conn, "overall_feedback", "overall_grade_band", "TEXT")
     changed |= ensure_column(conn, "overall_feedback", "final_mark", "REAL")
+    changed |= ensure_column(conn, "criterion_feedback", "mark", "REAL")
     changed |= ensure_column(conn, "assignment_specs", "retrieval_cues_json", "TEXT")
     changed |= ensure_column(conn, "assignment_specs", "source_content_hash", "TEXT")
     changed |= ensure_column(conn, "rubrics", "source_content_hash", "TEXT")
     changed |= ensure_column(conn, "unit_materials", "source_content_hash", "TEXT")
     changed |= ensure_column(conn, "student_submissions", "source_content_hash", "TEXT")
+    changed |= ensure_table(
+        conn,
+        "users",
+        """
+        CREATE TABLE users (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL CHECK (role IN ('admin', 'lead_lecturer', 'educator', 'student')),
+            display_name TEXT,
+            tutor_id INTEGER UNIQUE,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_users_tutor
+                FOREIGN KEY (tutor_id) REFERENCES tutors(tutor_id)
+                ON DELETE SET NULL
+        )
+        """,
+    )
+    changed |= ensure_trigger(
+        conn,
+        "trg_users_updated_at",
+        """
+        CREATE TRIGGER trg_users_updated_at
+        AFTER UPDATE ON users
+        FOR EACH ROW
+        WHEN NEW.updated_at = OLD.updated_at
+        BEGIN
+            UPDATE users
+            SET updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = NEW.user_id;
+        END
+        """,
+    )
     changed |= ensure_table(
         conn,
         "curriculum_generation_runs",
@@ -228,6 +298,77 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
 
     if changed:
         conn.commit()
+
+
+def seed_local_demo_accounts(conn: sqlite3.Connection) -> None:
+    if not table_exists(conn, "users"):
+        return
+    if not all(table_exists(conn, table) for table in ("tutors", "unit_tutors", "units")):
+        return
+
+    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    if user_count:
+        return
+
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO tutors
+            (institution_identifier, full_name, email)
+        VALUES (?, ?, ?)
+        """,
+        ("DEV-TUTOR-001", "Demo Educator", "educator@test.com"),
+    )
+    tutor = conn.execute(
+        """
+        SELECT tutor_id
+        FROM tutors
+        WHERE institution_identifier = ?
+        """,
+        ("DEV-TUTOR-001",),
+    ).fetchone()
+    tutor_id = tutor["tutor_id"] if tutor else None
+
+    conn.execute(
+        """
+        INSERT INTO users
+            (email, password_hash, role, display_name, tutor_id)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            "admin@test.com",
+            generate_password_hash("123456"),
+            "admin",
+            "Demo Admin",
+            None,
+        ),
+    )
+    conn.execute(
+        """
+        INSERT INTO users
+            (email, password_hash, role, display_name, tutor_id)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            "educator@test.com",
+            generate_password_hash("123456"),
+            "educator",
+            "Demo Educator",
+            tutor_id,
+        ),
+    )
+
+    unit_tutor_count = conn.execute("SELECT COUNT(*) FROM unit_tutors").fetchone()[0]
+    if tutor_id is not None and unit_tutor_count == 0:
+        unit_rows = conn.execute("SELECT unit_id FROM units").fetchall()
+        conn.executemany(
+            """
+            INSERT OR IGNORE INTO unit_tutors (unit_id, tutor_id, role)
+            VALUES (?, ?, ?)
+            """,
+            [(row["unit_id"], tutor_id, "educator") for row in unit_rows],
+        )
+
+    conn.commit()
 
 
 def get_next_version(

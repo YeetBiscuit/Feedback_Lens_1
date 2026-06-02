@@ -56,6 +56,34 @@ BEGIN
 END;
 
 -- =========================
+-- 2A. USERS
+-- Application login accounts. Educator accounts may link to tutor identity.
+-- =========================
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'lead_lecturer', 'educator', 'student')),
+    display_name TEXT,
+    tutor_id INTEGER UNIQUE,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_users_tutor
+        FOREIGN KEY (tutor_id) REFERENCES tutors(tutor_id)
+        ON DELETE SET NULL
+);
+
+CREATE TRIGGER trg_users_updated_at
+AFTER UPDATE ON users
+FOR EACH ROW
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+    UPDATE users
+    SET updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = NEW.user_id;
+END;
+
+-- =========================
 -- 3. UNIT_TUTORS
 -- A tutor can belong to multiple units,
 -- and a unit can have multiple tutors
@@ -383,6 +411,7 @@ CREATE TABLE criterion_feedback (
     improvement_suggestion TEXT,
     suggested_level TEXT,
     evidence_summary TEXT,
+    mark REAL,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (generation_id, criterion_id),
     CONSTRAINT fk_criterion_feedback_generation

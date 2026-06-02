@@ -1,65 +1,126 @@
+from functools import wraps
+
 from flask import Flask, render_template, request, redirect, session, jsonify
-import hashlib, sqlite3, json
+from werkzeug.security import check_password_hash
+
 from feedback_lens.db.connection import connect_db
 from feedback_lens.feedback.review import fetch_generation_review, parse_json_text_list
 
 app = Flask(__name__)
 app.secret_key = "dev_secret_key"
 
+
+def login_required(role):
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            if session.get("role") != role:
+                return redirect("/login")
+            return view(*args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
+def fetch_session_user(conn):
+    user_id = session.get("user_id")
+    email = session.get("email")
+    if user_id is None and email is None:
+        return None
+
+    if user_id is not None:
+        return conn.execute(
+            """
+            SELECT
+                u.user_id,
+                u.email,
+                u.role,
+                u.display_name,
+                u.tutor_id,
+                t.full_name AS tutor_full_name
+            FROM users AS u
+            LEFT JOIN tutors AS t ON t.tutor_id = u.tutor_id
+            WHERE u.user_id = ?
+            """,
+            (user_id,),
+        ).fetchone()
+
+    return conn.execute(
+        """
+        SELECT
+            u.user_id,
+            u.email,
+            u.role,
+            u.display_name,
+            u.tutor_id,
+            t.full_name AS tutor_full_name
+        FROM users AS u
+        LEFT JOIN tutors AS t ON t.tutor_id = u.tutor_id
+        WHERE lower(u.email) = lower(?)
+        """,
+        (email,),
+    ).fetchone()
+
+
+def api_session_user(required_role=None):
+    with connect_db() as conn:
+        user = fetch_session_user(conn)
+        if user is None:
+            return None, (jsonify({"error": "Authentication required"}), 401)
+        if required_role is not None and user["role"] != required_role:
+            return None, (jsonify({"error": "Forbidden"}), 403)
+        return dict(user), None
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/admin')
+@login_required('admin')
 def admin():
-    if session.get('role') != 'admin':
-        return redirect('/login')
     return render_template("admin.html")
 
 @app.route('/leadLecture')
+@login_required('lead_lecturer')
 def leadlecture():
-    if session.get('role') != 'lead_lecturer':
-        return redirect('/login')
     return render_template("leadLecturer.html")
 
-# @app.route('/educator')
-# def educator():
-#     if session.get('role') != 'educator':
-#         return redirect('/login')
-#     return render_template("educator.html")
-
 @app.route('/educator')
+@login_required('educator')
 def educator():
     return render_template("educator.html")
 
 @app.route('/student')
+@login_required('student')
 def student():
-    if session.get('role') != 'student':
-        return redirect('/login')
     return render_template("student.html")
 
 @app.route('/educator/feedback-review')
+@login_required('educator')
 def feedback_review():
     return render_template('feedback_review.html')
 
 @app.route('/educator/general-feedback')
+@login_required('educator')
 def general_feedback():
     return render_template('general_feedback.html')
 
 @app.route('/api/educator/dashboard')
 def educator_dashboard_data():
-    email = session.get('email', 'educator@a.com')
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+    if user.get('tutor_id') is None:
+        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
+
     with connect_db() as conn:
-        user = conn.execute(
-            "SELECT id, email, role, name FROM users WHERE email=?", (email,)
-        ).fetchone()
-        if user is None:
-            return jsonify({'error': 'User not found'}), 404
         units = conn.execute("""
             SELECT u.unit_id, u.unit_code, u.unit_name, u.semester, u.year,
                    COUNT(DISTINCT ss.submission_id) as student_count,
-                   COUNT(DISTINCT CASE WHEN gr.status='completed' THEN gr.generation_id END) as completed_count,
-                   COUNT(DISTINCT CASE WHEN gr.status='running' OR gr.status IS NULL THEN ss.submission_id END) as pending_count
+                   COUNT(DISTINCT CASE WHEN gr.status='completed' THEN ss.submission_id END) as completed_count,
+                   COUNT(DISTINCT ss.submission_id)
+                     - COUNT(DISTINCT CASE WHEN gr.status='completed' THEN ss.submission_id END) as pending_count
             FROM units u
             JOIN unit_tutors ut ON ut.unit_id = u.unit_id
             LEFT JOIN assignments a ON a.unit_id = u.unit_id
@@ -67,34 +128,52 @@ def educator_dashboard_data():
             LEFT JOIN generation_runs gr ON gr.submission_id = ss.submission_id
             WHERE ut.tutor_id = ?
             GROUP BY u.unit_id
-        """, (user['id'],)).fetchall()
+        """, (user['tutor_id'],)).fetchall()
     return jsonify({
-        'user': {'name': user['name'] or user['email'], 'role': user['role']},
+        'user': {
+            'name': user.get('display_name') or user.get('tutor_full_name') or user['email'],
+            'role': user['role'],
+        },
         'units': [dict(u) for u in units]
     })
 
 @app.route('/api/feedback/<int:generation_id>')
 def get_feedback(generation_id):
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+
     with connect_db() as conn:
-        data = fetch_generation_review(conn, generation_id)
+        try:
+            data = fetch_generation_review(conn, generation_id)
+        except ValueError as err:
+            return jsonify({'error': str(err)}), 404
         submission = conn.execute(
-            "SELECT cleaned_text, status FROM student_submissions WHERE submission_id=?",
+            "SELECT cleaned_text FROM student_submissions WHERE submission_id=?",
             (data['run']['submission_id'],)
+        ).fetchone()
+        review = conn.execute(
+            """
+            SELECT review_id
+            FROM human_reviews
+            WHERE generation_id = ?
+            ORDER BY reviewed_at DESC, review_id DESC
+            LIMIT 1
+            """,
+            (generation_id,),
         ).fetchone()
     run = dict(data['run'])
     overall = dict(data['overall_feedback']) if data['overall_feedback'] else {}
     criteria = [dict(r) for r in data['criterion_feedback']]
-    with connect_db() as conn2:
-        for c in criteria:
-            row = conn2.execute(
-                "SELECT mark FROM criterion_feedback WHERE generation_id=? AND criterion_id=?",
-                (generation_id, c['criterion_id'])
-            ).fetchone()
-            c['mark'] = row['mark'] if row and row['mark'] is not None else None    
     overall['key_strengths'] = parse_json_text_list(overall.get('key_strengths'))
     overall['priority_improvements'] = parse_json_text_list(overall.get('priority_improvements'))
     run['submission_text'] = submission['cleaned_text'] if submission else ''
-    run['status'] = submission['status'] if submission else 'pending'
+    if review:
+        run['review_status'] = 'reviewed'
+    elif run.get('status') == 'completed':
+        run['review_status'] = 'ai_generated'
+    else:
+        run['review_status'] = 'pending'
     return jsonify({
         'run': run,
         'overall_feedback': overall,
@@ -103,7 +182,13 @@ def get_feedback(generation_id):
 
 @app.route('/api/feedback/<int:generation_id>/save', methods=['POST'])
 def save_feedback(generation_id):
-    data = request.get_json()
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+    if user.get('tutor_id') is None:
+        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
+
+    data = request.get_json(silent=True) or {}
     with connect_db() as conn:
         for item in data.get('criteria', []):
             conn.execute("""
@@ -128,45 +213,68 @@ def save_feedback(generation_id):
                 WHERE generation_id=?
             """, (overall_comment, final_mark, generation_id))
         status = data.get('status')
-        if status:
-            conn.execute("""
-                UPDATE student_submissions
-                SET status=?
-                WHERE submission_id=(
-                    SELECT submission_id FROM generation_runs WHERE generation_id=?
+        review_status = data.get('review_status') or status
+        if review_status == 'reviewed':
+            review = conn.execute(
+                """
+                SELECT review_id
+                FROM human_reviews
+                WHERE generation_id=? AND tutor_id=? AND review_type='tutor_review'
+                ORDER BY reviewed_at DESC, review_id DESC
+                LIMIT 1
+                """,
+                (generation_id, user['tutor_id']),
+            ).fetchone()
+            if review:
+                conn.execute(
+                    """
+                    UPDATE human_reviews
+                    SET approved=1, comments=?, reviewed_at=CURRENT_TIMESTAMP
+                    WHERE review_id=?
+                    """,
+                    (overall_comment, review['review_id']),
                 )
-            """, (status, generation_id))
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO human_reviews
+                        (generation_id, tutor_id, review_type, approved, comments)
+                    VALUES (?, ?, 'tutor_review', 1, ?)
+                    """,
+                    (generation_id, user['tutor_id'], overall_comment),
+                )
         conn.commit()
-    return jsonify({'status': 'ok'})
+    return jsonify({'status': 'ok', 'review_status': review_status})
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        email = request.form['email']
-        password = hash_password(request.form['password'])
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT role FROM users WHERE email=? AND password=?",
-            (email, password)
-        )
-        user = cursor.fetchone()
-        if user:
-            session['email'] = email
-            session['role'] = user[0]
-            if user[0] == 'admin':
+        email = request.form['email'].strip()
+        password = request.form['password']
+        with connect_db() as conn:
+            user = conn.execute(
+                """
+                SELECT user_id, email, password_hash, role
+                FROM users
+                WHERE lower(email)=lower(?)
+                """,
+                (email,),
+            ).fetchone()
+        if user and check_password_hash(user['password_hash'], password):
+            session.clear()
+            session['user_id'] = user['user_id']
+            session['email'] = user['email']
+            session['role'] = user['role']
+            if user['role'] == 'admin':
                 return redirect('/admin')
-            elif user[0] == 'lead_lecturer':
+            elif user['role'] == 'lead_lecturer':
                 return redirect('/leadLecture')
-            elif user[0] == 'educator':
+            elif user['role'] == 'educator':
                 return redirect('/educator')
-            elif user[0] == 'student':
+            elif user['role'] == 'student':
                 return redirect('/student')
         return render_template("login.html", error="Invalid credentials")
     return render_template('login.html')
-
-def hash_password(p): return hashlib.sha256(p.encode()).hexdigest()
-def get_db(): return sqlite3.connect("feedback_system.db")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
