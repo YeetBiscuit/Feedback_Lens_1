@@ -306,10 +306,6 @@ def seed_local_demo_accounts(conn: sqlite3.Connection) -> None:
     if not all(table_exists(conn, table) for table in ("tutors", "unit_tutors", "units")):
         return
 
-    user_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    if user_count:
-        return
-
     conn.execute(
         """
         INSERT OR IGNORE INTO tutors
@@ -330,7 +326,7 @@ def seed_local_demo_accounts(conn: sqlite3.Connection) -> None:
 
     conn.execute(
         """
-        INSERT INTO users
+        INSERT OR IGNORE INTO users
             (email, password_hash, role, display_name, tutor_id)
         VALUES (?, ?, ?, ?, ?)
         """,
@@ -344,7 +340,7 @@ def seed_local_demo_accounts(conn: sqlite3.Connection) -> None:
     )
     conn.execute(
         """
-        INSERT INTO users
+        INSERT OR IGNORE INTO users
             (email, password_hash, role, display_name, tutor_id)
         VALUES (?, ?, ?, ?, ?)
         """,
@@ -356,9 +352,19 @@ def seed_local_demo_accounts(conn: sqlite3.Connection) -> None:
             tutor_id,
         ),
     )
+    if tutor_id is not None:
+        conn.execute(
+            """
+            UPDATE users
+            SET tutor_id = COALESCE(tutor_id, ?),
+                display_name = COALESCE(display_name, ?)
+            WHERE lower(email) = lower(?)
+              AND role = 'educator'
+            """,
+            (tutor_id, "Demo Educator", "educator@test.com"),
+        )
 
-    unit_tutor_count = conn.execute("SELECT COUNT(*) FROM unit_tutors").fetchone()[0]
-    if tutor_id is not None and unit_tutor_count == 0:
+    if tutor_id is not None:
         unit_rows = conn.execute("SELECT unit_id FROM units").fetchall()
         conn.executemany(
             """
