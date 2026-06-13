@@ -5,265 +5,365 @@
 <title>Feedback Review</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#f5f5f4;min-height:100vh;padding:1.25rem;font-size:16px}
-.top-bar{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
-.meta{display:flex;gap:2.5rem}
-.meta-item label{font-size:13px;color:#888;display:block;margin-bottom:2px}
-.meta-item span{font-size:17px;font-weight:600}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-btn{background:rgba(255,255,255,.18);color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer}
+.nav-btn:hover{background:rgba(255,255,255,.28)}
+.nav-right{display:flex;align-items:center;gap:.75rem}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+
+.wrap{padding:1.25rem}
+.top-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.meta{display:flex;gap:2.5rem;flex-wrap:wrap}
+.meta-item label{font-size:.75rem;color:#6b7280;display:block;margin-bottom:2px}
+.meta-item span{font-size:1rem;font-weight:600}
 .meta-item span.blue{color:#2563eb}
+.progress-text{font-size:.8125rem;color:#6b7280}
+
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
-.card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
-.card-title{font-size:17px;font-weight:600;margin-bottom:1rem}
-.sub-box{border:1px dashed #ccc;border-radius:8px;padding:1rem;background:#fafafa;min-height:220px}
-.q-title{font-size:16px;font-weight:600;margin-bottom:.75rem}
-.q-body{font-size:15px;color:#444;line-height:1.7}
-.q-body p{margin-bottom:.6rem}
-.word-count{font-size:14px;color:#888;margin-top:.75rem}
-.word-count strong{color:#333}
-.form-label{font-size:14px;color:#666;display:block;margin-bottom:4px}
-.form-group{margin-bottom:1rem}
-select,input[type=number]{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
-.check-row{display:flex;align-items:center;gap:8px;font-size:15px;color:#555;margin-bottom:1rem}
-.btn-generate{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:500;cursor:pointer}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:1rem;font-weight:600;margin-bottom:1rem}
+
+.submission-box{border:1px solid #e5e7eb;border-radius:8px;padding:1rem;background:#fafafa;max-height:37.5rem;overflow-y:auto;white-space:pre-wrap;font-size:.8125rem;line-height:1.7;color:#374151;font-family:inherit}
+.word-count{font-size:.8125rem;color:#6b7280;margin-top:.75rem}
+.word-count strong{color:#1f2937}
+
+.gen-form .form-group{margin-bottom:.75rem}
+.gen-form .two-col{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem}
+.form-label{font-size:.8125rem;color:#6b7280;display:block;margin-bottom:4px}
+.gen-form select,.gen-form input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
+.gen-form select:focus,.gen-form input[type=number]:focus{outline:none;border-color:#2563eb}
+.check-row{display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:#4b5563;margin-bottom:.75rem}
+.btn-generate{width:100%;padding:.65rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.9375rem;font-weight:500;cursor:pointer;font-family:inherit}
 .btn-generate:hover{background:#1d4ed8}
-.btn-generate:disabled{background:#ccc;cursor:not-allowed}
+
+.criterion-name{font-size:.9375rem;font-weight:600;color:#2563eb;margin-bottom:.75rem;padding-bottom:.5rem;border-bottom:1px solid #f0f0f0}
+
 .fb-section{margin-bottom:1.25rem}
 .fb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.fb-label{font-size:15px;font-weight:600}
-.fb-label.s{color:#16a34a}.fb-label.w{color:#dc2626}.fb-label.sg{color:#d97706}
-.fb-actions{display:flex;gap:6px}
-.icon-btn{background:none;border:1px solid #e5e5e5;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:14px;color:#666}
-.icon-btn:hover{background:#f5f5f5}
-textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;line-height:1.6;resize:vertical;min-height:80px;font-family:inherit}
-.grade-toggle{font-size:14px;color:#2563eb;cursor:pointer;background:none;border:none;padding:0;margin-bottom:6px;display:block}
-.grade-badge{font-size:28px;font-weight:700;color:#7c3aed;margin-right:8px}
-.hidden{display:none}
-.bottom-nav{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
-.btn-save{padding:9px 24px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:15px;cursor:pointer}
-.btn-next{padding:9px 24px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer}
-.btn-next:hover{background:#1d4ed8}
+.fb-label{font-size:.875rem;font-weight:600}
+.fb-label.s{color:#16a34a}
+.fb-label.w{color:#dc2626}
+.fb-label.sg{color:#d97706}
+.fb-actions{display:flex;gap:.25rem}
+.icon-btn{background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:3px 9px;cursor:pointer;font-size:.75rem;color:#6b7280;font-family:inherit}
+.icon-btn:hover{background:#f9fafb;color:#2563eb;border-color:#2563eb}
+textarea{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;line-height:1.6;resize:vertical;min-height:5rem;font-family:inherit}
+textarea:focus{outline:none;border-color:#2563eb}
+
+.evidence-block{background:#f9fafb;border-left:3px solid #d1d5db;padding:.7rem .9rem;margin-top:.5rem;font-size:.8125rem;color:#4b5563;line-height:1.6}
+
+.grade-row{margin-top:.75rem}
+.grade-toggle{font-size:.8125rem;color:#2563eb;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;text-decoration:underline}
+.grade-area{margin-top:.5rem;display:none;align-items:center;gap:.5rem}
+.grade-area.show{display:flex}
+.grade-label{font-size:.8125rem;color:#6b7280}
+.grade-badge{font-size:1.375rem;font-weight:700;color:#7c3aed}
+
+.mark-row{margin-top:1rem}
+input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:inherit}
+
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;gap:.5rem}
+.btn{padding:.55rem 1.4rem;border-radius:8px;font-size:.875rem;cursor:pointer;border:none;font-family:inherit;font-weight:500}
+.btn-secondary{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-secondary:hover{background:#f9fafb}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-save{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-save:hover{background:#f9fafb}
+
+.loading{text-align:center;padding:3rem;color:#888}
 </style>
 </head>
 <body>
 
-<div class="top-bar">
-  <div class="meta">
-    <div class="meta-item"><label>Student ID</label><span id="student-id">30123456</span></div>
-    <div class="meta-item"><label>Current Question</label><span class="blue" id="q-label">Question 1 of 4</span></div>
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
   </div>
-  <div style="font-size:13px;color:#888">Progress: <span id="pct">25%</span></div>
+  <div class="nav-center">
+    <button class="nav-btn" onclick="location.href='/educator'">Home</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Educator</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar">-</div>
+  </div>
 </div>
 
-<div class="grid">
-  <div class="card">
-    <div class="card-title">Submission Preview</div>
-    <div class="sub-box">
-      <div class="q-title" id="q-title">Question 1: Explain the Singleton Pattern</div>
-      <div class="q-body" id="q-body">
-        <p>The Singleton pattern is a creational design pattern that ensures a class has only one instance and provides a global point of access to it. This is useful when exactly one object is needed to coordinate actions across the system.</p>
-        <p>The pattern works by making the constructor private, preventing direct instantiation, and providing a static method that returns the single instance. The instance is typically stored as a static member variable.</p>
-        <p>Common use cases include configuration managers, logging systems, and connection pools where having multiple instances would be problematic or wasteful of resources.</p>
-      </div>
-    </div>
-    <div class="word-count">Word Count: <strong id="wc">156 words</strong></div>
-  </div>
+<div class="wrap">
 
-  <div>
-    <div class="card">
-      <div class="card-title">Feedback Generation Control</div>
-      <div class="form-group">
-        <label class="form-label">Feedback Type</label>
-        <select id="fb-type"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Marking Rigour</label>
-        <select id="rigour"><option value="formative" selected>Formative</option><option value="strict">Strict</option></select>
-      </div>
-      <div class="two-col">
-        <div><label class="form-label">Word Limit</label><input type="number" id="word-limit" value="200" min="50"></div>
-        <div><label class="form-label">Tolerance (%)</label><input type="number" id="tolerance" value="10" min="0"></div>
-      </div>
-      <label class="check-row"><input type="checkbox" id="ref-check"> Reference Check</label>
-      <button class="btn-generate" id="gen-btn" onclick="loadFromDB()">&#10024; Generate</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">AI Feedback</div>
-      <div class="fb-section">
-        <div class="fb-header"><span class="fb-label s">Strengths</span>
-          <div class="fb-actions">
-            <button class="icon-btn" title="Regenerate">&#10227;</button>
-            <button class="icon-btn" title="Suggest from similar">&#128161;</button>
-          </div>
-        </div>
-        <textarea id="txt-strengths"></textarea>
-      </div>
-      <div class="fb-section">
-        <div class="fb-header"><span class="fb-label w">Weaknesses</span>
-          <div class="fb-actions">
-            <button class="icon-btn" title="Regenerate">&#10227;</button>
-            <button class="icon-btn" title="Suggest from similar">&#128161;</button>
-          </div>
-        </div>
-        <textarea id="txt-weaknesses"></textarea>
-      </div>
-      <div class="fb-section">
-        <div class="fb-header"><span class="fb-label sg">Suggestions</span>
-          <div class="fb-actions">
-            <button class="icon-btn" title="Regenerate">&#10227;</button>
-            <button class="icon-btn" title="Suggest from similar">&#128161;</button>
-          </div>
-        </div>
-        <textarea id="txt-suggestions"></textarea>
-      </div>
-      <div>
-        <label class="form-label">AI Estimate Grade</label>
-        <button class="grade-toggle" id="grade-toggle-btn" onclick="toggleGrade()">Show AI grade</button>
-        <div class="hidden" id="grade-area">
-          <span class="grade-badge" id="grade-badge">-</span>
-          <div style="margin-top:10px">
-            <label class="form-label">Rationale</label>
-            <textarea id="txt-rationale" style="min-height:60px"></textarea>
-          </div>
-        </div>
-      </div>
-      <div style="margin-top:1rem">
-        <label class="form-label">Final Total Mark (out of 100)</label>
-        <input type="number" id="final-mark" min="0" max="100" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px">
-      </div>
-    </div>
-
-    <div class="bottom-nav">
-  <button class="btn-save" id="btn-back" onclick="prevQ()">&#8592; Back</button>
-  <button class="btn-save" onclick="saveCurrent()">Save</button>
-  <button class="btn-next" id="btn-next" onclick="nextQ()">Next Question &#8594;</button>
+<div class="top-bar">
+  <div class="meta">
+    <div class="meta-item"><label>Student</label><span id="student-id">-</span></div>
+    <div class="meta-item"><label>Assignment</label><span id="assignment-name">-</span></div>
+    <div class="meta-item"><label>Current Criterion</label><span class="blue" id="crit-label">-</span></div>
   </div>
-  </div>
+  <div class="progress-text">Progress: <span id="pct">0%</span></div>
+</div>
+
+<div id="content">
+  <div class="loading">Loading feedback...</div>
+</div>
+
 </div>
 
 <script>
-var currentQ = 1;
-var totalQ = 4;
+var data = null;
+var idx = 0;
+var total = 0;
+var genId = null;
 var gradeVisible = false;
-var allData = null;
-var questions = [];
 
-function updateProgress(){
-  if(questions.length === 0) return;
-  document.getElementById('q-label').textContent='Question '+currentQ+' of '+totalQ;
-  document.getElementById('pct').textContent=Math.round((currentQ/totalQ)*100)+'%';
-  var q=questions[currentQ-1];
-  document.getElementById('q-title').textContent=q.title;
-  document.getElementById('q-body').innerHTML=q.body;
-  var wordCount=q.body.replace(/<[^>]+>/g,'').trim().split(/\s+/).length;
-  document.getElementById('wc').textContent=wordCount+' words';
-  document.getElementById('btn-next').textContent=currentQ===totalQ?'Go to General Feedback':'Next Question';
-  document.getElementById('btn-back').textContent=currentQ===1?'Back to Dashboard':'Previous Question';
+function qs(name){
+  return new URLSearchParams(location.search).get(name);
 }
 
-function saveCurrent(){
-  if(!allData) return;
-  var criteria=allData.criterion_feedback;
-  var c=criteria[currentQ-1]||criteria[0];
-  var payload={
-    criteria:[{
-      criterion_id:c.criterion_id,
-      strengths:document.getElementById('txt-strengths').value,
-      weaknesses:document.getElementById('txt-weaknesses').value,
-      suggestions:document.getElementById('txt-suggestions').value,
-      mark:document.getElementById('final-mark').value||null
-    }]
-  };
-  fetch('/api/feedback/1/save',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
-  }).then(function(r){return r.json();})
-    .then(function(){alert('Saved!');})
-    .catch(function(e){console.error(e);});
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
 }
 
-function nextQ(){
-  if(currentQ<totalQ){
-    currentQ++;
-    history.pushState({q:currentQ},'','?q='+currentQ);
-    updateProgress();
-    loadFromDB();
-  } else {
-    window.location.href='/educator/general-feedback';
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+  });
+});
+
+fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
+  document.getElementById('nav-name').textContent = d.user.name || d.user.email;
+  document.getElementById('nav-avatar').textContent = initials(d.user.name);
+});
+
+genId = qs('id');
+if(!genId){
+  document.getElementById('content').innerHTML = '<div class="loading" style="color:#c00">Missing generation id. Please open this page from the submissions list.</div>';
+} else {
+  loadFeedback();
+}
+
+function loadFeedback(){
+  fetch('/api/feedback/' + genId).then(function(r){return r.json();}).then(function(d){
+    if(d.error){
+      document.getElementById('content').innerHTML = '<div class="loading" style="color:#c00">' + d.error + '</div>';
+      return;
+    }
+    data = d;
+    total = (d.criterion_feedback || []).length;
+
+    document.getElementById('student-id').textContent = d.run.student_identifier || '-';
+    document.getElementById('assignment-name').textContent = d.run.assignment_name || '-';
+
+    var c = qs('c');
+    if(c){
+      var n = parseInt(c) - 1;
+      if(n >= 0 && n < total) idx = n;
+    }
+
+    drawPage();
+  });
+}
+
+function drawPage(){
+  if(!data || total === 0){
+    document.getElementById('content').innerHTML = '<div class="loading">No criterion feedback available.</div>';
+    return;
   }
+
+  var c = data.criterion_feedback[idx];
+  document.getElementById('crit-label').textContent = (idx + 1) + ' of ' + total;
+  document.getElementById('pct').textContent = Math.round(((idx + 1) / total) * 100) + '%';
+
+  var submissionText = data.run.submission_text || '(no submission text available)';
+  var wordCount = submissionText.trim().split(/\s+/).length;
+
+  var evidenceHtml = c.evidence_summary
+    ? '<div class="evidence-block"><strong>Evidence:</strong> ' + escapeHtml(c.evidence_summary) + '</div>'
+    : '';
+
+  var html = ''
+    + '<div class="grid">'
+
+    + '<div class="card">'
+    + '<div class="card-title">Submission</div>'
+    + '<div class="submission-box">' + escapeHtml(submissionText) + '</div>'
+    + '<div class="word-count">Word count: <strong>' + wordCount + '</strong></div>'
+    + '</div>'
+
+    + '<div>'
+    + '<div class="card gen-form">'
+    + '<div class="card-title">Feedback Generation Control</div>'
+    + '<div class="form-group">'
+    + '<label class="form-label">Feedback Type</label>'
+    + '<select id="fb-type"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select>'
+    + '</div>'
+    + '<div class="form-group">'
+    + '<label class="form-label">Marking Rigour</label>'
+    + '<select id="fb-rigour"><option value="formative" selected>Formative</option><option value="summative">Summative</option></select>'
+    + '</div>'
+    + '<div class="two-col">'
+    + '<div><label class="form-label">Word Limit</label><input type="number" id="fb-words" value="200" min="50"></div>'
+    + '<div><label class="form-label">Tolerance (%)</label><input type="number" id="fb-tol" value="10" min="0"></div>'
+    + '</div>'
+    + '<label class="check-row"><input type="checkbox" id="fb-ref"> Reference Check</label>'
+    + '<button class="btn-generate" onclick="regenAll()">Regenerate This Criterion</button>'
+    + '</div>'
+
+    + '<div class="card">'
+    + '<div class="criterion-name">Criterion ' + (idx + 1) + ': ' + (c.criterion_name || '-') + '</div>'
+
+    + buildSection('s', 'Strengths', 'ta-strengths', c.strengths)
+    + buildSection('w', 'Areas for Improvement', 'ta-weaknesses', c.areas_for_improvement)
+    + buildSection('sg', 'Improvement Suggestion', 'ta-suggestion', c.improvement_suggestion)
+
+    + evidenceHtml
+
+    + '<div class="grade-row">'
+    + '<button class="grade-toggle" onclick="toggleGrade()" id="grade-toggle">' + (gradeVisible ? 'Hide AI grade' : 'Show AI grade') + '</button>'
+    + '<div class="grade-area' + (gradeVisible ? ' show' : '') + '" id="grade-area">'
+    + '<span class="grade-label">AI suggested level:</span>'
+    + '<span class="grade-badge">' + (c.suggested_level || '-') + '</span>'
+    + '</div>'
+    + '</div>'
+
+    + '<div class="mark-row">'
+    + '<label class="form-label">Mark (out of 100)</label>'
+    + '<input type="number" id="mark" min="0" max="100" value="' + (c.mark != null ? c.mark : '') + '">'
+    + '</div>'
+
+    + '<div class="nav-row">'
+    + '<button class="btn btn-secondary" onclick="goBack()">' + (idx === 0 ? '← Back to List' : '← Previous') + '</button>'
+    + '<button class="btn btn-save" onclick="saveCurrent(this)">Save</button>'
+    + '<button class="btn btn-primary" onclick="goNext()">' + (idx === total - 1 ? 'Go to Overall →' : 'Next →') + '</button>'
+    + '</div>'
+
+    + '</div>'
+    + '</div>'
+
+    + '</div>';
+
+  document.getElementById('content').innerHTML = html;
 }
 
-function prevQ(){
-  if(currentQ>1){
-    currentQ--;
-    updateProgress();
-    loadFromDB();
-  } else {
-    window.location.href='/educator';
-  }
+function buildSection(cls, label, taId, value){
+  return '<div class="fb-section">'
+    + '<div class="fb-header">'
+    + '<span class="fb-label ' + cls + '">' + label + '</span>'
+    + '<div class="fb-actions">'
+    + '<button class="icon-btn" onclick="regenSection(\'' + taId + '\')">Regenerate</button>'
+    + '<button class="icon-btn" onclick="suggest(\'' + taId + '\')">Suggest</button>'
+    + '</div>'
+    + '</div>'
+    + '<textarea id="' + taId + '">' + escapeHtml(value || '') + '</textarea>'
+    + '</div>';
+}
+
+function regenAll(){
+  alert('Full regeneration for this criterion will be handled by the backend pipeline.');
+}
+
+function regenSection(taId){
+  alert('Regeneration for this section will be handled by the backend pipeline.');
+}
+
+function suggest(taId){
+  alert('Course-material suggestions will be handled by the backend retrieval system.');
 }
 
 function toggleGrade(){
-  gradeVisible=!gradeVisible;
-  document.getElementById('grade-area').classList.toggle('hidden',!gradeVisible);
-  document.getElementById('grade-toggle-btn').textContent=gradeVisible?'Hide AI grade':'Show AI grade';
+  gradeVisible = !gradeVisible;
+  document.getElementById('grade-area').classList.toggle('show', gradeVisible);
+  document.getElementById('grade-toggle').textContent = gradeVisible ? 'Hide AI grade' : 'Show AI grade';
 }
 
-function loadFromDB(){
-  var btn=document.getElementById('gen-btn');
-  btn.disabled=true;
-  btn.textContent='Loading...';
-  fetch('/api/feedback/1')
-    .then(function(r){return r.json();})
-    .then(function(data){
-      allData=data;
-      if(data.run.submission_text && questions.length===0){
-        var text=data.run.submission_text;
-        var parts=text.split(/\n(?=Question \d+:)/);
-        questions=parts.filter(function(p){return p.match(/^Question \d+:/);}).map(function(p){
-          var lines=p.trim().split('\n');
-          var title=lines[0].trim();
-          var body=lines.slice(1).filter(function(l){return l.trim();}).map(function(l){
-            return '<p>'+l.trim()+'</p>';
-          }).join('');
-          return {title:title,body:body};
-        });
-        if(questions.length===0) questions=[{title:'Question 1',body:'<p>No content</p>'}];
-        totalQ=questions.length;
-        if(currentQ>totalQ) currentQ=totalQ;
-      }
-      updateProgress();
-      var criteria=data.criterion_feedback;
-      var c=criteria[currentQ-1]||criteria[0];
-      document.getElementById('txt-strengths').value=c.strengths||'';
-      document.getElementById('txt-weaknesses').value=c.areas_for_improvement||'';
-      document.getElementById('txt-suggestions').value=c.improvement_suggestion||'';
-      document.getElementById('grade-badge').textContent=c.suggested_level||'-';
-      document.getElementById('txt-rationale').value=c.evidence_summary||'';
-      document.getElementById('final-mark').value=c.mark||'';      btn.disabled=false;
-      btn.textContent='✨ Generate';
-    })
-    .catch(function(e){
-      console.error(e);
-      btn.disabled=false;
-      btn.textContent='✨ Generate';
-    });
+function saveCurrent(btn){
+  if(!data) return;
+  var c = data.criterion_feedback[idx];
+  var payload = {
+    criteria: [{
+      criterion_id: c.criterion_id,
+      strengths: document.getElementById('ta-strengths').value,
+      weaknesses: document.getElementById('ta-weaknesses').value,
+      suggestions: document.getElementById('ta-suggestion').value,
+      mark: document.getElementById('mark').value || null
+    }]
+  };
+  fetch('/api/feedback/' + genId + '/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).then(function(r){return r.json();}).then(function(){
+    c.strengths = payload.criteria[0].strengths;
+    c.areas_for_improvement = payload.criteria[0].weaknesses;
+    c.improvement_suggestion = payload.criteria[0].suggestions;
+    c.mark = payload.criteria[0].mark;
+    var orig = btn.textContent;
+    btn.textContent = 'Saved';
+    setTimeout(function(){ btn.textContent = orig; }, 1200);
+  });
 }
 
-window.addEventListener('popstate',function(e){
-  if(e.state&&e.state.q) currentQ=e.state.q;
-  else currentQ=1;
-  loadFromDB();
-});
+function goNext(){
+  if(idx < total - 1){
+    idx++;
+    history.replaceState(null, '', '?id=' + genId + '&c=' + (idx + 1));
+    drawPage();
+  } else {
+    location.href = '/educator/general-feedback?id=' + genId;
+  }
+}
 
-window.onload=function(){
-  var params=new URLSearchParams(window.location.search);
-  var qParam=parseInt(params.get('q'));
-  if(qParam>=1) currentQ=qParam;
-  loadFromDB();
-};
+function goBack(){
+  if(idx > 0){
+    idx--;
+    history.replaceState(null, '', '?id=' + genId + '&c=' + (idx + 1));
+    drawPage();
+  } else {
+    if(data && data.run && data.run.unit_id){
+      location.href = '/educator/unit/' + data.run.unit_id + '/submissions';
+    } else {
+      location.href = '/educator';
+    }
+  }
+}
 </script>
 </body>
 </html>

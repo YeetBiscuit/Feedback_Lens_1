@@ -106,6 +106,72 @@ def feedback_review():
 def general_feedback():
     return render_template('general_feedback.html')
 
+@app.route('/educator/unit/<int:unit_id>/submissions')
+@login_required('educator')
+def submissions_list(unit_id):
+    return render_template('submissions_list.html', unit_id=unit_id)
+
+
+@app.route('/api/educator/unit/<int:unit_id>/submissions')
+def unit_submissions_data(unit_id):
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+    if user.get('tutor_id') is None:
+        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
+
+    with connect_db() as conn:
+        unit = conn.execute(
+            """
+            SELECT u.unit_id, u.unit_code, u.unit_name, u.semester, u.year
+            FROM units u
+            JOIN unit_tutors ut ON ut.unit_id = u.unit_id
+            WHERE u.unit_id = ? AND ut.tutor_id = ?
+            """,
+            (unit_id, user['tutor_id']),
+        ).fetchone()
+        if unit is None:
+            return jsonify({'error': 'Unit not found or not authorised'}), 404
+
+        rows = conn.execute(
+            """
+            SELECT
+                ss.submission_id,
+                ss.student_identifier,
+                ss.submitted_at,
+                a.assignment_name,
+                a.assignment_id,
+                gr.generation_id,
+                gr.status AS generation_status,
+                of.overall_grade_band,
+                of.final_mark,
+                CASE
+                    WHEN hr.review_id IS NOT NULL THEN 'reviewed'
+                    WHEN gr.status = 'completed' THEN 'ai_generated'
+                    ELSE 'pending'
+                END AS review_status
+            FROM student_submissions ss
+            JOIN assignments a ON a.assignment_id = ss.assignment_id
+            LEFT JOIN generation_runs gr
+                ON gr.submission_id = ss.submission_id
+                AND gr.generation_id = (
+                    SELECT MAX(generation_id)
+                    FROM generation_runs
+                    WHERE submission_id = ss.submission_id
+                )
+            LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            WHERE a.unit_id = ?
+            ORDER BY ss.submission_id
+            """,
+            (unit_id,),
+        ).fetchall()
+
+    return jsonify({
+        'unit': dict(unit),
+        'submissions': [dict(r) for r in rows],
+    })
+
 @app.route('/api/educator/dashboard')
 def educator_dashboard_data():
     user, error = api_session_user(required_role='educator')
@@ -149,7 +215,12 @@ def get_feedback(generation_id):
         except ValueError as err:
             return jsonify({'error': str(err)}), 404
         submission = conn.execute(
-            "SELECT cleaned_text FROM student_submissions WHERE submission_id=?",
+            """
+            SELECT ss.cleaned_text, ss.submitted_at, a.unit_id
+            FROM student_submissions ss
+            JOIN assignments a ON a.assignment_id = ss.assignment_id
+            WHERE ss.submission_id = ?
+            """,
             (data['run']['submission_id'],)
         ).fetchone()
         review = conn.execute(
@@ -167,7 +238,14 @@ def get_feedback(generation_id):
     criteria = [dict(r) for r in data['criterion_feedback']]
     overall['key_strengths'] = parse_json_text_list(overall.get('key_strengths'))
     overall['priority_improvements'] = parse_json_text_list(overall.get('priority_improvements'))
-    run['submission_text'] = submission['cleaned_text'] if submission else ''
+    if submission:
+        run['submission_text'] = submission['cleaned_text']
+        run['submitted_at'] = submission['submitted_at']
+        run['unit_id'] = submission['unit_id']
+    else:
+        run['submission_text'] = ''
+        run['submitted_at'] = None
+        run['unit_id'] = None
     if review:
         run['review_status'] = 'reviewed'
     elif run.get('status') == 'completed':
@@ -193,7 +271,10 @@ def save_feedback(generation_id):
         for item in data.get('criteria', []):
             conn.execute("""
                 UPDATE criterion_feedback
-                SET strengths=?, areas_for_improvement=?, improvement_suggestion=?, mark=?
+                SET strengths=COALESCE(?, strengths),
+                    areas_for_improvement=COALESCE(?, areas_for_improvement),
+                    improvement_suggestion=COALESCE(?, improvement_suggestion),
+                    mark=COALESCE(?, mark)
                 WHERE generation_id=? AND criterion_id=?
             """, (
                 item.get('strengths'),
@@ -212,8 +293,9 @@ def save_feedback(generation_id):
                     final_mark=COALESCE(?, final_mark)
                 WHERE generation_id=?
             """, (overall_comment, final_mark, generation_id))
-        status = data.get('status')
-        review_status = data.get('review_status') or status
+
+        review_status = data.get('review_status') or data.get('status')
+
         if review_status == 'reviewed':
             review = conn.execute(
                 """
@@ -243,6 +325,15 @@ def save_feedback(generation_id):
                     """,
                     (generation_id, user['tutor_id'], overall_comment),
                 )
+        elif review_status in ('pending', 'ai_generated'):
+            conn.execute(
+                """
+                DELETE FROM human_reviews
+                WHERE generation_id=? AND tutor_id=? AND review_type='tutor_review'
+                """,
+                (generation_id, user['tutor_id']),
+            )
+
         conn.commit()
     return jsonify({'status': 'ok', 'review_status': review_status})
 

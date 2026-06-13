@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Submissions</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-btn{background:rgba(255,255,255,.18);color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer}
+.nav-btn:hover{background:rgba(255,255,255,.28)}
+.nav-right{display:flex;align-items:center;gap:.75rem}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+
+.layout{display:flex;min-height:calc(100vh - 3.75rem)}
+.sidebar{width:12.5rem;background:#fff;border-right:1px solid #e5e7eb;padding:1rem 0}
+.sidebar-item{display:block;padding:.7rem 1.5rem;font-size:.875rem;color:#4b5563;cursor:pointer;border-left:3px solid transparent}
+.sidebar-item:hover{background:#f9fafb}
+.sidebar-item.active{background:#eff6ff;color:#2563eb;border-left-color:#2563eb;font-weight:600}
+
+.main{flex:1;padding:2rem}
+.page-title{font-size:1.5rem;font-weight:700;margin-bottom:.25rem}
+.page-sub{font-size:.875rem;color:#6b7280;margin-bottom:1.5rem}
+
+.filter-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:.85rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:center}
+.search-input{flex:1}
+.search-input input{width:100%;padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:inherit}
+.search-input input:focus{outline:none;border-color:#2563eb}
+.status-select{padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;min-width:10.5rem;cursor:pointer;font-family:inherit}
+
+.bulk-bar{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;display:none;align-items:center;justify-content:space-between}
+.bulk-bar.show{display:flex}
+.bulk-text{font-size:.875rem;color:#1e40af;font-weight:500}
+.btn-bulk{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;background:#2563eb;color:#fff}
+.btn-bulk:hover{background:#1d4ed8}
+
+.table-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead{background:#f9fafb}
+th{text-align:left;padding:.75rem 1rem;font-size:.6875rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb}
+td{padding:.85rem 1rem;font-size:.875rem;color:#1f2937;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover{background:#fafafa}
+.cb-col{width:2.5rem}
+input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
+.grade{font-weight:700;font-size:.9375rem}
+.grade-HD{color:#7c3aed}
+.grade-D{color:#2563eb}
+.grade-C{color:#16a34a}
+.grade-P{color:#d97706}
+.grade-N{color:#dc2626}
+
+.status-select-inline{padding:.25rem .6rem;border-radius:12px;font-size:.75rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;appearance:none;background-image:none;padding-right:1.5rem;background-repeat:no-repeat;background-position:right .4rem center}
+.status-select-inline.pending{background-color:#fef3c7;color:#92400e}
+.status-select-inline.ai{background-color:#dbeafe;color:#1e40af}
+.status-select-inline.reviewed{background-color:#dcfce7;color:#15803d}
+
+.action-cell{text-align:right}
+.btn-action{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit}
+.btn-generate{background:#2563eb;color:#fff}
+.btn-generate:hover{background:#1d4ed8}
+.btn-view{background:#1f2937;color:#fff}
+.btn-view:hover{background:#111827}
+.empty-row td{padding:2rem;text-align:center;color:#888}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-btn" onclick="location.href='/educator'">Home</button>
+    <button class="nav-btn" id="unit-btn">-</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Educator</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar">-</div>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-item" onclick="location.href='/educator'">Dashboard</div>
+    <div class="sidebar-item active">Submissions</div>
+    <div class="sidebar-item">AI Performance</div>
+    <div class="sidebar-item">Export</div>
+  </div>
+
+  <div class="main">
+    <h1 class="page-title" id="page-title">Submissions</h1>
+    <div class="page-sub">Review and manage student submissions</div>
+
+    <div class="filter-bar">
+      <div class="search-input">
+        <input type="text" id="search" placeholder="Search by student or assessment...">
+      </div>
+      <select class="status-select" id="status-filter">
+        <option value="all">All Status</option>
+        <option value="pending">Pending Review</option>
+        <option value="ai_generated">AI Generated</option>
+        <option value="reviewed">Reviewed</option>
+      </select>
+    </div>
+
+    <div class="bulk-bar" id="bulk-bar">
+      <div class="bulk-text"><span id="bulk-count">0</span> selected</div>
+      <div>
+        <button class="btn-bulk" onclick="bulkGenerate()">Generate Feedback</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th class="cb-col"><input type="checkbox" id="cb-all" onchange="toggleAll()"></th>
+            <th>Student</th>
+            <th>Assessment</th>
+            <th>Submission Date</th>
+            <th>Estimate Grade</th>
+            <th>Final Mark</th>
+            <th>Status</th>
+            <th class="action-cell">Action</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr class="empty-row"><td colspan="8">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+var unitId = {{ unit_id }};
+var rows = [];
+var selected = {};
+
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+function shortId(s){
+  if(!s) return '-';
+  return s.length > 30 ? s.substring(0, 28) + '...' : s;
+}
+
+function formatDate(s){
+  if(!s) return '-';
+  return s.split(' ')[0];
+}
+
+function statusClass(s){
+  if(s === 'reviewed') return 'reviewed';
+  if(s === 'ai_generated') return 'ai';
+  return 'pending';
+}
+
+function render(){
+  var query = document.getElementById('search').value.trim().toLowerCase();
+  var filter = document.getElementById('status-filter').value;
+
+  var visible = rows.filter(function(r){
+    if(filter !== 'all' && r.review_status !== filter) return false;
+    if(query){
+      var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
+      return text.indexOf(query) !== -1;
+    }
+    return true;
+  });
+
+  var body = document.getElementById('table-body');
+  if(!visible.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="8">No submissions found.</td></tr>';
+    updateBulkBar();
+    return;
+  }
+
+  body.innerHTML = visible.map(function(r){
+    var grade = r.overall_grade_band || '-';
+    var gradeCls = r.overall_grade_band ? 'grade grade-' + r.overall_grade_band : 'grade';
+    var mark = r.final_mark != null ? r.final_mark : '-';
+    var checked = selected[r.submission_id] ? 'checked' : '';
+    var statusCls = statusClass(r.review_status);
+
+    var statusCell;
+    if(r.generation_id){
+      statusCell = '<select class="status-select-inline ' + statusCls + '" onchange="changeStatus(' + r.generation_id + ', this)">'
+        + '<option value="pending"' + (r.review_status === 'pending' ? ' selected' : '') + '>Pending</option>'
+        + '<option value="ai_generated"' + (r.review_status === 'ai_generated' ? ' selected' : '') + '>AI Generated</option>'
+        + '<option value="reviewed"' + (r.review_status === 'reviewed' ? ' selected' : '') + '>Reviewed</option>'
+        + '</select>';
+    } else {
+      statusCell = '<select class="status-select-inline pending" disabled><option>Pending</option></select>';
+    }
+
+    var action;
+    if(r.generation_id){
+      action = '<button class="btn-action btn-view" onclick="openReview(' + r.generation_id + ')">View Detail</button>';
+    } else {
+      action = '<button class="btn-action btn-generate" onclick="generateOne(' + r.submission_id + ')">Generate</button>';
+    }
+
+    return '<tr>'
+      + '<td><input type="checkbox" ' + checked + ' onchange="toggleOne(' + r.submission_id + ', this.checked)"></td>'
+      + '<td>' + shortId(r.student_identifier) + '</td>'
+      + '<td>' + (r.assignment_name || '-') + '</td>'
+      + '<td>' + formatDate(r.submitted_at) + '</td>'
+      + '<td><span class="' + gradeCls + '">' + grade + '</span></td>'
+      + '<td>' + mark + '</td>'
+      + '<td>' + statusCell + '</td>'
+      + '<td class="action-cell">' + action + '</td>'
+      + '</tr>';
+  }).join('');
+
+  updateBulkBar();
+}
+
+function changeStatus(genId, sel){
+  var newStatus = sel.value;
+  sel.className = 'status-select-inline ' + statusClass(newStatus);
+  fetch('/api/feedback/' + genId + '/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({review_status: newStatus})
+  }).then(function(r){return r.json();}).then(function(){
+    var row = rows.find(function(r){ return r.generation_id === genId; });
+    if(row) row.review_status = newStatus;
+  });
+}
+
+function toggleOne(id, checked){
+  if(checked) selected[id] = true;
+  else delete selected[id];
+  updateBulkBar();
+  syncSelectAll();
+}
+
+function toggleAll(){
+  var all = document.getElementById('cb-all').checked;
+  selected = {};
+  if(all){
+    rows.forEach(function(r){ selected[r.submission_id] = true; });
+  }
+  render();
+}
+
+function syncSelectAll(){
+  var total = rows.length;
+  var picked = Object.keys(selected).length;
+  document.getElementById('cb-all').checked = total > 0 && picked === total;
+}
+
+function updateBulkBar(){
+  var n = Object.keys(selected).length;
+  document.getElementById('bulk-count').textContent = n;
+  document.getElementById('bulk-bar').classList.toggle('show', n > 0);
+}
+
+function bulkGenerate(){
+  var ids = Object.keys(selected);
+  alert('Generation for ' + ids.length + ' submission(s) will be handled by the backend pipeline.\n\nSubmission IDs: ' + ids.join(', '));
+}
+
+function generateOne(id){
+  alert('Generation for submission ' + id + ' will be handled by the backend pipeline.');
+}
+
+function openReview(id){
+  location.href = '/educator/feedback-review?id=' + id;
+}
+
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('status-filter').addEventListener('change', render);
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+  });
+});
+
+fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
+  document.getElementById('nav-name').textContent = d.user.name || d.user.email;
+  document.getElementById('nav-avatar').textContent = initials(d.user.name);
+});
+
+fetch('/api/educator/unit/' + unitId + '/submissions')
+  .then(function(r){ return r.json(); })
+  .then(function(data){
+    if(data.error){
+      document.getElementById('table-body').innerHTML =
+        '<tr class="empty-row"><td colspan="8" style="color:#c00">' + data.error + '</td></tr>';
+      return;
+    }
+    document.getElementById('page-title').textContent = 'Submissions - ' + data.unit.unit_code;
+    document.getElementById('unit-btn').textContent = data.unit.unit_code;
+    rows = data.submissions || [];
+    render();
+  });
+</script>
+</body>
+</html>

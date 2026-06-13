@@ -2,238 +2,318 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>General Feedback</title>
+<title>Overall Feedback</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#f5f5f4;min-height:100vh;padding:1.25rem;font-size:16px}
-.top-bar{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center}
-.meta{display:flex;gap:2.5rem;align-items:center}
-.meta-item label{font-size:13px;color:#888;display:block;margin-bottom:2px}
-.meta-item span{font-size:17px;font-weight:600}
-.status-wrap{position:relative}
-.status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #e5e5e5;border-radius:20px;font-size:14px;font-weight:500;background:#fff;cursor:pointer}
-.status-dot{width:8px;height:8px;border-radius:50%;background:#93c5fd}
-.status-dropdown{position:absolute;top:110%;left:0;background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:.5rem;min-width:160px;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,.08)}
-.status-option{padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;margin-bottom:4px}
-.status-option.pending{color:#d97706;background:#fefce8}
-.status-option.ai{color:#2563eb;background:#eff6ff}
-.status-option.reviewed{color:#16a34a;background:#f0fdf4}
-.hidden{display:none}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-btn{background:rgba(255,255,255,.18);color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer}
+.nav-btn:hover{background:rgba(255,255,255,.28)}
+.nav-right{display:flex;align-items:center;gap:.75rem}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+
+.wrap{padding:1.25rem}
+.top-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.meta{display:flex;gap:2.5rem;align-items:center;flex-wrap:wrap}
+.meta-item label{font-size:.75rem;color:#6b7280;display:block;margin-bottom:2px}
+.meta-item span{font-size:1rem;font-weight:600}
+.status-display{display:inline-flex;align-items:center;gap:.4rem;padding:.3rem .8rem;border:1px solid #e5e7eb;border-radius:18px;font-size:.8125rem;font-weight:500;background:#fff}
+.status-dot{width:.5rem;height:.5rem;border-radius:50%;background:#fcd34d}
+
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start}
-.card{background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
-.card-title{font-size:17px;font-weight:600;margin-bottom:1rem}
-.q-preview{border:1px solid #e5e5e5;border-radius:8px;padding:.85rem 1rem;margin-bottom:.75rem;cursor:pointer}
-.q-preview:hover{background:#f9f9f9}
-.q-preview-title{font-size:15px;font-weight:600;margin-bottom:4px}
-.q-preview-body{font-size:13px;color:#888;line-height:1.5}
-.word-count{font-size:14px;color:#888;margin-top:.5rem}
-.word-count strong{color:#333}
-.form-label{font-size:14px;color:#666;display:block;margin-bottom:4px}
-.form-group{margin-bottom:1rem}
-select,input[type=number]{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;background:#fff}
-.btn-generate{width:100%;padding:11px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:500;cursor:pointer}
+.card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:1rem;font-weight:600;margin-bottom:1rem}
+
+.submission-box{border:1px solid #e5e7eb;border-radius:8px;padding:1rem;background:#fafafa;max-height:35rem;overflow-y:auto;white-space:pre-wrap;font-size:.8125rem;line-height:1.7;color:#374151;font-family:inherit}
+.word-count{font-size:.8125rem;color:#6b7280;margin-top:.75rem}
+.word-count strong{color:#1f2937}
+
+.gen-form .form-group{margin-bottom:.75rem}
+.form-label{font-size:.8125rem;color:#6b7280;display:block;margin-bottom:4px}
+.gen-form select{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
+.btn-generate{width:100%;padding:.65rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.9375rem;font-weight:500;cursor:pointer;font-family:inherit}
 .btn-generate:hover{background:#1d4ed8}
-.btn-generate:disabled{background:#ccc;cursor:not-allowed}
-textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;font-size:15px;line-height:1.6;resize:vertical;min-height:160px;font-family:inherit}
-.grade-toggle{font-size:14px;color:#2563eb;cursor:pointer;background:none;border:none;padding:0;margin-bottom:6px;display:block}
-.grade-badge{font-size:28px;font-weight:700;color:#7c3aed;margin-right:8px}
-.bottom-nav{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem}
-.btn-back{padding:9px 24px;border:1px solid #ddd;border-radius:8px;background:#fff;font-size:15px;cursor:pointer}
-.btn-save-review{padding:9px 24px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:500;cursor:pointer}
-.btn-save-review:hover{background:#15803d}
+
+textarea{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;line-height:1.6;resize:vertical;font-family:inherit}
+textarea:focus{outline:none;border-color:#2563eb}
+input[type=number]{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:inherit}
+
+.grade-row{margin-top:.75rem}
+.grade-toggle{font-size:.8125rem;color:#2563eb;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;text-decoration:underline}
+.grade-area{margin-top:.5rem;display:none;align-items:center;gap:.5rem}
+.grade-area.show{display:flex}
+.grade-label{font-size:.8125rem;color:#6b7280}
+.grade-badge{font-size:1.375rem;font-weight:700;color:#7c3aed}
+
+.list-block{margin-top:1rem}
+.list-block h4{font-size:.8125rem;font-weight:600;margin-bottom:.4rem}
+.list-block ul{padding-left:1.2rem;font-size:.8125rem;line-height:1.7;color:#4b5563}
+
+.nav-row{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;gap:.5rem;flex-wrap:wrap}
+.btn{padding:.55rem 1.4rem;border-radius:8px;font-size:.875rem;cursor:pointer;border:none;font-family:inherit;font-weight:500}
+.btn-secondary{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-secondary:hover{background:#f9fafb}
+.btn-draft{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-draft:hover{background:#f9fafb}
+.btn-save{background:#16a34a;color:#fff}
+.btn-save:hover{background:#15803d}
+
+.loading{text-align:center;padding:3rem;color:#888}
 </style>
 </head>
 <body>
 
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-btn" onclick="location.href='/educator'">Home</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Educator</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar">-</div>
+  </div>
+</div>
+
+<div class="wrap">
+
 <div class="top-bar">
   <div class="meta">
-    <div class="meta-item"><label>Student ID</label><span id="student-id">-</span></div>
-    <div class="meta-item"><label>Assignment Name</label><span id="assignment-name">-</span></div>
+    <div class="meta-item"><label>Student</label><span id="student-id">-</span></div>
+    <div class="meta-item"><label>Assignment</label><span id="assignment-name">-</span></div>
     <div class="meta-item">
       <label>Status</label>
-      <div class="status-wrap">
-        <div class="status-badge" onclick="toggleStatus(event)">
-          <span class="status-dot" id="status-dot"></span>
-          <span id="status-text">AI Generated</span>
-          <span>&#8964;</span>
-        </div>
-        <div class="status-dropdown hidden" id="status-dropdown">
-          <div class="status-option pending" onclick="setStatus('Pending','#fcd34d')">Pending</div>
-          <div class="status-option ai" onclick="setStatus('AI Generated','#93c5fd')">AI Generated</div>
-          <div class="status-option reviewed" onclick="setStatus('Reviewed','#86efac')">Reviewed</div>
-        </div>
+      <div class="status-display">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Pending</span>
       </div>
     </div>
   </div>
 </div>
 
-<div class="grid">
-  <div class="card">
-    <div class="card-title">Submission Preview</div>
-    <div id="q-previews"></div>
-    <div class="word-count">Total Word Count: <strong id="total-wc">-</strong></div>
-  </div>
+<div id="content">
+  <div class="loading">Loading...</div>
+</div>
 
-  <div>
-    <div class="card">
-      <div class="card-title">Feedback Generation Control</div>
-      <div class="form-group">
-        <label class="form-label">Feedback Type</label>
-        <select id="fb-type">
-          <option value="short">Short</option>
-          <option value="medium" selected>Medium</option>
-          <option value="detailed">Detailed</option>
-        </select>
-      </div>
-      <button class="btn-generate" id="gen-btn" onclick="loadFromDB()">&#10024; Generate</button>
-    </div>
-
-    <div class="card">
-      <div class="card-title">AI Feedback</div>
-      <div class="form-group">
-        <textarea id="txt-overall" style="min-height:160px"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">AI Estimate Grade</label>
-        <button class="grade-toggle" id="grade-toggle-btn" onclick="toggleGrade()">Show AI grade</button>
-        <div class="hidden" id="grade-area">
-          <span class="grade-badge" id="grade-badge">-</span>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Rationale</label>
-        <textarea id="txt-rationale" style="min-height:100px"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Final Total Mark (out of 100)</label>
-        <input type="number" id="final-mark" min="0" max="100">
-      </div>
-    </div>
-
-    <div class="bottom-nav">
-      <button class="btn-back" onclick="window.location.href='/educator/feedback-review?q=4'">&#8592; Back</button>
-      <button class="btn-save-review" onclick="saveReview()">Save as Review</button>
-    </div>
-  </div>
 </div>
 
 <script>
+var data = null;
+var genId = null;
 var gradeVisible = false;
-var statusOpen = false;
-var allData = null;
 
-function toggleStatus(e){
-  e.stopPropagation();
-  statusOpen = !statusOpen;
-  document.getElementById('status-dropdown').classList.toggle('hidden', !statusOpen);
+var statusLabels = {pending:'Pending Review', ai_generated:'AI Generated', reviewed:'Reviewed'};
+var statusColors = {pending:'#fcd34d', ai_generated:'#93c5fd', reviewed:'#86efac'};
+
+function qs(name){
+  return new URLSearchParams(location.search).get(name);
 }
-function setStatus(s, color){
-  document.getElementById('status-text').textContent = s;
-  document.getElementById('status-dot').style.background = color;
-  document.getElementById('status-dropdown').classList.add('hidden');
-  statusOpen = false;
+
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
 }
-document.addEventListener('click', function(){
-  document.getElementById('status-dropdown').classList.add('hidden');
-  statusOpen = false;
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
+  });
 });
+
+fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
+  document.getElementById('nav-name').textContent = d.user.name || d.user.email;
+  document.getElementById('nav-avatar').textContent = initials(d.user.name);
+});
+
+genId = qs('id');
+if(!genId){
+  document.getElementById('content').innerHTML = '<div class="loading" style="color:#c00">Missing generation id.</div>';
+} else {
+  loadFeedback();
+}
+
+function loadFeedback(){
+  fetch('/api/feedback/' + genId).then(function(r){return r.json();}).then(function(d){
+    if(d.error){
+      document.getElementById('content').innerHTML = '<div class="loading" style="color:#c00">' + d.error + '</div>';
+      return;
+    }
+    data = d;
+    document.getElementById('student-id').textContent = d.run.student_identifier || '-';
+    document.getElementById('assignment-name').textContent = d.run.assignment_name || '-';
+    updateStatusDisplay(d.run.review_status || 'pending');
+    drawPage();
+  });
+}
+
+function updateStatusDisplay(s){
+  document.getElementById('status-text').textContent = statusLabels[s] || s;
+  document.getElementById('status-dot').style.background = statusColors[s] || '#ccc';
+}
+
+function drawPage(){
+  var overall = data.overall_feedback || {};
+  var submission = data.run.submission_text || '(no submission text)';
+  var wordCount = submission.trim().split(/\s+/).length;
+
+  var strengths = overall.key_strengths || [];
+  var improvements = overall.priority_improvements || [];
+
+  var strengthsHtml = strengths.length
+    ? '<ul>' + strengths.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ul>'
+    : '<div style="font-size:.8125rem;color:#999">None recorded.</div>';
+  var improvementsHtml = improvements.length
+    ? '<ul>' + improvements.map(function(s){ return '<li>' + escapeHtml(s) + '</li>'; }).join('') + '</ul>'
+    : '<div style="font-size:.8125rem;color:#999">None recorded.</div>';
+
+  var html = ''
+    + '<div class="grid">'
+
+    + '<div class="card">'
+    + '<div class="card-title">Submission</div>'
+    + '<div class="submission-box">' + escapeHtml(submission) + '</div>'
+    + '<div class="word-count">Word count: <strong>' + wordCount + '</strong></div>'
+    + '</div>'
+
+    + '<div>'
+    + '<div class="card gen-form">'
+    + '<div class="card-title">Feedback Generation Control</div>'
+    + '<div class="form-group">'
+    + '<label class="form-label">Feedback Type</label>'
+    + '<select id="fb-type"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select>'
+    + '</div>'
+    + '<button class="btn-generate" onclick="regenOverall()">Regenerate Overall Feedback</button>'
+    + '</div>'
+
+    + '<div class="card">'
+    + '<div class="card-title">Overall Feedback</div>'
+    + '<label class="form-label">Overall Comment</label>'
+    + '<textarea id="ta-overall" style="min-height:8.75rem">' + escapeHtml(overall.overall_comment || '') + '</textarea>'
+
+    + '<div class="grade-row">'
+    + '<button class="grade-toggle" id="grade-toggle" onclick="toggleGrade()">Show AI grade</button>'
+    + '<div class="grade-area" id="grade-area">'
+    + '<span class="grade-label">AI suggested grade:</span>'
+    + '<span class="grade-badge">' + (overall.overall_grade_band || '-') + '</span>'
+    + '</div>'
+    + '</div>'
+
+    + '<div class="list-block">'
+    + '<h4 style="color:#16a34a">Key Strengths</h4>'
+    + strengthsHtml
+    + '</div>'
+
+    + '<div class="list-block">'
+    + '<h4 style="color:#d97706">Priority Improvements</h4>'
+    + improvementsHtml
+    + '</div>'
+
+    + '<label class="form-label" style="margin-top:1rem">Final Mark (out of 100)</label>'
+    + '<input type="number" id="final-mark" min="0" max="100" value="' + (overall.final_mark != null ? overall.final_mark : '') + '">'
+
+    + '<div class="nav-row">'
+    + '<button class="btn btn-secondary" onclick="goBack()">← Back to Criteria</button>'
+    + '<button class="btn btn-draft" onclick="saveDraft(this)">Save Draft</button>'
+    + '<button class="btn btn-save" onclick="saveAsReviewed()">Save as Reviewed</button>'
+    + '</div>'
+
+    + '</div>'
+    + '</div>'
+
+    + '</div>';
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function regenOverall(){
+  alert('Overall feedback regeneration will be handled by the backend pipeline.');
+}
 
 function toggleGrade(){
   gradeVisible = !gradeVisible;
-  document.getElementById('grade-area').classList.toggle('hidden', !gradeVisible);
-  document.getElementById('grade-toggle-btn').textContent = gradeVisible ? 'Hide AI grade' : 'Show AI grade';
+  document.getElementById('grade-area').classList.toggle('show', gradeVisible);
+  document.getElementById('grade-toggle').textContent = gradeVisible ? 'Hide AI grade' : 'Show AI grade';
 }
 
-function loadFromDB(){
-  var btn = document.getElementById('gen-btn');
-  btn.disabled = true;
-  btn.textContent = 'Loading...';
-  fetch('/api/feedback/1')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      allData = data;
-      var overall = data.overall_feedback;
-      var run = data.run;
-
-      document.getElementById('student-id').textContent = run.student_identifier || '-';
-      document.getElementById('assignment-name').textContent = run.assignment_name || '-';
-      document.getElementById('txt-overall').value = overall.overall_comment || '';
-      document.getElementById('grade-badge').textContent = overall.overall_grade_band || '-';
-      document.getElementById('final-mark').value = overall.final_mark || '';
-      var statusMap = {'pending':'Pending','ai_generated':'AI Generated','reviewed':'Reviewed'};
-      var colorMap = {'pending':'#fcd34d','ai_generated':'#93c5fd','reviewed':'#86efac'};
-      var s = run.review_status || 'ai_generated';
-      setStatus(statusMap[s] || 'AI Generated', colorMap[s] || '#93c5fd');
-
-      var rationale = (overall.key_strengths || []).map(function(s){ return '• ' + s; }).join('\n')
-        + '\n\nAreas to improve:\n'
-        + (overall.priority_improvements || []).map(function(s){ return '• ' + s; }).join('\n');
-      document.getElementById('txt-rationale').value = rationale;
-
-      if(run.submission_text){
-        var text = run.submission_text;
-        var parts = text.split(/\n(?=Question \d+:)/);
-        var questions = parts.filter(function(p){ return p.match(/^Question \d+:/); });
-        var totalWords = 0;
-        var html = questions.map(function(p){
-          var lines = p.trim().split('\n');
-          var title = lines[0].trim();
-          var body = lines.slice(1).filter(function(l){ return l.trim(); }).join(' ');
-          totalWords += p.trim().split(/\s+/).length;
-            var preview = body.substring(0, 100) + (body.length > 100 ? '...' : '');
-            var idx = questions.indexOf(p);
-            return '<div class="q-preview" onclick="togglePreview('+idx+')">'
-            + '<div class="q-preview-title">'+title+' <span style="font-size:12px;color:#2563eb" id="toggle-'+idx+'">Show more</span></div>'
-            + '<div class="q-preview-body" id="preview-short-'+idx+'">'+preview+'</div>'
-            + '<div class="hidden" id="preview-full-'+idx+'" style="font-size:13px;color:#444;line-height:1.7;margin-top:6px">'+body+'</div>'
-            + '</div>';
-        }).join('');
-        document.getElementById('q-previews').innerHTML = html;
-        document.getElementById('total-wc').textContent = totalWords + ' words';
-      }
-
-      btn.disabled = false;
-      btn.textContent = 'Generate';
-    })
-    .catch(function(e){
-      console.error(e);
-      btn.disabled = false;
-      btn.textContent = 'Generate';
-    });
-}
-
-function saveReview(){
-  if(!allData) return;
-  var statusMap = {
-    'Pending': 'pending',
-    'AI Generated': 'ai_generated', 
-    'Reviewed': 'reviewed'
-  };
+function saveDraft(btn){
+  if(!data) return;
   var payload = {
-  overall_comment: document.getElementById('txt-overall').value,
-  final_mark: document.getElementById('final-mark').value || null,
-  status: 'reviewed'
-};
-setStatus('Reviewed', '#86efac');
-  fetch('/api/feedback/1/save', {
+    overall_comment: document.getElementById('ta-overall').value,
+    final_mark: document.getElementById('final-mark').value || null
+  };
+  fetch('/api/feedback/' + genId + '/save', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(payload)
-  }).then(function(r){ return r.json(); })
-    .then(function(){ alert('Saved as Review!'); })
-    .catch(function(e){ console.error(e); });
+  }).then(function(r){return r.json();}).then(function(){
+    var orig = btn.textContent;
+    btn.textContent = 'Saved';
+    setTimeout(function(){ btn.textContent = orig; }, 1200);
+  });
 }
 
-window.onload = loadFromDB;
+function saveAsReviewed(){
+  if(!data) return;
+  var payload = {
+    overall_comment: document.getElementById('ta-overall').value,
+    final_mark: document.getElementById('final-mark').value || null,
+    review_status: 'reviewed'
+  };
+  fetch('/api/feedback/' + genId + '/save', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload)
+  }).then(function(r){return r.json();}).then(function(){
+    if(data.run && data.run.unit_id){
+      location.href = '/educator/unit/' + data.run.unit_id + '/submissions';
+    } else {
+      location.href = '/educator';
+    }
+  });
+}
 
-function togglePreview(idx){
-  var short = document.getElementById('preview-short-'+idx);
-  var full = document.getElementById('preview-full-'+idx);
-  var toggle = document.getElementById('toggle-'+idx);
-  var isHidden = full.classList.contains('hidden');
-  full.classList.toggle('hidden', !isHidden);
-  short.classList.toggle('hidden', isHidden);
-  toggle.textContent = isHidden ? 'Show less' : 'Show more';
+function goBack(){
+  location.href = '/educator/feedback-review?id=' + genId;
 }
 </script>
 </body>
