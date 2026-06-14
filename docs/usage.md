@@ -17,6 +17,7 @@ Manual workflow:
 7. Import a student submission
 8. Generate feedback
 9. Review the saved results
+10. Optionally run LLM-as-judge quality checks on exported feedback
 
 Whole-unit workflow:
 
@@ -25,6 +26,7 @@ Whole-unit workflow:
 3. Import the reviewed unit package with `ingest_unit.py`
 4. Generate feedback for the imported `submission_id` values
 5. Review the saved results
+6. Optionally run LLM-as-judge quality checks on exported feedback
 
 ## 1. Initialise Your Local Environment
 
@@ -325,9 +327,105 @@ python review_generation.py export 1 --full --output exports/generation_run_1_fu
 
 By default, export produces a result-only file with generation metadata, overall feedback, and criterion feedback. `--full` additionally includes the retrieval planner prompt, raw planner response, normalized planned cues, retrieved chunks with full text, and the raw prompt and response for the feedback generation LLM. Full exports can be long and may contain sensitive student or assessment content.
 
+## 8. Judge Feedback Quality
+
+Use `llm_judge.py` when you want one or more LLMs to evaluate generated feedback quality. The judge reads exported generation-run JSON files and scores the feedback on:
+
+- `grounding`
+- `specificity`
+- `actionability`
+
+The default judge mode is strict calibrated scoring. It asks the judge to start from 3, reserve 5 for feedback with no material weakness on that dimension, and record `defects` plus `missing_evidence` in the JSON result. This is intended to reduce inflated all-5 results from LLM judges.
+
+First export the generation run with full details. The full export is recommended because the judge uses the saved prompt, rubric/spec text, submission excerpt, and retrieved-course-context records when available:
+
+```powershell
+python review_generation.py export 1 --full --output exports/generation_run_1_full.json
+```
+
+Then run the judge:
+
+```powershell
+python llm_judge.py --input exports/generation_run_1_full.json --provider qwen --no-synthetic
+```
+
+The output is saved to `exports/llm_judge_results.json` by default.
+
+To choose a different output path:
+
+```powershell
+python llm_judge.py --input exports/generation_run_1_full.json --provider qwen --no-synthetic --output exports/judge_run_1.json
+```
+
+To judge only one quality dimension:
+
+```powershell
+python llm_judge.py --input exports/generation_run_1_full.json --provider qwen --dimensions grounding --no-synthetic
+```
+
+To compare multiple judge providers:
+
+```powershell
+python llm_judge.py --input exports/generation_run_1_full.json --judge qwen --judge gemini --no-synthetic
+```
+
+To judge several full exports:
+
+```powershell
+python llm_judge.py --input "exports/generation_run_*_full.json" --judge qwen --judge gemini --synthetic none --output exports/llm_judge_batch.json
+```
+
+To compare multiple feedback outputs for the same student submission:
+
+```powershell
+python llm_judge.py --input "exports/generation_run_*_full.json" --provider qwen --no-synthetic --compare --output exports/llm_judge_comparison.json
+```
+
+To compare exactly two chosen feedback exports:
+
+```powershell
+python llm_judge.py --compare exports/generation_run_32.json exports/generation_run_33.json --provider qwen --no-synthetic --output exports/llm_judge_comparison_32_33.json
+```
+
+`--compare` first runs the normal absolute scoring, then adds comparative rankings. With no file arguments, it compares groups from `--input` that have the same `assignment_id` and `student_identifier`. With two file arguments, those two files become the only real inputs and are compared directly, using each file's own assignment, rubric, retrieved-context, and submission excerpts. Comparative judging is blind: the judge prompt does not include source filenames, model names, pipeline names, generation strategies, or prior grade bands. When `--compare` is used, the saved JSON has this shape:
+
+```json
+{
+  "absolute_results": [],
+  "comparisons": []
+}
+```
+
+To run only the built-in low-quality or medium-quality synthetic baseline checks:
+
+```powershell
+python llm_judge.py --no-real --synthetic low --reference-file exports/generation_run_1_full.json --provider qwen
+```
+
+Useful options:
+
+- `--input` or `--inputs`: one or more full generation-run export files, with glob support
+- `--provider` and `--model`: a single judge provider and optional model
+- `--judge provider[:model]`: repeatable judge selector for multi-provider comparison
+- `--dimensions grounding specificity actionability`: the dimensions to score
+- `--synthetic all|low|medium|none`: whether to include built-in synthetic baselines
+- `--no-synthetic`: skip synthetic baselines
+- `--no-real`: skip exported generation runs and judge only synthetic baselines
+- `--reference-file`: full export used as context for synthetic baseline checks
+- `--temperature`: judge LLM temperature
+- `--call-delay`: seconds to wait before each judge call
+- `--scoring-mode strict|legacy`: strict is the default calibrated judge; legacy uses the original simpler prompt
+- `--compare [FILE_A FILE_B]`: add relative rankings; pass exactly two files to compare chosen exports directly
+
+By default, running `python llm_judge.py` uses the script's default export files and includes both synthetic baseline checks. For normal evaluation work, it is clearer to pass `--input` and `--no-synthetic` or `--synthetic none` explicitly.
+
+Do not pass the combined `review_generation.py export --all` JSON file to `llm_judge.py`; the judge expects individual generation-run export files.
+
+The judge makes live LLM calls through the same provider layer used by feedback generation, so the relevant API key environment variables must be set before running it.
+
 If you still want raw SQL, `python main.py` option `9` remains available.
 
-## End-To-End Example
+## 9. End-To-End Example
 
 Assume these files exist on your machine:
 
@@ -364,4 +462,11 @@ python ingest.py "documents/resources/week3_transcript.txt" 1 lecture_transcript
 python ingest.py "documents/resources/week4_transcript.txt" 1 lecture_transcript "Week 4 Transcript" 4
 python import_documents.py submission 1 student_001 "documents/submissions/student_001.pdf"
 python generate_feedback.py 1 --provider qwen --per-cue-top-k 5 --max-final-chunks 10
+```
+
+If the feedback command reports `generation_run=1`, export the full run and judge it:
+
+```powershell
+python review_generation.py export 1 --full --output exports/generation_run_1_full.json
+python llm_judge.py --input exports/generation_run_1_full.json --provider qwen --no-synthetic --output exports/judge_generation_run_1.json
 ```
