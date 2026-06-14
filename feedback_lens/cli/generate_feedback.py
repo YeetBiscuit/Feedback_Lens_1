@@ -2,6 +2,7 @@ import argparse
 
 from feedback_lens.db.connection import connect_db
 from feedback_lens.feedback.pipeline import generate_feedback_for_submission
+from feedback_lens.feedback.prompt import FEEDBACK_PROMPT_TEMPLATE_CHOICES
 from feedback_lens.feedback.retrieval import (
     DEFAULT_MAX_FINAL_CHUNKS,
     DEFAULT_PER_CUE_TOP_K,
@@ -15,6 +16,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("submission_id", type=int)
     parser.add_argument("--provider", default="qwen")
     parser.add_argument("--model")
+    parser.add_argument(
+        "--prompt",
+        dest="prompt_template_version",
+        choices=FEEDBACK_PROMPT_TEMPLATE_CHOICES,
+        help=(
+            "Feedback prompt template version. Defaults to the v1 template for "
+            "the selected mode. Use unit_grounded_feedback_json_v2 in retrieval "
+            "mode to make retrieved unit-material grounding more explicit."
+        ),
+    )
+    parser.add_argument(
+        "--prompt-template-version",
+        dest="prompt_template_version",
+        choices=FEEDBACK_PROMPT_TEMPLATE_CHOICES,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument(
         "--per-cue-top-k",
         "--top-k",
@@ -74,6 +91,7 @@ def main() -> None:
             per_cue_top_k=args.per_cue_top_k,
             max_final_chunks=args.max_final_chunks,
             temperature=args.temperature,
+            prompt_template_version=args.prompt_template_version,
             context_mode=args.mode,
             retrieval_strategy=args.retrieval_strategy,
         )

@@ -222,6 +222,16 @@ python generate_feedback.py 1 --provider qwen --mode retrieval --strategy planne
 
 Planned retrieval adds an intermediate LLM planning step. The planner reads the assignment specification, rubric, and student submission, then generates targeted retrieval cues for the course-material search. The baseline retrieval strategy remains the default.
 
+The default feedback prompt template is `baseline_feedback_json_v1` for retrieval mode and `baseline_direct_feedback_json_v1` for direct mode. To make retrieved unit-material grounding more explicit in retrieval feedback, use the v2 feedback prompt:
+
+```powershell
+python generate_feedback.py 1 --provider qwen --mode retrieval --strategy planned --prompt unit_grounded_feedback_json_v2 --per-cue-top-k 5 --max-final-chunks 10
+```
+
+The v2 prompt keeps the same JSON output schema as v1, but asks the model to connect `improvement_suggestion` and `evidence_summary` to relevant retrieved lecture, tutorial, example, method, or terminology where that context genuinely supports the feedback.
+
+You can also use the shorter alias `--prompt unit-grounded-v2`; generation records still store the canonical version name `unit_grounded_feedback_json_v2`.
+
 To generate a direct baseline without retrieved course context:
 
 ```powershell

@@ -2,6 +2,57 @@ import json
 import sqlite3
 
 
+BASELINE_FEEDBACK_PROMPT_JSON_V1 = "baseline_feedback_json_v1"
+BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1 = "baseline_direct_feedback_json_v1"
+UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2 = "unit_grounded_feedback_json_v2"
+
+RETRIEVAL_FEEDBACK_PROMPT_TEMPLATE_VERSIONS = {
+    BASELINE_FEEDBACK_PROMPT_JSON_V1,
+    UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2,
+}
+DIRECT_FEEDBACK_PROMPT_TEMPLATE_VERSIONS = {
+    BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1,
+}
+FEEDBACK_PROMPT_TEMPLATE_VERSIONS = sorted(
+    RETRIEVAL_FEEDBACK_PROMPT_TEMPLATE_VERSIONS
+    | DIRECT_FEEDBACK_PROMPT_TEMPLATE_VERSIONS
+)
+FEEDBACK_PROMPT_TEMPLATE_ALIASES = {
+    "retrieval-v1": BASELINE_FEEDBACK_PROMPT_JSON_V1,
+    "direct-v1": BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1,
+    "unit-grounded-v2": UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2,
+}
+FEEDBACK_PROMPT_TEMPLATE_CHOICES = sorted(
+    set(FEEDBACK_PROMPT_TEMPLATE_VERSIONS)
+    | set(FEEDBACK_PROMPT_TEMPLATE_ALIASES)
+)
+
+
+def default_feedback_prompt_template_version(context_mode: str) -> str:
+    if context_mode == "direct":
+        return BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1
+    return BASELINE_FEEDBACK_PROMPT_JSON_V1
+
+
+def validate_feedback_prompt_template_version(
+    prompt_template_version: str,
+    context_mode: str,
+) -> str:
+    version = prompt_template_version.strip()
+    version = FEEDBACK_PROMPT_TEMPLATE_ALIASES.get(version, version)
+    if context_mode == "direct":
+        valid_versions = DIRECT_FEEDBACK_PROMPT_TEMPLATE_VERSIONS
+    else:
+        valid_versions = RETRIEVAL_FEEDBACK_PROMPT_TEMPLATE_VERSIONS
+
+    if version not in valid_versions:
+        raise ValueError(
+            "prompt_template_version must be one of "
+            f"{', '.join(sorted(valid_versions))} for {context_mode} mode."
+        )
+    return version
+
+
 def _load_performance_levels_json(raw_json: str | None) -> dict | None:
     if not raw_json:
         return None
@@ -20,7 +71,14 @@ def build_feedback_prompt(
     submission_row: sqlite3.Row,
     retrieved_chunks: list[dict] | None = None,
     include_retrieved_context: bool = True,
+    prompt_template_version: str | None = None,
 ) -> str:
+    context_mode = "retrieval" if include_retrieved_context else "direct"
+    resolved_prompt_template_version = validate_feedback_prompt_template_version(
+        prompt_template_version or default_feedback_prompt_template_version(context_mode),
+        context_mode,
+    )
+
     criteria_payload = [
         {
             "criterion_id": row["criterion_id"],
@@ -85,6 +143,20 @@ Retrieved course context that could be helpful:
         else ""
     )
 
+    unit_grounding_rules = (
+        """
+Retrieved-context grounding requirements:
+- When retrieved course context is relevant, use it to make the feedback visibly grounded in the unit's lectures, tutorials, examples, methods, or terminology.
+- In `improvement_suggestion`, connect advice to specific retrieved unit concepts, methods, examples, or terminology when they genuinely support the point.
+- In `evidence_summary`, briefly mention the relevant retrieved material by week number, title, or material type when it informed the judgement.
+- Do not mention retrieved material if it is only loosely related to the criterion or student work.
+- Do not force a retrieved-material reference into every criterion; use it where it improves feedback quality.
+- Do not turn retrieved course context into extra mandatory requirements beyond the assignment specification or rubric.
+""".strip()
+        if resolved_prompt_template_version == UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2
+        else ""
+    )
+
     return f"""
 You are generating personalised, rubric-aligned feedback for a higher-education assignment.
 
@@ -100,6 +172,8 @@ Rules:
 - Use concise, tutor-facing academic feedback language.
 - `overall_grade_band` and each `suggested_level` must be one of: N, P, C, D, HD.
 - `key_strengths` and `priority_improvements` should each contain 2 to 5 short items.
+
+{unit_grounding_rules}
 
 Evidence hierarchy:
 - The assignment specification and rubric are the highest authority for grading.

@@ -5,7 +5,11 @@ from dataclasses import dataclass
 
 from feedback_lens.db.connection import ensure_schema_updates, fetch_latest_version_row
 from feedback_lens.feedback.llm.providers import generate_text, resolve_model_name
-from feedback_lens.feedback.prompt import build_feedback_prompt
+from feedback_lens.feedback.prompt import (
+    build_feedback_prompt,
+    default_feedback_prompt_template_version,
+    validate_feedback_prompt_template_version,
+)
 from feedback_lens.feedback.retrieval import (
     DEFAULT_MAX_FINAL_CHUNKS,
     DEFAULT_PER_CUE_TOP_K,
@@ -110,9 +114,7 @@ def _default_pipeline_version(context_mode: str, retrieval_strategy: str) -> str
 
 
 def _default_prompt_template_version(context_mode: str) -> str:
-    if context_mode == "direct":
-        return "baseline_direct_feedback_json_v1"
-    return "baseline_feedback_json_v1"
+    return default_feedback_prompt_template_version(context_mode)
 
 
 def _load_generation_inputs(
@@ -413,6 +415,10 @@ def generate_feedback_for_submission(
         prompt_template_version
         or _default_prompt_template_version(resolved_context_mode)
     )
+    resolved_prompt_template_version = validate_feedback_prompt_template_version(
+        resolved_prompt_template_version,
+        resolved_context_mode,
+    )
     resolved_model = resolve_model_name(provider, model)
     if resolved_context_mode == "direct":
         resolved_per_cue_top_k = 0
@@ -547,6 +553,7 @@ def generate_feedback_for_submission(
             inputs["submission"],
             retrieved_chunks,
             include_retrieved_context=resolved_context_mode == "retrieval",
+            prompt_template_version=resolved_prompt_template_version,
         )
         conn.execute(
             """

@@ -255,6 +255,63 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertEqual(result.per_cue_top_k, 3)
         self.assertEqual(result.max_final_chunks, 8)
 
+    def test_unit_grounded_prompt_v2_records_version_and_adds_grounding_rules(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                    prompt_template_version="unit-grounded-v2",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+
+        self.assertEqual(result.prompt_template_version, "unit_grounded_feedback_json_v2")
+        self.assertEqual(run["prompt_template_version"], "unit_grounded_feedback_json_v2")
+        self.assertIn("Retrieved-context grounding requirements:", run["prompt_text"])
+        self.assertIn("In `improvement_suggestion`, connect advice", run["prompt_text"])
+        self.assertIn("Week 2 Concepts", run["prompt_text"])
+
+    def test_default_retrieval_prompt_remains_v1(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+
+        self.assertEqual(result.prompt_template_version, "baseline_feedback_json_v1")
+        self.assertEqual(run["prompt_template_version"], "baseline_feedback_json_v1")
+        self.assertNotIn("Retrieved-context grounding requirements:", run["prompt_text"])
+
     def test_planned_retrieval_generates_and_records_planner_cues(self) -> None:
         planner_response = json.dumps(
             {

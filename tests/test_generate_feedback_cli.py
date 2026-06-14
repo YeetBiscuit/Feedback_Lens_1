@@ -26,12 +26,26 @@ class GenerateFeedbackCliTests(unittest.TestCase):
         self.assertEqual(args.per_cue_top_k, 7)
         self.assertEqual(args.max_final_chunks, 10)
 
+    def test_prompt_argument_sets_prompt_template_version(self) -> None:
+        args = build_parser().parse_args(["1", "--prompt", "unit-grounded-v2"])
+
+        self.assertEqual(args.prompt_template_version, "unit-grounded-v2")
+
+    def test_legacy_prompt_template_version_argument_still_works(self) -> None:
+        args = build_parser().parse_args(
+            ["1", "--prompt-template-version", "unit-grounded-v2"]
+        )
+
+        self.assertEqual(args.prompt_template_version, "unit-grounded-v2")
+
     def test_help_uses_strategy_argument_name(self) -> None:
         help_text = build_parser().format_help()
 
         self.assertIn("--strategy", help_text)
         self.assertIn("--per-cue-top-k", help_text)
         self.assertIn("--max-final-chunks", help_text)
+        self.assertIn("--prompt", help_text)
+        self.assertNotIn("--prompt-template-version", help_text)
         self.assertNotIn("--retrieval-strategy", help_text)
 
 
