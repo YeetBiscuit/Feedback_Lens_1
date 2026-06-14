@@ -15,6 +15,7 @@ feedback_system.db-journal
 feedback_system.db-wal
 feedback_system.db-shm
 chromadb/
+test_feedback
 
 # Keep document folder structure, ignore local document contents
 documents/**
