@@ -4,7 +4,10 @@ import unittest
 from unittest.mock import patch
 
 from feedback_lens.db.connection import ensure_schema_updates
-from feedback_lens.feedback.pipeline import generate_feedback_for_submission
+from feedback_lens.feedback.pipeline import (
+    generate_feedback_for_submission,
+    regenerate_feedback_for_criterion,
+)
 from feedback_lens.paths import SCHEMA_PATH
 
 
@@ -106,6 +109,36 @@ def _feedback_response(overall_comment: str = "Sound feedback.") -> str:
     )
 
 
+def _criterion_response(
+    strengths: str = "Fresh strength.",
+    areas_for_improvement: str = "Fresh improvement area.",
+    improvement_suggestion: str = "Fresh next step.",
+    suggested_level: str = "D",
+    evidence_summary: str = "Fresh evidence summary.",
+) -> str:
+    return json.dumps(
+        {
+            "overall_feedback": {
+                "overall_comment": "Criterion refreshed.",
+                "key_strengths": ["Updated"],
+                "priority_improvements": ["Focus"],
+                "overall_grade_band": "D",
+            },
+            "criterion_feedback": [
+                {
+                    "criterion_id": 1,
+                    "criterion_name": "Analysis",
+                    "strengths": strengths,
+                    "areas_for_improvement": areas_for_improvement,
+                    "improvement_suggestion": improvement_suggestion,
+                    "suggested_level": suggested_level,
+                    "evidence_summary": evidence_summary,
+                }
+            ],
+        }
+    )
+
+
 def _retrieval_result(query_text: str = "retrieval query") -> tuple[str, list[dict], list[dict]]:
     retrieved_chunks = [
         {
@@ -176,7 +209,87 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertIn("assignment specification, rubric, and student submission", run["prompt_text"])
         mock_generate_text.assert_called_once()
 
-    def test_retrieval_mode_defaults_to_assignment_spec_cues(self) -> None:
+    def test_retrieval_mode_defaults_to_planned_unit_grounded_deepseek(self) -> None:
+        planner_response = json.dumps(
+            {
+                "retrieval_cues": [
+                    {
+                        "order": 1,
+                        "label": "Reflective analysis concepts",
+                        "text": "course concepts for reflective analysis",
+                        "rubric_criterion_ids": [1],
+                        "rationale": "Needed to ground analysis feedback.",
+                    }
+                ]
+            }
+        )
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.side_effect = [
+                planner_response,
+                _feedback_response("Sound planned feedback."),
+            ]
+            mock_retrieve.return_value = _retrieval_result(
+                "Reflective analysis concepts\ncourse concepts for reflective analysis"
+            )
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    context_mode="retrieval",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+                planning = conn.execute(
+                    """
+                    SELECT *
+                    FROM retrieval_planning_records
+                    WHERE generation_id = ?
+                    """,
+                    (result.generation_id,),
+                ).fetchone()
+
+        retrieval_cues = mock_retrieve.call_args.args[2]
+        retrieval_kwargs = mock_retrieve.call_args.kwargs
+        self.assertEqual(result.context_mode, "retrieval")
+        self.assertEqual(result.provider, "nvidia_deepseek")
+        self.assertEqual(result.model, "deepseek-ai/deepseek-v4-pro")
+        self.assertEqual(result.retrieval_strategy, "llm_planned_cue_v1")
+        self.assertEqual(result.retrieval_cue_count, 1)
+        self.assertEqual(result.per_cue_top_k, 5)
+        self.assertEqual(result.max_final_chunks, 10)
+        self.assertEqual(result.prompt_template_version, "unit_grounded_feedback_json_v2")
+        self.assertEqual(result.feedback_length, "standard")
+        self.assertEqual(result.feedback_tone, "clear_supportive")
+        self.assertEqual(run["llm_provider"], "nvidia_deepseek")
+        self.assertEqual(run["llm_model"], "deepseek-ai/deepseek-v4-pro")
+        self.assertEqual(run["pipeline_version"], "planned_retrieval_v1")
+        self.assertEqual(run["prompt_template_version"], "unit_grounded_feedback_json_v2")
+        self.assertEqual(run["retrieval_strategy"], "llm_planned_cue_v1")
+        self.assertEqual(run["top_k"], 5)
+        self.assertEqual(run["per_cue_top_k"], 5)
+        self.assertEqual(run["max_final_chunks"], 10)
+        self.assertIsNotNone(planning)
+        self.assertEqual(planning["status"], "completed")
+        self.assertEqual(planning["strategy"], "llm_planned_cue_v1")
+        self.assertIn("Feedback customisation requirements:", run["prompt_text"])
+        self.assertIn("- feedback_length: standard", run["prompt_text"])
+        self.assertIn("- feedback_tone: clear_supportive", run["prompt_text"])
+        self.assertIn("Retrieved-context grounding requirements:", run["prompt_text"])
+        self.assertEqual(retrieval_cues[0]["label"], "Reflective analysis concepts")
+        self.assertEqual(retrieval_cues[0]["text"], "course concepts for reflective analysis")
+        self.assertEqual(retrieval_kwargs["per_cue_top_k"], 5)
+        self.assertEqual(retrieval_kwargs["max_final_chunks"], 10)
+        self.assertEqual(mock_generate_text.call_count, 2)
+
+    def test_baseline_retrieval_strategy_still_uses_assignment_spec_cues(self) -> None:
         with (
             patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
             patch(
@@ -193,6 +306,7 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                     provider="qwen",
                     model="test-model",
                     context_mode="retrieval",
+                    retrieval_strategy="baseline",
                 )
                 run = conn.execute(
                     "SELECT * FROM generation_runs WHERE generation_id = ?",
@@ -203,22 +317,12 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                 ).fetchone()["count"]
 
         retrieval_cues = mock_retrieve.call_args.args[2]
-        retrieval_kwargs = mock_retrieve.call_args.kwargs
-        self.assertEqual(result.context_mode, "retrieval")
         self.assertEqual(result.retrieval_strategy, "assignment_spec_multi_cue_v1")
-        self.assertEqual(result.retrieval_cue_count, 1)
-        self.assertEqual(result.per_cue_top_k, 5)
-        self.assertEqual(result.max_final_chunks, 10)
         self.assertEqual(run["pipeline_version"], "baseline_retrieval_v1")
         self.assertEqual(run["retrieval_strategy"], "assignment_spec_multi_cue_v1")
-        self.assertEqual(run["top_k"], 5)
-        self.assertEqual(run["per_cue_top_k"], 5)
-        self.assertEqual(run["max_final_chunks"], 10)
         self.assertEqual(planning_count, 0)
         self.assertEqual(retrieval_cues[0]["label"], "Task")
         self.assertEqual(retrieval_cues[0]["text"], "reflection report")
-        self.assertEqual(retrieval_kwargs["per_cue_top_k"], 5)
-        self.assertEqual(retrieval_kwargs["max_final_chunks"], 10)
         mock_generate_text.assert_called_once()
 
     def test_retrieval_limits_are_configurable(self) -> None:
@@ -238,6 +342,7 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                     provider="qwen",
                     model="test-model",
                     context_mode="retrieval",
+                    retrieval_strategy="baseline",
                     per_cue_top_k=3,
                     max_final_chunks=8,
                 )
@@ -272,6 +377,7 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                     provider="qwen",
                     model="test-model",
                     context_mode="retrieval",
+                    retrieval_strategy="baseline",
                     prompt_template_version="unit-grounded-v2",
                 )
                 run = conn.execute(
@@ -285,7 +391,7 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertIn("In `improvement_suggestion`, connect advice", run["prompt_text"])
         self.assertIn("Week 2 Concepts", run["prompt_text"])
 
-    def test_default_retrieval_prompt_remains_v1(self) -> None:
+    def test_explicit_baseline_retrieval_prompt_v1_still_works(self) -> None:
         with (
             patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
             patch(
@@ -302,6 +408,8 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                     provider="qwen",
                     model="test-model",
                     context_mode="retrieval",
+                    retrieval_strategy="baseline",
+                    prompt_template_version="baseline_feedback_json_v1",
                 )
                 run = conn.execute(
                     "SELECT * FROM generation_runs WHERE generation_id = ?",
@@ -311,6 +419,112 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertEqual(result.prompt_template_version, "baseline_feedback_json_v1")
         self.assertEqual(run["prompt_template_version"], "baseline_feedback_json_v1")
         self.assertNotIn("Retrieved-context grounding requirements:", run["prompt_text"])
+
+    def test_feedback_length_and_tone_are_configurable(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                    retrieval_strategy="baseline",
+                    feedback_length="concise",
+                    feedback_tone="direct_no_fluff",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+
+        self.assertEqual(result.feedback_length, "concise")
+        self.assertEqual(result.feedback_tone, "direct_no_fluff")
+        self.assertIn("- feedback_length: concise", run["prompt_text"])
+        self.assertIn("Keep feedback short and low-density.", run["prompt_text"])
+        self.assertIn("- feedback_tone: direct_no_fluff", run["prompt_text"])
+        self.assertIn("Be direct and efficient.", run["prompt_text"])
+
+    def test_regenerate_criterion_reuses_run_context_and_preserves_mark(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                    retrieval_strategy="baseline",
+                )
+                conn.execute(
+                    """
+                    UPDATE criterion_feedback
+                    SET mark = 82
+                    WHERE generation_id = ?
+                      AND criterion_id = 1
+                    """,
+                    (result.generation_id,),
+                )
+                conn.commit()
+
+                mock_generate_text.reset_mock()
+                mock_generate_text.return_value = _criterion_response(
+                    strengths="Updated criterion strength.",
+                    areas_for_improvement="Updated criterion gap.",
+                    improvement_suggestion="Updated criterion next step.",
+                    suggested_level="D",
+                    evidence_summary="Updated evidence from Week 2 Concepts.",
+                )
+
+                updated = regenerate_feedback_for_criterion(
+                    conn,
+                    generation_id=result.generation_id,
+                    criterion_id=1,
+                    feedback_length="concise",
+                    feedback_tone="direct_no_fluff",
+                )
+
+        regen_prompt = mock_generate_text.call_args.args[0]
+        self.assertEqual(updated["strengths"], "Updated criterion strength.")
+        self.assertEqual(updated["areas_for_improvement"], "Updated criterion gap.")
+        self.assertEqual(updated["improvement_suggestion"], "Updated criterion next step.")
+        self.assertEqual(updated["suggested_level"], "D")
+        self.assertEqual(updated["evidence_summary"], "Updated evidence from Week 2 Concepts.")
+        self.assertEqual(updated["mark"], 82)
+        self.assertIn("- feedback_length: concise", regen_prompt)
+        self.assertIn("- feedback_tone: direct_no_fluff", regen_prompt)
+        self.assertIn("Week 2 Concepts", regen_prompt)
+        self.assertEqual(mock_generate_text.call_count, 1)
+
+    def test_invalid_feedback_customisation_is_rejected_before_generation_run(self) -> None:
+        with _connect_minimal_feedback_db() as conn:
+            with self.assertRaisesRegex(ValueError, "feedback_length must be one of"):
+                generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    feedback_length="rambling",
+                )
+            run_count = conn.execute(
+                "SELECT COUNT(*) AS count FROM generation_runs"
+            ).fetchone()["count"]
+
+        self.assertEqual(run_count, 0)
 
     def test_planned_retrieval_generates_and_records_planner_cues(self) -> None:
         planner_response = json.dumps(

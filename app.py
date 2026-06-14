@@ -4,10 +4,19 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 from werkzeug.security import check_password_hash
 
 from feedback_lens.db.connection import connect_db
+from feedback_lens.feedback.pipeline import (
+    DEFAULT_FEEDBACK_PROVIDER,
+    generate_feedback_for_submission,
+    regenerate_feedback_for_criterion,
+)
+from feedback_lens.feedback.prompt import DEFAULT_FEEDBACK_LENGTH, DEFAULT_FEEDBACK_TONE
 from feedback_lens.feedback.review import fetch_generation_review, parse_json_text_list
 
 app = Flask(__name__)
 app.secret_key = "dev_secret_key"
+DEFAULT_FEEDBACK_GENERATION_MODE = "retrieval"
+DEFAULT_FEEDBACK_GENERATION_STRATEGY = "planned"
+DEFAULT_RETRIEVAL_PROMPT_TEMPLATE = "unit-grounded-v2"
 
 
 def login_required(role):
@@ -71,6 +80,59 @@ def api_session_user(required_role=None):
         if required_role is not None and user["role"] != required_role:
             return None, (jsonify({"error": "Forbidden"}), 403)
         return dict(user), None
+
+
+def _coerce_optional_int(value, label):
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"{label} must be an integer.") from err
+
+
+def _coerce_optional_float(value, label):
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError) as err:
+        raise ValueError(f"{label} must be a number.") from err
+
+
+def _fetch_authorised_submission(conn, submission_id, tutor_id):
+    return conn.execute(
+        """
+        SELECT
+            ss.submission_id,
+            ss.assignment_id,
+            a.unit_id
+        FROM student_submissions AS ss
+        JOIN assignments AS a ON a.assignment_id = ss.assignment_id
+        JOIN unit_tutors AS ut ON ut.unit_id = a.unit_id
+        WHERE ss.submission_id = ?
+          AND ut.tutor_id = ?
+        """,
+        (submission_id, tutor_id),
+    ).fetchone()
+
+
+def _fetch_authorised_generation(conn, generation_id, tutor_id):
+    return conn.execute(
+        """
+        SELECT
+            gr.generation_id,
+            gr.submission_id,
+            gr.assignment_id,
+            a.unit_id
+        FROM generation_runs AS gr
+        JOIN assignments AS a ON a.assignment_id = gr.assignment_id
+        JOIN unit_tutors AS ut ON ut.unit_id = a.unit_id
+        WHERE gr.generation_id = ?
+          AND ut.tutor_id = ?
+        """,
+        (generation_id, tutor_id),
+    ).fetchone()
 
 @app.route('/')
 def index():
@@ -332,6 +394,135 @@ def get_feedback(generation_id):
         'overall_feedback': overall,
         'criterion_feedback': criteria,
     })
+
+@app.route('/api/feedback/generate', methods=['POST'])
+def generate_feedback():
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+    if user.get('tutor_id') is None:
+        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        submission_id = int(data.get('submission_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'submission_id is required and must be an integer'}), 400
+
+    try:
+        per_cue_top_k = _coerce_optional_int(
+            data.get('per_cue_top_k', data.get('top_k')),
+            'per_cue_top_k',
+        )
+        max_final_chunks = _coerce_optional_int(
+            data.get('max_final_chunks'),
+            'max_final_chunks',
+        )
+        temperature = _coerce_optional_float(data.get('temperature'), 'temperature')
+    except ValueError as err:
+        return jsonify({'error': str(err)}), 400
+
+    context_mode = data.get('context_mode') or data.get('mode') or DEFAULT_FEEDBACK_GENERATION_MODE
+    retrieval_strategy = data.get('retrieval_strategy') or data.get('strategy')
+    if retrieval_strategy is None and context_mode == DEFAULT_FEEDBACK_GENERATION_MODE:
+        retrieval_strategy = DEFAULT_FEEDBACK_GENERATION_STRATEGY
+    prompt_template_version = data.get('prompt_template_version') or data.get('prompt')
+    if prompt_template_version is None and context_mode == DEFAULT_FEEDBACK_GENERATION_MODE:
+        prompt_template_version = DEFAULT_RETRIEVAL_PROMPT_TEMPLATE
+
+    with connect_db() as conn:
+        submission = _fetch_authorised_submission(
+            conn,
+            submission_id,
+            user['tutor_id'],
+        )
+        if submission is None:
+            return jsonify({'error': 'Submission not found or not authorised'}), 404
+
+        try:
+            result = generate_feedback_for_submission(
+                conn,
+                submission_id=submission_id,
+                provider=data.get('provider') or DEFAULT_FEEDBACK_PROVIDER,
+                model=data.get('model'),
+                per_cue_top_k=per_cue_top_k,
+                max_final_chunks=max_final_chunks,
+                temperature=temperature if temperature is not None else 0.2,
+                prompt_template_version=prompt_template_version,
+                context_mode=context_mode,
+                retrieval_strategy=retrieval_strategy,
+                feedback_length=data.get('feedback_length') or DEFAULT_FEEDBACK_LENGTH,
+                feedback_tone=data.get('feedback_tone') or DEFAULT_FEEDBACK_TONE,
+            )
+        except ValueError as err:
+            return jsonify({'error': str(err)}), 400
+        except RuntimeError as err:
+            return jsonify({'error': str(err)}), 502
+
+    return jsonify({
+        'status': 'ok',
+        'generation_id': result.generation_id,
+        'submission_id': submission_id,
+        'overall_grade_band': result.overall_grade_band,
+        'criterion_count': result.criterion_count,
+        'retrieval_cue_count': result.retrieval_cue_count,
+        'deduplicated_chunk_count': result.deduplicated_chunk_count,
+        'provider': result.provider,
+        'model': result.model,
+        'context_mode': result.context_mode,
+        'pipeline_version': result.pipeline_version,
+        'prompt_template_version': result.prompt_template_version,
+        'retrieval_strategy': result.retrieval_strategy,
+        'per_cue_top_k': result.per_cue_top_k,
+        'max_final_chunks': result.max_final_chunks,
+        'feedback_length': result.feedback_length,
+        'feedback_tone': result.feedback_tone,
+    })
+
+
+@app.route(
+    '/api/feedback/<int:generation_id>/criterion/<int:criterion_id>/regenerate',
+    methods=['POST'],
+)
+def regenerate_criterion_feedback(generation_id, criterion_id):
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+    if user.get('tutor_id') is None:
+        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
+
+    data = request.get_json(silent=True) or {}
+    with connect_db() as conn:
+        generation = _fetch_authorised_generation(
+            conn,
+            generation_id,
+            user['tutor_id'],
+        )
+        if generation is None:
+            return jsonify({'error': 'Generation not found or not authorised'}), 404
+
+        try:
+            criterion_feedback = regenerate_feedback_for_criterion(
+                conn,
+                generation_id=generation_id,
+                criterion_id=criterion_id,
+                feedback_length=data.get('feedback_length') or DEFAULT_FEEDBACK_LENGTH,
+                feedback_tone=data.get('feedback_tone') or DEFAULT_FEEDBACK_TONE,
+            )
+        except ValueError as err:
+            return jsonify({'error': str(err)}), 400
+        except RuntimeError as err:
+            return jsonify({'error': str(err)}), 502
+
+    return jsonify({
+        'status': 'ok',
+        'generation_id': generation_id,
+        'criterion_id': criterion_id,
+        'criterion_feedback': criterion_feedback,
+        'feedback_length': data.get('feedback_length') or DEFAULT_FEEDBACK_LENGTH,
+        'feedback_tone': data.get('feedback_tone') or DEFAULT_FEEDBACK_TONE,
+    })
+
 
 @app.route('/api/feedback/<int:generation_id>/save', methods=['POST'])
 def save_feedback(generation_id):

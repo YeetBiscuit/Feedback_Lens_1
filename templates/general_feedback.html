@@ -61,7 +61,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 
 .gen-form .form-group{margin-bottom:.75rem}
 .form-label{font-size:.8125rem;color:#6b7280;display:block;margin-bottom:4px}
-.gen-form select{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
+.settings-control{display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem}
+.settings-control span{font-size:.75rem;color:#6b7280}
+.settings-control select{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
+.settings-control select:focus{outline:none;border-color:#2563eb}
+.btn-reset{width:100%;padding:.5rem .8rem;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:.8125rem;cursor:pointer;font-family:inherit;margin-bottom:.75rem}
+.btn-reset:hover{background:#f9fafb}
 .btn-generate{width:100%;padding:.65rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.9375rem;font-weight:500;cursor:pointer;font-family:inherit}
 .btn-generate:hover{background:#1d4ed8}
 
@@ -151,6 +156,11 @@ input[type=number]{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;bord
 var data = null;
 var genId = null;
 var gradeVisible = false;
+var settingsStorageKey = 'fl-feedback-generation-settings';
+var defaultGenerationSettings = {
+  feedback_length: 'standard',
+  feedback_tone: 'clear_supportive'
+};
 
 var statusLabels = {pending:'Pending Review', ai_generated:'AI Generated', reviewed:'Reviewed'};
 var statusColors = {pending:'#fcd34d', ai_generated:'#93c5fd', reviewed:'#86efac'};
@@ -169,6 +179,63 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(ch){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
   });
+}
+
+function getGenerationSettings(){
+  return {
+    feedback_length: document.getElementById('feedback-length').value,
+    feedback_tone: document.getElementById('feedback-tone').value
+  };
+}
+
+function saveGenerationSettings(){
+  var settings = getGenerationSettings();
+  localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
+}
+
+function resetGenerationSettings(){
+  document.getElementById('feedback-length').value = defaultGenerationSettings.feedback_length;
+  document.getElementById('feedback-tone').value = defaultGenerationSettings.feedback_tone;
+  saveGenerationSettings();
+}
+
+function initGenerationSettings(){
+  var savedSettings = null;
+  try {
+    savedSettings = JSON.parse(localStorage.getItem(settingsStorageKey) || 'null');
+  } catch(e) {
+    savedSettings = null;
+  }
+  document.getElementById('feedback-length').value =
+    (savedSettings && savedSettings.feedback_length) || defaultGenerationSettings.feedback_length;
+  document.getElementById('feedback-tone').value =
+    (savedSettings && savedSettings.feedback_tone) || defaultGenerationSettings.feedback_tone;
+  document.getElementById('feedback-length').addEventListener('change', saveGenerationSettings);
+  document.getElementById('feedback-tone').addEventListener('change', saveGenerationSettings);
+}
+
+function buildGenerationSettingsPanel(buttonText, actionName){
+  return '<div class="card gen-form">'
+    + '<div class="card-title">Feedback Settings</div>'
+    + '<label class="settings-control">'
+    + '<span>Length</span>'
+    + '<select id="feedback-length">'
+    + '<option value="concise">Concise</option>'
+    + '<option value="standard">Standard</option>'
+    + '<option value="detailed">Detailed</option>'
+    + '</select>'
+    + '</label>'
+    + '<label class="settings-control">'
+    + '<span>Tone</span>'
+    + '<select id="feedback-tone">'
+    + '<option value="clear_supportive">Clear + supportive</option>'
+    + '<option value="gentle_encouraging">Gentle + encouraging</option>'
+    + '<option value="direct_no_fluff">Direct, no fluff</option>'
+    + '</select>'
+    + '</label>'
+    + '<button class="btn-reset" onclick="resetGenerationSettings()">Reset</button>'
+    + '<button class="btn-generate" onclick="' + actionName + '()">' + buttonText + '</button>'
+    + '</div>';
 }
 
 var saved = localStorage.getItem('fl-font-size');
@@ -287,14 +354,7 @@ function drawPage(){
     + '</div>'
 
     + '<div>'
-    + '<div class="card gen-form">'
-    + '<div class="card-title">Feedback Generation Control</div>'
-    + '<div class="form-group">'
-    + '<label class="form-label">Feedback Type</label>'
-    + '<select id="fb-type"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select>'
-    + '</div>'
-    + '<button class="btn-generate" onclick="regenOverall()">Regenerate Overall Feedback</button>'
-    + '</div>'
+    + buildGenerationSettingsPanel('Regenerate Overall Feedback', 'regenOverall')
 
     + '<div class="card">'
     + '<div class="card-title">Overall Feedback</div>'
@@ -334,10 +394,11 @@ function drawPage(){
     + '</div>';
 
   document.getElementById('content').innerHTML = html;
+  initGenerationSettings();
 }
 
 function regenOverall(){
-  alert('Overall feedback regeneration will be handled by the backend pipeline.');
+  alert('Overall feedback regeneration will use the selected feedback settings once regeneration is wired to the backend.');
 }
 
 function toggleGrade(){

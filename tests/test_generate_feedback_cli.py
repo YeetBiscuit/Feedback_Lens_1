@@ -4,6 +4,30 @@ from feedback_lens.cli.generate_feedback import build_parser
 
 
 class GenerateFeedbackCliTests(unittest.TestCase):
+    def test_defaults_use_planned_unit_grounded_deepseek_feedback(self) -> None:
+        args = build_parser().parse_args(["1"])
+
+        self.assertEqual(args.provider, "nvidia_deepseek")
+        self.assertEqual(args.retrieval_strategy, "planned")
+        self.assertEqual(args.prompt_template_version, "unit-grounded-v2")
+        self.assertEqual(args.feedback_length, "standard")
+        self.assertEqual(args.feedback_tone, "clear_supportive")
+        self.assertFalse(args.prompt_template_explicit)
+
+    def test_feedback_customisation_arguments_are_configurable(self) -> None:
+        args = build_parser().parse_args(
+            [
+                "1",
+                "--feedback-length",
+                "concise",
+                "--feedback-tone",
+                "direct_no_fluff",
+            ]
+        )
+
+        self.assertEqual(args.feedback_length, "concise")
+        self.assertEqual(args.feedback_tone, "direct_no_fluff")
+
     def test_strategy_argument_sets_retrieval_strategy(self) -> None:
         args = build_parser().parse_args(["1", "--strategy", "planned"])
 
@@ -30,6 +54,7 @@ class GenerateFeedbackCliTests(unittest.TestCase):
         args = build_parser().parse_args(["1", "--prompt", "unit-grounded-v2"])
 
         self.assertEqual(args.prompt_template_version, "unit-grounded-v2")
+        self.assertTrue(args.prompt_template_explicit)
 
     def test_legacy_prompt_template_version_argument_still_works(self) -> None:
         args = build_parser().parse_args(
@@ -45,6 +70,8 @@ class GenerateFeedbackCliTests(unittest.TestCase):
         self.assertIn("--per-cue-top-k", help_text)
         self.assertIn("--max-final-chunks", help_text)
         self.assertIn("--prompt", help_text)
+        self.assertIn("--feedback-length", help_text)
+        self.assertIn("--feedback-tone", help_text)
         self.assertNotIn("--prompt-template-version", help_text)
         self.assertNotIn("--retrieval-strategy", help_text)
 

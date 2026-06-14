@@ -59,12 +59,13 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .word-count{font-size:.8125rem;color:#6b7280;margin-top:.75rem}
 .word-count strong{color:#1f2937}
 
-.gen-form .form-group{margin-bottom:.75rem}
-.gen-form .two-col{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem}
 .form-label{font-size:.8125rem;color:#6b7280;display:block;margin-bottom:4px}
-.gen-form select,.gen-form input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
-.gen-form select:focus,.gen-form input[type=number]:focus{outline:none;border-color:#2563eb}
-.check-row{display:flex;align-items:center;gap:.5rem;font-size:.875rem;color:#4b5563;margin-bottom:.75rem}
+.settings-control{display:flex;flex-direction:column;gap:4px;margin-bottom:.75rem}
+.settings-control span{font-size:.75rem;color:#6b7280}
+.settings-control select{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
+.settings-control select:focus{outline:none;border-color:#2563eb}
+.btn-reset{width:100%;padding:.5rem .8rem;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:.8125rem;cursor:pointer;font-family:inherit;margin-bottom:.75rem}
+.btn-reset:hover{background:#f9fafb}
 .btn-generate{width:100%;padding:.65rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.9375rem;font-weight:500;cursor:pointer;font-family:inherit}
 .btn-generate:hover{background:#1d4ed8}
 
@@ -162,6 +163,11 @@ var idx = 0;
 var total = 0;
 var genId = null;
 var gradeVisible = false;
+var settingsStorageKey = 'fl-feedback-generation-settings';
+var defaultGenerationSettings = {
+  feedback_length: 'standard',
+  feedback_tone: 'clear_supportive'
+};
 
 function qs(name){
   return new URLSearchParams(location.search).get(name);
@@ -177,6 +183,63 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, function(ch){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
   });
+}
+
+function getGenerationSettings(){
+  return {
+    feedback_length: document.getElementById('feedback-length').value,
+    feedback_tone: document.getElementById('feedback-tone').value
+  };
+}
+
+function saveGenerationSettings(){
+  var settings = getGenerationSettings();
+  localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
+}
+
+function resetGenerationSettings(){
+  document.getElementById('feedback-length').value = defaultGenerationSettings.feedback_length;
+  document.getElementById('feedback-tone').value = defaultGenerationSettings.feedback_tone;
+  saveGenerationSettings();
+}
+
+function initGenerationSettings(){
+  var savedSettings = null;
+  try {
+    savedSettings = JSON.parse(localStorage.getItem(settingsStorageKey) || 'null');
+  } catch(e) {
+    savedSettings = null;
+  }
+  document.getElementById('feedback-length').value =
+    (savedSettings && savedSettings.feedback_length) || defaultGenerationSettings.feedback_length;
+  document.getElementById('feedback-tone').value =
+    (savedSettings && savedSettings.feedback_tone) || defaultGenerationSettings.feedback_tone;
+  document.getElementById('feedback-length').addEventListener('change', saveGenerationSettings);
+  document.getElementById('feedback-tone').addEventListener('change', saveGenerationSettings);
+}
+
+function buildGenerationSettingsPanel(buttonText, actionName){
+  return '<div class="card gen-form">'
+    + '<div class="card-title">Feedback Settings</div>'
+    + '<label class="settings-control">'
+    + '<span>Length</span>'
+    + '<select id="feedback-length">'
+    + '<option value="concise">Concise</option>'
+    + '<option value="standard">Standard</option>'
+    + '<option value="detailed">Detailed</option>'
+    + '</select>'
+    + '</label>'
+    + '<label class="settings-control">'
+    + '<span>Tone</span>'
+    + '<select id="feedback-tone">'
+    + '<option value="clear_supportive">Clear + supportive</option>'
+    + '<option value="gentle_encouraging">Gentle + encouraging</option>'
+    + '<option value="direct_no_fluff">Direct, no fluff</option>'
+    + '</select>'
+    + '</label>'
+    + '<button class="btn-reset" onclick="resetGenerationSettings()">Reset</button>'
+    + '<button class="btn-generate" onclick="' + actionName + '(this)">' + buttonText + '</button>'
+    + '</div>';
 }
 
 var saved = localStorage.getItem('fl-font-size');
@@ -300,23 +363,7 @@ function drawPage(){
     + '</div>'
 
     + '<div>'
-    + '<div class="card gen-form">'
-    + '<div class="card-title">Feedback Generation Control</div>'
-    + '<div class="form-group">'
-    + '<label class="form-label">Feedback Type</label>'
-    + '<select id="fb-type"><option value="short">Short</option><option value="medium" selected>Medium</option><option value="detailed">Detailed</option></select>'
-    + '</div>'
-    + '<div class="form-group">'
-    + '<label class="form-label">Marking Rigour</label>'
-    + '<select id="fb-rigour"><option value="formative" selected>Formative</option><option value="summative">Summative</option></select>'
-    + '</div>'
-    + '<div class="two-col">'
-    + '<div><label class="form-label">Word Limit</label><input type="number" id="fb-words" value="200" min="50"></div>'
-    + '<div><label class="form-label">Tolerance (%)</label><input type="number" id="fb-tol" value="10" min="0"></div>'
-    + '</div>'
-    + '<label class="check-row"><input type="checkbox" id="fb-ref"> Reference Check</label>'
-    + '<button class="btn-generate" onclick="regenAll()">Regenerate This Criterion</button>'
-    + '</div>'
+    + buildGenerationSettingsPanel('Regenerate This Criterion', 'regenAll')
 
     + '<div class="card">'
     + '<div class="criterion-name">Criterion ' + (idx + 1) + ': ' + (c.criterion_name || '-') + '</div>'
@@ -352,6 +399,7 @@ function drawPage(){
     + '</div>';
 
   document.getElementById('content').innerHTML = html;
+  initGenerationSettings();
 }
 
 function buildSection(cls, label, taId, value){
@@ -367,8 +415,35 @@ function buildSection(cls, label, taId, value){
     + '</div>';
 }
 
-function regenAll(){
-  alert('Full regeneration for this criterion will be handled by the backend pipeline.');
+function regenAll(btn){
+  if(!data || total === 0) return;
+  var c = data.criterion_feedback[idx];
+  var originalText = btn ? btn.textContent : '';
+  if(btn){
+    btn.disabled = true;
+    btn.textContent = 'Regenerating...';
+  }
+  fetch('/api/feedback/' + genId + '/criterion/' + c.criterion_id + '/regenerate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(getGenerationSettings())
+  }).then(function(r){
+    return r.json().then(function(payload){
+      if(!r.ok){
+        throw new Error(payload.error || 'Could not regenerate criterion feedback.');
+      }
+      return payload;
+    });
+  }).then(function(payload){
+    data.criterion_feedback[idx] = payload.criterion_feedback;
+    drawPage();
+  }).catch(function(err){
+    alert(err.message);
+    if(btn){
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
 }
 
 function regenSection(taId){

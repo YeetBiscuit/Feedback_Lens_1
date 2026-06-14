@@ -5,6 +5,19 @@ import sqlite3
 BASELINE_FEEDBACK_PROMPT_JSON_V1 = "baseline_feedback_json_v1"
 BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1 = "baseline_direct_feedback_json_v1"
 UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2 = "unit_grounded_feedback_json_v2"
+DEFAULT_FEEDBACK_LENGTH = "standard"
+DEFAULT_FEEDBACK_TONE = "clear_supportive"
+
+FEEDBACK_LENGTH_OPTIONS = {
+    "concise",
+    DEFAULT_FEEDBACK_LENGTH,
+    "detailed",
+}
+FEEDBACK_TONE_OPTIONS = {
+    DEFAULT_FEEDBACK_TONE,
+    "gentle_encouraging",
+    "direct_no_fluff",
+}
 
 RETRIEVAL_FEEDBACK_PROMPT_TEMPLATE_VERSIONS = {
     BASELINE_FEEDBACK_PROMPT_JSON_V1,
@@ -31,7 +44,40 @@ FEEDBACK_PROMPT_TEMPLATE_CHOICES = sorted(
 def default_feedback_prompt_template_version(context_mode: str) -> str:
     if context_mode == "direct":
         return BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1
-    return BASELINE_FEEDBACK_PROMPT_JSON_V1
+    return UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2
+
+
+def validate_feedback_length(feedback_length: str | None) -> str:
+    value = (feedback_length or DEFAULT_FEEDBACK_LENGTH).strip().lower()
+    aliases = {
+        "short": "concise",
+        "medium": DEFAULT_FEEDBACK_LENGTH,
+        "long": "detailed",
+    }
+    value = aliases.get(value, value)
+    if value not in FEEDBACK_LENGTH_OPTIONS:
+        raise ValueError(
+            "feedback_length must be one of: "
+            f"{', '.join(sorted(FEEDBACK_LENGTH_OPTIONS))}"
+        )
+    return value
+
+
+def validate_feedback_tone(feedback_tone: str | None) -> str:
+    value = (feedback_tone or DEFAULT_FEEDBACK_TONE).strip().lower()
+    aliases = {
+        "supportive": DEFAULT_FEEDBACK_TONE,
+        "clear": DEFAULT_FEEDBACK_TONE,
+        "gentle": "gentle_encouraging",
+        "direct": "direct_no_fluff",
+    }
+    value = aliases.get(value, value)
+    if value not in FEEDBACK_TONE_OPTIONS:
+        raise ValueError(
+            "feedback_tone must be one of: "
+            f"{', '.join(sorted(FEEDBACK_TONE_OPTIONS))}"
+        )
+    return value
 
 
 def validate_feedback_prompt_template_version(
@@ -72,12 +118,16 @@ def build_feedback_prompt(
     retrieved_chunks: list[dict] | None = None,
     include_retrieved_context: bool = True,
     prompt_template_version: str | None = None,
+    feedback_length: str | None = None,
+    feedback_tone: str | None = None,
 ) -> str:
     context_mode = "retrieval" if include_retrieved_context else "direct"
     resolved_prompt_template_version = validate_feedback_prompt_template_version(
         prompt_template_version or default_feedback_prompt_template_version(context_mode),
         context_mode,
     )
+    resolved_feedback_length = validate_feedback_length(feedback_length)
+    resolved_feedback_tone = validate_feedback_tone(feedback_tone)
 
     criteria_payload = [
         {
@@ -157,6 +207,46 @@ Retrieved-context grounding requirements:
         else ""
     )
 
+    length_rules = {
+        "concise": (
+            "- Keep feedback short and low-density.\n"
+            "- Use 2 to 3 focused sentences for each strengths, areas_for_improvement, and improvement_suggestion field.\n"
+            "- Keep lists to 2 or 3 high-priority items."
+        ),
+        "standard": (
+            "- Use moderate detail.\n"
+            "- Give enough context to be useful without overwhelming the student.\n"
+            "- Prefer 3 to 5 concise sentences in each criterion feedback field."
+        ),
+        "detailed": (
+            "- Give fuller explanation, including concrete examples or next-step guidance where useful.\n"
+            "- Use 5 to 7 short items for key_strengths and priority_improvements when supported by the evidence.\n"
+            "- Keep the structure scannable even when adding detail."
+        ),
+    }
+    tone_rules = {
+        "clear_supportive": (
+            "- Be clear, specific, and supportive.\n"
+            "- Avoid vague praise, but frame improvement advice as achievable next steps."
+        ),
+        "gentle_encouraging": (
+            "- Use a gentler, encouraging tone.\n"
+            "- Be careful with deficit language; name improvements without making the student feel personally judged."
+        ),
+        "direct_no_fluff": (
+            "- Be direct and efficient.\n"
+            "- Reduce warm-up phrasing and avoid unnecessary reassurance while staying respectful."
+        ),
+    }
+    customisation_rules = f"""
+Feedback customisation requirements:
+- feedback_length: {resolved_feedback_length}
+{length_rules[resolved_feedback_length]}
+- feedback_tone: {resolved_feedback_tone}
+{tone_rules[resolved_feedback_tone]}
+- These settings affect wording only; do not change the required JSON schema.
+""".strip()
+
     return f"""
 You are generating personalised, rubric-aligned feedback for a higher-education assignment.
 
@@ -172,6 +262,8 @@ Rules:
 - Use concise, tutor-facing academic feedback language.
 - `overall_grade_band` and each `suggested_level` must be one of: N, P, C, D, HD.
 - `key_strengths` and `priority_improvements` should each contain 2 to 5 short items.
+
+{customisation_rules}
 
 {unit_grounding_rules}
 

@@ -6,9 +6,13 @@ from dataclasses import dataclass
 from feedback_lens.db.connection import ensure_schema_updates, fetch_latest_version_row
 from feedback_lens.feedback.llm.providers import generate_text, resolve_model_name
 from feedback_lens.feedback.prompt import (
+    DEFAULT_FEEDBACK_LENGTH,
+    DEFAULT_FEEDBACK_TONE,
     build_feedback_prompt,
     default_feedback_prompt_template_version,
+    validate_feedback_length,
     validate_feedback_prompt_template_version,
+    validate_feedback_tone,
 )
 from feedback_lens.feedback.retrieval import (
     DEFAULT_MAX_FINAL_CHUNKS,
@@ -26,6 +30,7 @@ from feedback_lens.feedback.retrieval_planner import (
 
 VALID_GRADE_BANDS = {"N", "P", "C", "D", "HD"}
 VALID_CONTEXT_MODES = {"retrieval", "direct"}
+DEFAULT_FEEDBACK_PROVIDER = "nvidia_deepseek"
 NO_RETRIEVAL_STRATEGY = "none_direct_v1"
 ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY = "assignment_spec_multi_cue_v1"
 VALID_RETRIEVAL_STRATEGIES = {
@@ -49,6 +54,8 @@ class FeedbackGenerationResult:
     retrieval_strategy: str
     per_cue_top_k: int
     max_final_chunks: int
+    feedback_length: str
+    feedback_tone: str
 
 
 def _normalise_context_mode(value: str) -> str:
@@ -75,7 +82,7 @@ def _normalise_retrieval_strategy(
     if context_mode == "direct":
         return NO_RETRIEVAL_STRATEGY
 
-    strategy = (value or ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY).strip().lower()
+    strategy = (value or RETRIEVAL_PLANNER_STRATEGY).strip().lower()
     aliases = {
         "assignment-spec": ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
         "assignment_spec": ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
@@ -187,6 +194,139 @@ def _load_generation_inputs(
         "rubric": rubric,
         "criteria": criteria,
     }
+
+
+def _load_generation_inputs_for_run(
+    conn: sqlite3.Connection,
+    generation_id: int,
+) -> dict:
+    run = conn.execute(
+        """
+        SELECT *
+        FROM generation_runs
+        WHERE generation_id = ?
+        """,
+        (generation_id,),
+    ).fetchone()
+    if run is None:
+        raise ValueError(f"No generation run found with generation_id={generation_id}")
+
+    submission = conn.execute(
+        """
+        SELECT *
+        FROM student_submissions
+        WHERE submission_id = ?
+        """,
+        (run["submission_id"],),
+    ).fetchone()
+    if submission is None:
+        raise ValueError(f"No student submission found with submission_id={run['submission_id']}")
+
+    assignment = conn.execute(
+        """
+        SELECT a.*, u.unit_code, u.unit_name, u.semester, u.year
+        FROM assignments AS a
+        JOIN units AS u ON u.unit_id = a.unit_id
+        WHERE a.assignment_id = ?
+        """,
+        (run["assignment_id"],),
+    ).fetchone()
+    if assignment is None:
+        raise ValueError(f"No assignment found with assignment_id={run['assignment_id']}")
+
+    assignment_spec = fetch_latest_version_row(
+        conn,
+        "assignment_specs",
+        "assignment_id",
+        run["assignment_id"],
+    )
+    if assignment_spec is None:
+        raise ValueError(
+            f"No assignment specification found for assignment_id={run['assignment_id']}"
+        )
+
+    rubric = conn.execute(
+        """
+        SELECT *
+        FROM rubrics
+        WHERE rubric_id = ?
+        """,
+        (run["rubric_id"],),
+    ).fetchone()
+    if rubric is None:
+        raise ValueError(f"No rubric found for rubric_id={run['rubric_id']}")
+
+    criteria = conn.execute(
+        """
+        SELECT *
+        FROM rubric_criteria
+        WHERE rubric_id = ?
+        ORDER BY criterion_order, criterion_id
+        """,
+        (run["rubric_id"],),
+    ).fetchall()
+    if not criteria:
+        raise ValueError(f"No rubric criteria found for rubric_id={run['rubric_id']}")
+
+    return {
+        "run": run,
+        "submission": submission,
+        "assignment": assignment,
+        "assignment_spec": assignment_spec,
+        "rubric": rubric,
+        "criteria": criteria,
+    }
+
+
+def _load_retrieved_prompt_chunks_for_run(
+    conn: sqlite3.Connection,
+    generation_id: int,
+) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT
+            rr.query_text,
+            rr.chunk_id,
+            rr.rank_position,
+            mc.chunk_text,
+            mc.page_number_start,
+            mc.page_number_end,
+            um.title AS material_title,
+            um.material_type,
+            um.week_number
+        FROM retrieval_records AS rr
+        JOIN material_chunks AS mc ON mc.chunk_id = rr.chunk_id
+        JOIN unit_materials AS um ON um.material_id = mc.material_id
+        WHERE rr.generation_id = ?
+          AND rr.used_in_prompt = 1
+        ORDER BY rr.rank_position, rr.retrieval_record_id
+        """,
+        (generation_id,),
+    ).fetchall()
+
+    chunks_by_id: dict[int, dict] = {}
+    for row in rows:
+        chunk_id = int(row["chunk_id"])
+        chunk = chunks_by_id.get(chunk_id)
+        if chunk is None:
+            chunk = {
+                "rank_position": len(chunks_by_id) + 1,
+                "chunk_id": chunk_id,
+                "title": row["material_title"],
+                "material_type": row["material_type"],
+                "week_number": row["week_number"],
+                "page_number_start": row["page_number_start"],
+                "page_number_end": row["page_number_end"],
+                "matched_cues": [],
+                "chunk_text": row["chunk_text"],
+            }
+            chunks_by_id[chunk_id] = chunk
+
+        query_text = _coerce_text(row["query_text"])
+        if query_text and query_text not in chunk["matched_cues"]:
+            chunk["matched_cues"].append(query_text)
+
+    return list(chunks_by_id.values())
 
 
 def _extract_json_payload(response_text: str) -> dict:
@@ -387,7 +527,7 @@ def _fail_retrieval_planning_record(
 def generate_feedback_for_submission(
     conn: sqlite3.Connection,
     submission_id: int,
-    provider: str = "qwen",
+    provider: str = DEFAULT_FEEDBACK_PROVIDER,
     model: str | None = None,
     top_k: int | None = None,
     per_cue_top_k: int | None = None,
@@ -397,6 +537,8 @@ def generate_feedback_for_submission(
     prompt_template_version: str | None = None,
     context_mode: str = "retrieval",
     retrieval_strategy: str | None = None,
+    feedback_length: str | None = DEFAULT_FEEDBACK_LENGTH,
+    feedback_tone: str | None = DEFAULT_FEEDBACK_TONE,
     planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
 ) -> FeedbackGenerationResult:
     ensure_schema_updates(conn)
@@ -419,6 +561,8 @@ def generate_feedback_for_submission(
         resolved_prompt_template_version,
         resolved_context_mode,
     )
+    resolved_feedback_length = validate_feedback_length(feedback_length)
+    resolved_feedback_tone = validate_feedback_tone(feedback_tone)
     resolved_model = resolve_model_name(provider, model)
     if resolved_context_mode == "direct":
         resolved_per_cue_top_k = 0
@@ -554,6 +698,8 @@ def generate_feedback_for_submission(
             retrieved_chunks,
             include_retrieved_context=resolved_context_mode == "retrieval",
             prompt_template_version=resolved_prompt_template_version,
+            feedback_length=resolved_feedback_length,
+            feedback_tone=resolved_feedback_tone,
         )
         conn.execute(
             """
@@ -654,6 +800,8 @@ def generate_feedback_for_submission(
             retrieval_strategy=resolved_retrieval_strategy,
             per_cue_top_k=resolved_per_cue_top_k,
             max_final_chunks=resolved_max_final_chunks,
+            feedback_length=resolved_feedback_length,
+            feedback_tone=resolved_feedback_tone,
         )
     except Exception as err:
         if planning_record_id is not None:
@@ -673,3 +821,132 @@ def generate_feedback_for_submission(
             )
             conn.commit()
         raise
+
+
+def regenerate_feedback_for_criterion(
+    conn: sqlite3.Connection,
+    generation_id: int,
+    criterion_id: int,
+    feedback_length: str | None = DEFAULT_FEEDBACK_LENGTH,
+    feedback_tone: str | None = DEFAULT_FEEDBACK_TONE,
+) -> dict:
+    ensure_schema_updates(conn)
+    resolved_feedback_length = validate_feedback_length(feedback_length)
+    resolved_feedback_tone = validate_feedback_tone(feedback_tone)
+    inputs = _load_generation_inputs_for_run(conn, generation_id)
+    run = inputs["run"]
+    criteria = [
+        row for row in inputs["criteria"] if int(row["criterion_id"]) == int(criterion_id)
+    ]
+    if not criteria:
+        raise ValueError(
+            f"criterion_id={criterion_id} is not part of generation_id={generation_id}"
+        )
+
+    existing_feedback = conn.execute(
+        """
+        SELECT criterion_feedback_id
+        FROM criterion_feedback
+        WHERE generation_id = ?
+          AND criterion_id = ?
+        """,
+        (generation_id, criterion_id),
+    ).fetchone()
+    if existing_feedback is None:
+        raise ValueError(
+            f"No criterion feedback found for generation_id={generation_id}, "
+            f"criterion_id={criterion_id}"
+        )
+
+    retrieval_strategy = run["retrieval_strategy"]
+    context_mode = (
+        "direct"
+        if retrieval_strategy == NO_RETRIEVAL_STRATEGY
+        else "retrieval"
+    )
+    prompt_template_version = validate_feedback_prompt_template_version(
+        run["prompt_template_version"],
+        context_mode,
+    )
+    retrieved_chunks = (
+        []
+        if context_mode == "direct"
+        else _load_retrieved_prompt_chunks_for_run(conn, generation_id)
+    )
+    prompt = build_feedback_prompt(
+        inputs["assignment"],
+        inputs["assignment_spec"],
+        inputs["rubric"],
+        criteria,
+        inputs["submission"],
+        retrieved_chunks,
+        include_retrieved_context=context_mode == "retrieval",
+        prompt_template_version=prompt_template_version,
+        feedback_length=resolved_feedback_length,
+        feedback_tone=resolved_feedback_tone,
+    )
+    provider = run["llm_provider"] or DEFAULT_FEEDBACK_PROVIDER
+    model = run["llm_model"]
+    raw_response = generate_text(
+        prompt,
+        provider=provider,
+        model=model,
+        temperature=run["temperature"] if run["temperature"] is not None else 0.2,
+    )
+    payload = _extract_json_payload(raw_response)
+    mapped_criteria = _map_criterion_feedback(
+        payload.get("criterion_feedback"),
+        criteria,
+    )
+    item = mapped_criteria[int(criterion_id)]
+
+    conn.execute(
+        """
+        UPDATE criterion_feedback
+        SET strengths = ?,
+            areas_for_improvement = ?,
+            improvement_suggestion = ?,
+            suggested_level = ?,
+            evidence_summary = ?
+        WHERE generation_id = ?
+          AND criterion_id = ?
+        """,
+        (
+            _coerce_text(item.get("strengths")),
+            _coerce_text(item.get("areas_for_improvement")),
+            _coerce_text(item.get("improvement_suggestion")),
+            _normalise_grade_band(item.get("suggested_level")),
+            _coerce_text(item.get("evidence_summary")),
+            generation_id,
+            criterion_id,
+        ),
+    )
+    conn.commit()
+
+    updated = conn.execute(
+        """
+        SELECT
+            rc.criterion_id,
+            rc.criterion_name,
+            rc.criterion_description,
+            rc.criterion_order,
+            cf.strengths,
+            cf.areas_for_improvement,
+            cf.improvement_suggestion,
+            cf.suggested_level,
+            cf.evidence_summary,
+            cf.mark
+        FROM criterion_feedback AS cf
+        JOIN rubric_criteria AS rc ON rc.criterion_id = cf.criterion_id
+        WHERE cf.generation_id = ?
+          AND cf.criterion_id = ?
+        """,
+        (generation_id, criterion_id),
+    ).fetchone()
+    if updated is None:
+        raise ValueError(
+            f"No criterion feedback found for generation_id={generation_id}, "
+            f"criterion_id={criterion_id}"
+        )
+
+    return dict(updated)

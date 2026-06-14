@@ -57,11 +57,21 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .search-input input:focus{outline:none;border-color:#2563eb}
 .status-select{padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;min-width:10.5rem;cursor:pointer;font-family:inherit}
 
+.settings-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:.85rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:end;flex-wrap:wrap}
+.settings-title{font-size:.875rem;font-weight:600;color:#1f2937;margin-right:.25rem;align-self:center}
+.settings-control{display:flex;flex-direction:column;gap:4px;min-width:11rem}
+.settings-control span{font-size:.75rem;color:#6b7280}
+.settings-control select{padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;cursor:pointer;font-family:inherit}
+.settings-control select:focus{outline:none;border-color:#2563eb}
+.btn-reset{padding:.5rem .8rem;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:.8125rem;cursor:pointer;font-family:inherit}
+.btn-reset:hover{background:#f9fafb}
+
 .bulk-bar{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;display:none;align-items:center;justify-content:space-between}
 .bulk-bar.show{display:flex}
 .bulk-text{font-size:.875rem;color:#1e40af;font-weight:500}
 .btn-bulk{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;background:#2563eb;color:#fff}
 .btn-bulk:hover{background:#1d4ed8}
+.btn-bulk:disabled,.btn-action:disabled{background:#cbd5e1;color:#fff;cursor:not-allowed}
 
 .table-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
 table{width:100%;border-collapse:collapse}
@@ -151,10 +161,31 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
       </select>
     </div>
 
+    <div class="settings-bar">
+      <div class="settings-title">Feedback settings</div>
+      <label class="settings-control">
+        <span>Length</span>
+        <select id="feedback-length">
+          <option value="concise">Concise</option>
+          <option value="standard">Standard</option>
+          <option value="detailed">Detailed</option>
+        </select>
+      </label>
+      <label class="settings-control">
+        <span>Tone</span>
+        <select id="feedback-tone">
+          <option value="clear_supportive">Clear + supportive</option>
+          <option value="gentle_encouraging">Gentle + encouraging</option>
+          <option value="direct_no_fluff">Direct, no fluff</option>
+        </select>
+      </label>
+      <button class="btn-reset" onclick="resetGenerationSettings()">Reset</button>
+    </div>
+
     <div class="bulk-bar" id="bulk-bar">
       <div class="bulk-text"><span id="bulk-count">0</span> selected</div>
       <div>
-        <button class="btn-bulk" onclick="bulkGenerate()">Generate Feedback</button>
+        <button class="btn-bulk" id="bulk-generate-btn" onclick="bulkGenerate()">Generate Feedback</button>
       </div>
     </div>
 
@@ -252,7 +283,7 @@ function render(){
     if(r.generation_id){
       action = '<button class="btn-action btn-view" onclick="openReview(' + r.generation_id + ')">View Detail</button>';
     } else {
-      action = '<button class="btn-action btn-generate" onclick="generateOne(' + r.submission_id + ')">Generate</button>';
+      action = '<button class="btn-action btn-generate" onclick="generateOne(' + r.submission_id + ', this)">Generate</button>';
     }
 
     return '<tr>'
@@ -312,13 +343,104 @@ function updateBulkBar(){
   document.getElementById('bulk-bar').classList.toggle('show', n > 0);
 }
 
-function bulkGenerate(){
-  var ids = Object.keys(selected);
-  alert('Generation for ' + ids.length + ' submission(s) will be handled by the backend pipeline.\n\nSubmission IDs: ' + ids.join(', '));
+var settingsStorageKey = 'fl-feedback-generation-settings';
+var defaultGenerationSettings = {
+  feedback_length: 'standard',
+  feedback_tone: 'clear_supportive'
+};
+
+function getGenerationSettings(){
+  return {
+    feedback_length: document.getElementById('feedback-length').value,
+    feedback_tone: document.getElementById('feedback-tone').value
+  };
 }
 
-function generateOne(id){
-  alert('Generation for submission ' + id + ' will be handled by the backend pipeline.');
+function saveGenerationSettings(){
+  var settings = getGenerationSettings();
+  localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
+}
+
+function resetGenerationSettings(){
+  document.getElementById('feedback-length').value = defaultGenerationSettings.feedback_length;
+  document.getElementById('feedback-tone').value = defaultGenerationSettings.feedback_tone;
+  saveGenerationSettings();
+}
+
+function initGenerationSettings(){
+  var savedSettings = null;
+  try {
+    savedSettings = JSON.parse(localStorage.getItem(settingsStorageKey) || 'null');
+  } catch(e) {
+    savedSettings = null;
+  }
+  document.getElementById('feedback-length').value =
+    (savedSettings && savedSettings.feedback_length) || defaultGenerationSettings.feedback_length;
+  document.getElementById('feedback-tone').value =
+    (savedSettings && savedSettings.feedback_tone) || defaultGenerationSettings.feedback_tone;
+}
+
+function generationPayload(id){
+  var settings = getGenerationSettings();
+  return {
+    submission_id: id,
+    feedback_length: settings.feedback_length,
+    feedback_tone: settings.feedback_tone
+  };
+}
+
+function requestGeneration(id){
+  return fetch('/api/feedback/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(generationPayload(id))
+  }).then(function(r){
+    return r.json().then(function(data){
+      if(!r.ok || data.error){
+        throw new Error(data.error || 'Generation failed.');
+      }
+      return data;
+    });
+  });
+}
+
+function bulkGenerate(){
+  var ids = rows.filter(function(r){
+    return selected[r.submission_id] && !r.generation_id;
+  }).map(function(r){ return r.submission_id; });
+  if(!ids.length){
+    alert('Select one or more pending submissions to generate feedback.');
+    return;
+  }
+  var btn = document.getElementById('bulk-generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+
+  var chain = Promise.resolve();
+  ids.forEach(function(id){
+    chain = chain.then(function(){ return requestGeneration(id); });
+  });
+  chain.then(function(){
+    selected = {};
+    location.reload();
+  }).catch(function(err){
+    alert(err.message || 'Generation failed. Please try again.');
+    btn.disabled = false;
+    btn.textContent = 'Generate Feedback';
+  });
+}
+
+function generateOne(id, btn){
+  var original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  requestGeneration(id).then(function(data){
+    location.href = '/educator/feedback-review?id=' + data.generation_id;
+  }).catch(function(err){
+    alert(err.message || 'Generation failed. Please try again.');
+    btn.disabled = false;
+    btn.textContent = original;
+  });
 }
 
 function openReview(id){
@@ -327,6 +449,9 @@ function openReview(id){
 
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('status-filter').addEventListener('change', render);
+document.getElementById('feedback-length').addEventListener('change', saveGenerationSettings);
+document.getElementById('feedback-tone').addEventListener('change', saveGenerationSettings);
+initGenerationSettings();
 
 // font toggle
 var saved = localStorage.getItem('fl-font-size');
