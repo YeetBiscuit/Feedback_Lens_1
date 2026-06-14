@@ -261,17 +261,40 @@ function toggleOne(id, checked){
 
 function toggleAll(){
   var all = document.getElementById('cb-all').checked;
+  var query = document.getElementById('search').value.trim().toLowerCase();
+  var filter = document.getElementById('status-filter').value;
+
+  var visible = rows.filter(function(r){
+    if(filter !== 'all' && r.review_status !== filter) return false;
+    if(query){
+      var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
+      return text.indexOf(query) !== -1;
+    }
+    return true;
+  });
+
   selected = {};
   if(all){
-    rows.forEach(function(r){ selected[r.submission_id] = true; });
+    visible.forEach(function(r){ selected[r.submission_id] = true; });
   }
   render();
 }
 
 function syncSelectAll(){
-  var total = rows.length;
-  var picked = Object.keys(selected).length;
-  document.getElementById('cb-all').checked = total > 0 && picked === total;
+  var query = document.getElementById('search').value.trim().toLowerCase();
+  var filter = document.getElementById('status-filter').value;
+
+  var visible = rows.filter(function(r){
+    if(filter !== 'all' && r.review_status !== filter) return false;
+    if(query){
+      var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
+      return text.indexOf(query) !== -1;
+    }
+    return true;
+  });
+
+  var picked = visible.filter(function(r){ return selected[r.submission_id]; }).length;
+  document.getElementById('cb-all').checked = visible.length > 0 && picked === visible.length;
 }
 
 function updateBulkBar(){

@@ -158,6 +158,7 @@ def unit_submissions_data(unit_id):
                     SELECT MAX(generation_id)
                     FROM generation_runs
                     WHERE submission_id = ss.submission_id
+                    AND status = 'completed'
                 )
             LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
             LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
