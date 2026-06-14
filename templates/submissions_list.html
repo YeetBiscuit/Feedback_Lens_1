@@ -7,20 +7,39 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
 body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
-.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center}
+
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:relative}
 .nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
 .nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
-.nav-center{display:flex;gap:.5rem}
-.nav-btn{background:rgba(255,255,255,.18);color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer}
+.nav-center{display:flex;gap:.5rem;position:relative}
+.nav-btn{background:rgba(255,255,255,.18);color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer;font-family:inherit}
 .nav-btn:hover{background:rgba(255,255,255,.28)}
-.nav-right{display:flex;align-items:center;gap:.75rem}
+.nav-right{display:flex;align-items:center;gap:.75rem;position:relative}
 .font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
-.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer;font-family:inherit}
 .font-btn.active{background:#fff;color:#2563eb;font-weight:600}
 .nav-user{color:#fff;text-align:right;line-height:1.2}
 .nav-user-name{font-size:.875rem;font-weight:600}
 .nav-user-role{font-size:.75rem;opacity:.8}
-.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;cursor:pointer}
+
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.unit-picker{left:0;width:22rem;padding:.75rem}
+.unit-picker input{width:100%;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;margin-bottom:.5rem;font-family:inherit}
+.unit-picker input:focus{outline:none;border-color:#2563eb}
+.unit-option{padding:.6rem .75rem;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.unit-option:hover{background:#f9fafb}
+.unit-option-meta{flex:1}
+.unit-option-code{font-weight:700;font-size:.9375rem;color:#1f2937}
+.unit-option-name{font-size:.8125rem;color:#6b7280;margin-top:2px}
+.unit-option-status{font-size:.7rem;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#15803d;font-weight:500}
+
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
 
 .layout{display:flex;min-height:calc(100vh - 3.75rem)}
 .sidebar{width:12.5rem;background:#fff;border-right:1px solid #e5e7eb;padding:1rem 0}
@@ -60,7 +79,7 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 .grade-P{color:#d97706}
 .grade-N{color:#dc2626}
 
-.status-select-inline{padding:.25rem .6rem;border-radius:12px;font-size:.75rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;appearance:none;background-image:none;padding-right:1.5rem;background-repeat:no-repeat;background-position:right .4rem center}
+.status-select-inline{padding:.25rem .6rem;border-radius:12px;font-size:.75rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;appearance:none}
 .status-select-inline.pending{background-color:#fef3c7;color:#92400e}
 .status-select-inline.ai{background-color:#dbeafe;color:#1e40af}
 .status-select-inline.reviewed{background-color:#dcfce7;color:#15803d}
@@ -72,6 +91,7 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 .btn-view{background:#1f2937;color:#fff}
 .btn-view:hover{background:#111827}
 .empty-row td{padding:2rem;text-align:center;color:#888}
+.empty{color:#999;font-size:.875rem;text-align:center;padding:1rem}
 </style>
 </head>
 <body>
@@ -83,7 +103,11 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
   </div>
   <div class="nav-center">
     <button class="nav-btn" onclick="location.href='/educator'">Home</button>
-    <button class="nav-btn" id="unit-btn">-</button>
+    <button class="nav-btn" id="unit-btn" onclick="toggleUnitPicker(event)">-</button>
+    <div class="dropdown unit-picker" id="unit-picker">
+      <input type="text" id="unit-search" placeholder="Search units..." oninput="filterUnits()">
+      <div id="unit-list"></div>
+    </div>
   </div>
   <div class="nav-right">
     <div class="font-toggle">
@@ -95,13 +119,17 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
       <div class="nav-user-name" id="nav-name">-</div>
       <div class="nav-user-role">Educator</div>
     </div>
-    <div class="nav-avatar" id="nav-avatar">-</div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
   </div>
 </div>
 
 <div class="layout">
   <div class="sidebar">
-    <div class="sidebar-item" onclick="location.href='/educator'">Dashboard</div>
+    <div class="sidebar-item" id="link-dashboard">Dashboard</div>
     <div class="sidebar-item active">Submissions</div>
     <div class="sidebar-item">AI Performance</div>
     <div class="sidebar-item">Export</div>
@@ -156,6 +184,7 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 var unitId = {{ unit_id }};
 var rows = [];
 var selected = {};
+var allUnits = [];
 
 function initials(name){
   if(!name) return '?';
@@ -179,11 +208,10 @@ function statusClass(s){
   return 'pending';
 }
 
-function render(){
+function getVisible(){
   var query = document.getElementById('search').value.trim().toLowerCase();
   var filter = document.getElementById('status-filter').value;
-
-  var visible = rows.filter(function(r){
+  return rows.filter(function(r){
     if(filter !== 'all' && r.review_status !== filter) return false;
     if(query){
       var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
@@ -191,7 +219,10 @@ function render(){
     }
     return true;
   });
+}
 
+function render(){
+  var visible = getVisible();
   var body = document.getElementById('table-body');
   if(!visible.length){
     body.innerHTML = '<tr class="empty-row"><td colspan="8">No submissions found.</td></tr>';
@@ -261,18 +292,7 @@ function toggleOne(id, checked){
 
 function toggleAll(){
   var all = document.getElementById('cb-all').checked;
-  var query = document.getElementById('search').value.trim().toLowerCase();
-  var filter = document.getElementById('status-filter').value;
-
-  var visible = rows.filter(function(r){
-    if(filter !== 'all' && r.review_status !== filter) return false;
-    if(query){
-      var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
-      return text.indexOf(query) !== -1;
-    }
-    return true;
-  });
-
+  var visible = getVisible();
   selected = {};
   if(all){
     visible.forEach(function(r){ selected[r.submission_id] = true; });
@@ -281,18 +301,7 @@ function toggleAll(){
 }
 
 function syncSelectAll(){
-  var query = document.getElementById('search').value.trim().toLowerCase();
-  var filter = document.getElementById('status-filter').value;
-
-  var visible = rows.filter(function(r){
-    if(filter !== 'all' && r.review_status !== filter) return false;
-    if(query){
-      var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
-      return text.indexOf(query) !== -1;
-    }
-    return true;
-  });
-
+  var visible = getVisible();
   var picked = visible.filter(function(r){ return selected[r.submission_id]; }).length;
   document.getElementById('cb-all').checked = visible.length > 0 && picked === visible.length;
 }
@@ -319,6 +328,7 @@ function openReview(id){
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('status-filter').addEventListener('change', render);
 
+// font toggle
 var saved = localStorage.getItem('fl-font-size');
 if(saved){
   document.documentElement.style.fontSize = saved + 'px';
@@ -331,18 +341,60 @@ document.querySelectorAll('.font-btn').forEach(function(btn){
     var s = btn.dataset.size;
     document.documentElement.style.fontSize = s + 'px';
     localStorage.setItem('fl-font-size', s);
-    document.querySelectorAll('.font-btn').forEach(function(b){
-      b.classList.remove('active');
-    });
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
   });
 });
 
+// dropdowns
+function toggleUnitPicker(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.remove('show');
+  document.getElementById('unit-picker').classList.toggle('show');
+}
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('unit-picker').classList.remove('show');
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('unit-picker').classList.remove('show');
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('unit-picker').addEventListener('click', function(e){ e.stopPropagation(); });
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
+function filterUnits(){
+  var q = document.getElementById('unit-search').value.trim().toLowerCase();
+  var filtered = allUnits.filter(function(u){
+    return !q || u.unit_code.toLowerCase().indexOf(q) !== -1 || u.unit_name.toLowerCase().indexOf(q) !== -1;
+  });
+  document.getElementById('unit-list').innerHTML = filtered.map(function(u){
+    return '<div class="unit-option" onclick="location.href=\'/educator/unit/' + u.unit_id + '\'">'
+      + '<div class="unit-option-meta">'
+      +   '<div class="unit-option-code">' + u.unit_code + '</div>'
+      +   '<div class="unit-option-name">' + u.unit_name + '</div>'
+      + '</div>'
+      + '<div class="unit-option-status">In Progress</div>'
+      + '</div>';
+  }).join('') || '<div class="empty">No matching units</div>';
+}
+
+document.getElementById('link-dashboard').onclick = function(){
+  location.href = '/educator/unit/' + unitId;
+};
+
+// load user + units for picker
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
-  document.getElementById('nav-name').textContent = d.user.name || d.user.email;
-  document.getElementById('nav-avatar').textContent = initials(d.user.name);
+  var u = d.user;
+  document.getElementById('nav-name').textContent = u.name || u.email;
+  document.getElementById('nav-avatar').textContent = initials(u.name);
+  document.getElementById('user-menu-email').textContent = u.email || '';
+  allUnits = d.units || [];
+  filterUnits();
 });
 
+// load submissions
 fetch('/api/educator/unit/' + unitId + '/submissions')
   .then(function(r){ return r.json(); })
   .then(function(data){

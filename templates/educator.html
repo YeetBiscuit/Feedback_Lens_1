@@ -18,6 +18,16 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .nav-user-name{font-size:.875rem;font-weight:600}
 .nav-user-role{font-size:.75rem;opacity:.8}
 .nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+.nav-avatar{cursor:pointer}
+.navbar{position:relative}
+.nav-right{position:relative}
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
 .content{padding:2rem}
 .welcome{margin-bottom:2rem}
 .welcome h1{font-size:1.625rem;font-weight:700;margin-bottom:.25rem}
@@ -47,17 +57,21 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
     FeedbackLens
   </div>
   <div class="nav-right">
-    <div class="font-toggle">
-      <button class="font-btn" data-size="14">A-</button>
-      <button class="font-btn active" data-size="16">A</button>
-      <button class="font-btn" data-size="18">A+</button>
-    </div>
-    <div class="nav-user">
-      <div class="nav-user-name" id="nav-name">-</div>
-      <div class="nav-user-role">Educator</div>
-    </div>
-    <div class="nav-avatar" id="nav-avatar">-</div>
+  <div class="font-toggle">
+    <button class="font-btn" data-size="14">A-</button>
+    <button class="font-btn active" data-size="16">A</button>
+    <button class="font-btn" data-size="18">A+</button>
   </div>
+  <div class="nav-user">
+    <div class="nav-user-name" id="nav-name">-</div>
+    <div class="nav-user-role">Educator</div>
+  </div>
+  <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+  <div class="dropdown user-menu" id="user-menu">
+    <div class="user-menu-email" id="user-menu-email">-</div>
+    <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+  </div>
+</div>
 </div>
 
 <div class="content">
@@ -84,6 +98,15 @@ function initials(name){
   return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
 }
 
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
 var saved = localStorage.getItem('fl-font-size');
 if(saved){
   document.documentElement.style.fontSize = saved + 'px';
@@ -107,6 +130,7 @@ fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(functi
   var user = data.user;
   document.getElementById('nav-name').textContent = user.name || user.email;
   document.getElementById('nav-avatar').textContent = initials(user.name);
+  document.getElementById('user-menu-email').textContent = user.email || '';
   document.getElementById('welcome-msg').textContent = 'Welcome back, ' + (user.name || user.email) + '!';
 
   var units = data.units || [];
@@ -115,7 +139,7 @@ fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(functi
     grid.innerHTML = '<div class="empty">No units assigned.</div>';
   } else {
     grid.innerHTML = units.map(function(u){
-      return '<div class="unit-card" onclick="location.href=\'/educator/unit/' + u.unit_id + '/submissions\'">'
+      return '<div class="unit-card" onclick="location.href=\'/educator/unit/' + u.unit_id + '\'">'
         + '<div class="card-tags">'
         + '<span class="tag tag-code">' + u.unit_code + '</span>'
         + '<span class="tag tag-sem">S' + u.semester + ' ' + u.year + '</span>'

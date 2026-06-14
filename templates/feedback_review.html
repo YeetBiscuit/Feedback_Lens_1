@@ -21,6 +21,27 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .nav-user-name{font-size:.875rem;font-weight:600}
 .nav-user-role{font-size:.75rem;opacity:.8}
 .nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+.nav-avatar{cursor:pointer}
+.navbar{position:relative}
+.nav-center{position:relative}
+.nav-right{position:relative}
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.unit-picker{left:0;width:22rem;padding:.75rem}
+.unit-picker input{width:100%;padding:.5rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;margin-bottom:.5rem;font-family:inherit}
+.unit-picker input:focus{outline:none;border-color:#2563eb}
+.unit-option{padding:.6rem .75rem;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+.unit-option:hover{background:#f9fafb}
+.unit-option-meta{flex:1}
+.unit-option-code{font-weight:700;font-size:.9375rem;color:#1f2937}
+.unit-option-name{font-size:.8125rem;color:#6b7280;margin-top:2px}
+.unit-option-status{font-size:.7rem;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#15803d;font-weight:500}
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
+.empty{color:#999;font-size:.875rem;text-align:center;padding:1rem}
 
 .wrap{padding:1.25rem}
 .top-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1rem 1.5rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
@@ -94,6 +115,11 @@ input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;borde
   </div>
   <div class="nav-center">
     <button class="nav-btn" onclick="location.href='/educator'">Home</button>
+    <button class="nav-btn" id="unit-btn" onclick="toggleUnitPicker(event)">-</button>
+    <div class="dropdown unit-picker" id="unit-picker">
+      <input type="text" id="unit-search" placeholder="Search units..." oninput="filterUnits()">
+      <div id="unit-list"></div>
+    </div>
   </div>
   <div class="nav-right">
     <div class="font-toggle">
@@ -105,7 +131,11 @@ input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;borde
       <div class="nav-user-name" id="nav-name">-</div>
       <div class="nav-user-role">Educator</div>
     </div>
-    <div class="nav-avatar" id="nav-avatar">-</div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
   </div>
 </div>
 
@@ -168,9 +198,47 @@ document.querySelectorAll('.font-btn').forEach(function(btn){
   });
 });
 
+var allUnits = [];
+
+function toggleUnitPicker(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.remove('show');
+  document.getElementById('unit-picker').classList.toggle('show');
+}
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('unit-picker').classList.remove('show');
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('unit-picker').classList.remove('show');
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('unit-picker').addEventListener('click', function(e){ e.stopPropagation(); });
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
+function filterUnits(){
+  var q = document.getElementById('unit-search').value.trim().toLowerCase();
+  var filtered = allUnits.filter(function(u){
+    return !q || u.unit_code.toLowerCase().indexOf(q) !== -1 || u.unit_name.toLowerCase().indexOf(q) !== -1;
+  });
+  document.getElementById('unit-list').innerHTML = filtered.map(function(u){
+    return '<div class="unit-option" onclick="location.href=\'/educator/unit/' + u.unit_id + '\'">'
+      + '<div class="unit-option-meta">'
+      +   '<div class="unit-option-code">' + u.unit_code + '</div>'
+      +   '<div class="unit-option-name">' + u.unit_name + '</div>'
+      + '</div>'
+      + '<div class="unit-option-status">In Progress</div>'
+      + '</div>';
+  }).join('') || '<div class="empty">No matching units</div>';
+}
+
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
   document.getElementById('nav-name').textContent = d.user.name || d.user.email;
   document.getElementById('nav-avatar').textContent = initials(d.user.name);
+  document.getElementById('user-menu-email').textContent = d.user.email || '';
+  allUnits = d.units || [];
+  filterUnits();
 });
 
 genId = qs('id');
@@ -191,6 +259,9 @@ function loadFeedback(){
 
     document.getElementById('student-id').textContent = d.run.student_identifier || '-';
     document.getElementById('assignment-name').textContent = d.run.assignment_name || '-';
+    if(d.run.unit_code){
+      document.getElementById('unit-btn').textContent = d.run.unit_code;
+    }
 
     var c = qs('c');
     if(c){

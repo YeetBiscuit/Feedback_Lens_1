@@ -106,6 +106,70 @@ def feedback_review():
 def general_feedback():
     return render_template('general_feedback.html')
 
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+
+@app.route('/educator/unit/<int:unit_id>')
+@login_required('educator')
+def unit_dashboard(unit_id):
+    return render_template('unit_dashboard.html', unit_id=unit_id)
+
+
+@app.route('/api/educator/unit/<int:unit_id>/dashboard')
+def unit_dashboard_data(unit_id):
+    user, error = api_session_user(required_role='educator')
+    if error:
+        return error
+    if user.get('tutor_id') is None:
+        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
+
+    with connect_db() as conn:
+        unit = conn.execute(
+            """
+            SELECT u.unit_id, u.unit_code, u.unit_name, u.semester, u.year
+            FROM units u
+            JOIN unit_tutors ut ON ut.unit_id = u.unit_id
+            WHERE u.unit_id = ? AND ut.tutor_id = ?
+            """,
+            (unit_id, user['tutor_id']),
+        ).fetchone()
+        if unit is None:
+            return jsonify({'error': 'Unit not found or not authorised'}), 404
+
+        
+        counts = conn.execute(
+            """
+            SELECT
+                COUNT(DISTINCT ss.submission_id) AS total_submissions,
+                COUNT(DISTINCT CASE WHEN gr.status = 'completed' AND hr.review_id IS NULL THEN ss.submission_id END) AS ai_generated_count,
+                COUNT(DISTINCT CASE WHEN hr.review_id IS NOT NULL THEN ss.submission_id END) AS reviewed_count,
+                COUNT(DISTINCT CASE WHEN gr.generation_id IS NULL OR gr.status != 'completed' THEN ss.submission_id END) AS pending_count
+            FROM student_submissions ss
+            JOIN assignments a ON a.assignment_id = ss.assignment_id
+            LEFT JOIN generation_runs gr
+                ON gr.submission_id = ss.submission_id
+                AND gr.generation_id = (
+                    SELECT MAX(generation_id)
+                    FROM generation_runs
+                    WHERE submission_id = ss.submission_id
+                )
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            WHERE a.unit_id = ?
+            """,
+            (unit_id,),
+        ).fetchone()
+
+
+    return jsonify({
+        'unit': dict(unit),
+        'counts': dict(counts) if counts else {},
+    })
+
 @app.route('/educator/unit/<int:unit_id>/submissions')
 @login_required('educator')
 def submissions_list(unit_id):
