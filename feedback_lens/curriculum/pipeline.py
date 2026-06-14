@@ -135,16 +135,22 @@ def _complete_step(
     conn.commit()
 
 
-def _fail_step(conn: sqlite3.Connection, step_id: int, error: Exception) -> None:
+def _fail_step(
+    conn: sqlite3.Connection,
+    step_id: int,
+    error: Exception,
+    raw_response: str | None = None,
+) -> None:
     conn.execute(
         """
         UPDATE curriculum_generation_steps
-        SET status = 'failed',
+        SET raw_response = COALESCE(?, raw_response),
+            status = 'failed',
             error_message = ?,
             completed_at = CURRENT_TIMESTAMP
         WHERE curriculum_step_id = ?
         """,
-        (str(error), step_id),
+        (raw_response, str(error), step_id),
     )
     conn.commit()
 
@@ -177,6 +183,7 @@ def _run_step(
     )
     label = progress_label or stage_key
     _emit(progress_callback, f"Starting {label} (step_id={step_id}).")
+    response = None
     try:
         response = generate_chat(
             messages,
@@ -189,7 +196,7 @@ def _run_step(
         _emit(progress_callback, f"Completed {label} (step_id={step_id}).")
         return step_id, response, parsed
     except Exception as err:
-        _fail_step(conn, step_id, err)
+        _fail_step(conn, step_id, err, raw_response=response)
         _emit(progress_callback, f"Failed {label} (step_id={step_id}): {err}")
         raise
 

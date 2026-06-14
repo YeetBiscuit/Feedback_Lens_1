@@ -10,6 +10,7 @@ from unittest.mock import patch
 from feedback_lens.curriculum.paths import assignment_slug, collision_safe_path
 from feedback_lens.curriculum.pipeline import generate_synthetic_submissions, generate_unit
 from feedback_lens.curriculum.prompts import submission_messages
+from feedback_lens.curriculum.schema import extract_json_object
 from feedback_lens.file_management.parsers.rubric_parser import (
     extract_pipe_rubric_tables,
     extract_rubric_tables,
@@ -215,6 +216,43 @@ class UnitGenerationIngestionTests(unittest.TestCase):
             prompt.index("VARIATION REQUIREMENTS"),
         )
 
+    def test_schema_json_extraction_repairs_common_llm_output_issues(self) -> None:
+        text = """
+Here is the JSON:
+{
+  "course_code": "TEST101"
+  "course_title": "Testing Unit",
+  "level": "undergraduate_year_1",
+  "discipline": "Testing",
+  "credit_points": 6,
+  "weeks": 2,
+  "learning_outcomes": ["LO1" "LO2",],
+  "topics": [
+    {"week": 1, "title": "One", "summary": "First."}
+    {"week": 2, "title": "Two", "summary": "Second.",}
+  ],
+  "assignments": [
+    {
+      "id": "A1",
+      "title": "Report",
+      "type": "report",
+      "weight": 100,
+      "due_week": 2,
+      "word_count_or_equivalent": "1000 words",
+      "linked_topics": [1, 2],
+      "learning_outcomes_assessed": ["LO1"],
+    }
+  ],
+}
+Thanks.
+"""
+
+        schema = extract_json_object(text)
+
+        self.assertEqual(schema["course_code"], "TEST101")
+        self.assertEqual(schema["learning_outcomes"], ["LO1", "LO2"])
+        self.assertEqual(len(schema["topics"]), 2)
+
     def test_auto_ingest_dry_run_classifies_without_db_writes(self) -> None:
         with _temp_dir() as tmp:
             db_path = Path(tmp) / "feedback.db"
@@ -361,6 +399,43 @@ class UnitGenerationIngestionTests(unittest.TestCase):
                 ).fetchone()
                 self.assertEqual(unit_count["count"], 0)
                 self.assertEqual(ingestion_run_count["count"], 0)
+
+    def test_failed_schema_parse_records_raw_response(self) -> None:
+        def fake_generate_chat(*args, **kwargs):
+            return 'not a JSON schema'
+
+        with _temp_dir() as tmp:
+            db_path = Path(tmp) / "feedback.db"
+            unit_root = Path(tmp) / "documents" / "units" / "TEST101"
+
+            def fake_unit_root(course_code: str) -> Path:
+                return unit_root
+
+            with _connect_temp_db(db_path) as conn:
+                with patch(
+                    "feedback_lens.feedback.llm.providers.generate_chat",
+                    fake_generate_chat,
+                ):
+                    with patch("feedback_lens.curriculum.pipeline.unit_root", fake_unit_root):
+                        with self.assertRaises(ValueError):
+                            generate_unit(
+                                conn,
+                                "A testing unit.",
+                                provider="qwen",
+                                model="fake-model",
+                            )
+
+                step = conn.execute(
+                    """
+                    SELECT status, raw_response, error_message
+                    FROM curriculum_generation_steps
+                    WHERE stage_key = 'stage_1_schema'
+                    """
+                ).fetchone()
+
+                self.assertEqual(step["status"], "failed")
+                self.assertEqual(step["raw_response"], "not a JSON schema")
+                self.assertIn("Response did not contain a JSON object", step["error_message"])
 
     def test_generate_extra_synthetic_submissions_updates_manifest(self) -> None:
         with _temp_dir() as tmp:

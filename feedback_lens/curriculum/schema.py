@@ -1,5 +1,6 @@
 import json
 import re
+from json import JSONDecodeError
 
 
 REQUIRED_SCHEMA_FIELDS = {
@@ -16,19 +17,104 @@ REQUIRED_SCHEMA_FIELDS = {
 
 
 def extract_json_object(text: str) -> dict:
-    stripped = text.strip()
-    if stripped.startswith("{"):
-        candidate = stripped
-    else:
-        match = re.search(r"\{.*\}", stripped, re.DOTALL)
-        if match is None:
-            raise ValueError("Response did not contain a JSON object.")
-        candidate = match.group(0)
+    candidate = _extract_balanced_json_object(text)
+    try:
+        value = json.loads(candidate)
+    except JSONDecodeError as original_error:
+        repaired = _repair_common_json_issues(candidate)
+        if repaired == candidate:
+            raise
+        try:
+            value = json.loads(repaired)
+        except JSONDecodeError:
+            raise original_error
 
-    value = json.loads(candidate)
     if not isinstance(value, dict):
         raise ValueError("Expected a JSON object.")
     return value
+
+
+def _extract_balanced_json_object(text: str) -> str:
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("Response did not contain a JSON object.")
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+
+    return text[start:].strip()
+
+
+def _repair_common_json_issues(candidate: str) -> str:
+    repaired = (
+        candidate.replace("\ufeff", "")
+        .replace("\u201c", '"')
+        .replace("\u201d", '"')
+        .replace("\u2018", "'")
+        .replace("\u2019", "'")
+    )
+    repaired = re.sub(r",(\s*[}\]])", r"\1", repaired)
+    return _insert_missing_commas(repaired)
+
+
+def _insert_missing_commas(candidate: str) -> str:
+    parts: list[str] = []
+    in_string = False
+    escaped = False
+    length = len(candidate)
+    for index, char in enumerate(candidate):
+        parts.append(char)
+        was_closing_quote = False
+
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+                was_closing_quote = True
+        elif char == '"':
+            in_string = True
+
+        if in_string:
+            continue
+
+        current_ends_value = char in "}]0123456789" or was_closing_quote
+        if not current_ends_value:
+            continue
+
+        next_index = index + 1
+        while next_index < length and candidate[next_index].isspace():
+            next_index += 1
+        if next_index >= length:
+            continue
+
+        next_char = candidate[next_index]
+        if next_char in "{[\"":
+            parts.append(",")
+
+    return "".join(parts)
 
 
 def validate_course_schema(schema: dict) -> None:

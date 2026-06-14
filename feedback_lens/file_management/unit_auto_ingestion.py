@@ -126,6 +126,21 @@ def _title_from_path(path: Path) -> str:
     return title.title() if title else path.name
 
 
+def _tutorial_material_info(path: Path) -> tuple[str, str | None]:
+    stem = path.stem
+    normalised_stem = re.sub(r"[^A-Za-z0-9]+", "_", stem).strip("_").lower()
+    suffixes = [
+        ("_sample_answers_and_tutor_notes", "sample_solution"),
+        ("_sample_answers", "sample_solution"),
+        ("_worksheet", "tutorial_sheet"),
+    ]
+    for suffix, material_type in suffixes:
+        if normalised_stem.endswith(suffix):
+            slug_stem = normalised_stem[: -len(suffix)]
+            return material_type, _normalise_assignment_folder(slug_stem)
+    return "tutorial_material", None
+
+
 def _student_identifier_from_file(
     file_path: Path,
     assignment_slug: str,
@@ -599,16 +614,7 @@ def _collect_ingestion_targets(
     tutorials_dir = unit_dir / "tutorials"
     if tutorials_dir.exists():
         for tutorial_path in _iter_supported(list(tutorials_dir.iterdir())):
-            stem = tutorial_path.stem
-            if stem.endswith("_worksheet"):
-                material_type = "tutorial_sheet"
-                slug = _normalise_assignment_folder(stem[: -len("_worksheet")])
-            elif stem.endswith("_sample_answers"):
-                material_type = "sample_solution"
-                slug = _normalise_assignment_folder(stem[: -len("_sample_answers")])
-            else:
-                material_type = "tutorial_material"
-                slug = ""
+            material_type, slug = _tutorial_material_info(tutorial_path)
             targets.append(
                 {
                     "item_type": "unit_material",
@@ -616,7 +622,7 @@ def _collect_ingestion_targets(
                     "material_type": material_type,
                     "title": _title_from_path(tutorial_path),
                     "week_number": None,
-                    "assignment_id": assignment_ids.get(slug),
+                    "assignment_id": assignment_ids.get(slug or ""),
                 }
             )
 

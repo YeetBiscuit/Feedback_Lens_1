@@ -74,7 +74,10 @@ def schema_messages(description: str) -> list[dict[str, str]]:
             "role": "system",
             "content": (
                 "You are an academic curriculum designer. Respond only in valid "
-                "JSON. No markdown fences, no preamble."
+                "JSON. No markdown fences, no preamble. Use double quotes for "
+                "all keys and string values, include commas between every "
+                "property and array item, and do not use unescaped double "
+                "quotes inside string values."
             ),
         },
         {
@@ -113,7 +116,7 @@ The schema must follow this exact structure:
   ]
 }}
 
-Return only the JSON object.
+Return only the JSON object. The response must parse with Python json.loads.
 """.strip(),
         },
     ]
