@@ -120,6 +120,16 @@ def unit_dashboard(unit_id):
     return render_template('unit_dashboard.html', unit_id=unit_id)
 
 
+@app.route('/educator/unit/<int:unit_id>/ai-performance')
+@login_required('educator')
+def unit_ai_performance(unit_id):
+    return render_template('ai_performance.html', unit_id=unit_id)
+
+@app.route('/educator/unit/<int:unit_id>/export')
+@login_required('educator')
+def unit_export(unit_id):
+    return render_template('export.html', unit_id=unit_id)
+
 @app.route('/api/educator/unit/<int:unit_id>/dashboard')
 def unit_dashboard_data(unit_id):
     user, error = api_session_user(required_role='educator')

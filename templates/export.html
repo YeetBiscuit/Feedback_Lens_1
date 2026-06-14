@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Submissions</title>
+<title>Export Feedback</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
@@ -51,17 +51,16 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .page-title{font-size:1.5rem;font-weight:700;margin-bottom:.25rem}
 .page-sub{font-size:.875rem;color:#6b7280;margin-bottom:1.5rem}
 
-.filter-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:.85rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:center}
-.search-input{flex:1}
-.search-input input{width:100%;padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:inherit}
-.search-input input:focus{outline:none;border-color:#2563eb}
-.status-select{padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;min-width:10.5rem;cursor:pointer;font-family:inherit}
+.search-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:.85rem;margin-bottom:1rem}
+.search-bar input{width:100%;padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:inherit}
+.search-bar input:focus{outline:none;border-color:#2563eb}
 
-.bulk-bar{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;display:none;align-items:center;justify-content:space-between}
-.bulk-bar.show{display:flex}
-.bulk-text{font-size:.875rem;color:#1e40af;font-weight:500}
-.btn-bulk{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;background:#2563eb;color:#fff}
-.btn-bulk:hover{background:#1d4ed8}
+.action-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.selected-text{font-size:.875rem;color:#4b5563}
+.selected-text strong{color:#2563eb}
+.btn-export{padding:.55rem 1.25rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.875rem;font-weight:500;cursor:pointer;font-family:inherit}
+.btn-export:hover{background:#1d4ed8}
+.btn-export:disabled{background:#cbd5e1;cursor:not-allowed}
 
 .table-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden}
 table{width:100%;border-collapse:collapse}
@@ -78,19 +77,15 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 .grade-C{color:#16a34a}
 .grade-P{color:#d97706}
 .grade-N{color:#dc2626}
-
-.status-select-inline{padding:.25rem .6rem;border-radius:12px;font-size:.75rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;appearance:none}
-.status-select-inline.pending{background-color:#fef3c7;color:#92400e}
-.status-select-inline.ai{background-color:#dbeafe;color:#1e40af}
-.status-select-inline.reviewed{background-color:#dcfce7;color:#15803d}
-
-.action-cell{text-align:right}
-.btn-action{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit}
-.btn-generate{background:#2563eb;color:#fff}
-.btn-generate:hover{background:#1d4ed8}
-.btn-view{background:#1f2937;color:#fff}
-.btn-view:hover{background:#111827}
+.status-pill{display:inline-block;padding:.2rem .7rem;border-radius:12px;font-size:.75rem;font-weight:500}
+.status-pending{background:#fef3c7;color:#92400e}
+.status-ai{background:#dbeafe;color:#1e40af}
+.status-reviewed{background:#dcfce7;color:#15803d}
 .empty-row td{padding:2rem;text-align:center;color:#888}
+
+.help-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:1rem 1.25rem;margin-top:1rem}
+.help-title{font-size:.9375rem;font-weight:600;color:#1e40af;margin-bottom:.25rem}
+.help-text{font-size:.8125rem;color:#1e3a8a;line-height:1.5}
 .empty{color:#999;font-size:.875rem;text-align:center;padding:1rem}
 </style>
 </head>
@@ -130,32 +125,22 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 <div class="layout">
   <div class="sidebar">
     <div class="sidebar-item" id="link-dashboard">Dashboard</div>
-    <div class="sidebar-item active">Submissions</div>
+    <div class="sidebar-item" id="link-submissions">Submissions</div>
     <div class="sidebar-item" id="link-ai">AI Performance</div>
-    <div class="sidebar-item" id="link-export">Export</div>
+    <div class="sidebar-item active">Export</div>
   </div>
 
   <div class="main">
-    <h1 class="page-title" id="page-title">Submissions</h1>
-    <div class="page-sub">Review and manage student submissions</div>
+    <h1 class="page-title" id="page-title">Export Feedback</h1>
+    <div class="page-sub">Select submissions and export feedback data as CSV</div>
 
-    <div class="filter-bar">
-      <div class="search-input">
-        <input type="text" id="search" placeholder="Search by student or assessment...">
-      </div>
-      <select class="status-select" id="status-filter">
-        <option value="all">All Status</option>
-        <option value="pending">Pending Review</option>
-        <option value="ai_generated">AI Generated</option>
-        <option value="reviewed">Reviewed</option>
-      </select>
+    <div class="search-bar">
+      <input type="text" id="search" placeholder="Search by student or assessment...">
     </div>
 
-    <div class="bulk-bar" id="bulk-bar">
-      <div class="bulk-text"><span id="bulk-count">0</span> selected</div>
-      <div>
-        <button class="btn-bulk" onclick="bulkGenerate()">Generate Feedback</button>
-      </div>
+    <div class="action-bar">
+      <div class="selected-text"><strong id="selected-count">0</strong> submission(s) selected</div>
+      <button class="btn-export" id="btn-export" onclick="exportCsv()" disabled>Export to CSV</button>
     </div>
 
     <div class="table-card">
@@ -169,13 +154,17 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
             <th>Estimate Grade</th>
             <th>Final Mark</th>
             <th>Status</th>
-            <th class="action-cell">Action</th>
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr class="empty-row"><td colspan="8">Loading...</td></tr>
+          <tr class="empty-row"><td colspan="7">Loading...</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="help-box">
+      <div class="help-title">How to export</div>
+      <div class="help-text">Tick one or more submissions in the table above and click <strong>Export to CSV</strong>. The download includes overall feedback, per-criterion feedback, and the AI suggested grade band for each selected submission.</div>
     </div>
   </div>
 </div>
@@ -202,22 +191,19 @@ function formatDate(s){
   return s.split(' ')[0];
 }
 
-function statusClass(s){
-  if(s === 'reviewed') return 'reviewed';
-  if(s === 'ai_generated') return 'ai';
-  return 'pending';
+function pill(status){
+  if(status === 'reviewed') return '<span class="status-pill status-reviewed">Reviewed</span>';
+  if(status === 'ai_generated') return '<span class="status-pill status-ai">AI Generated</span>';
+  return '<span class="status-pill status-pending">Pending</span>';
 }
 
 function getVisible(){
-  var query = document.getElementById('search').value.trim().toLowerCase();
-  var filter = document.getElementById('status-filter').value;
+  var q = document.getElementById('search').value.trim().toLowerCase();
   return rows.filter(function(r){
-    if(filter !== 'all' && r.review_status !== filter) return false;
-    if(query){
-      var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
-      return text.indexOf(query) !== -1;
-    }
-    return true;
+    if(!r.generation_id) return false;  
+    if(!q) return true;
+    var t = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
+    return t.indexOf(q) !== -1;
   });
 }
 
@@ -225,8 +211,8 @@ function render(){
   var visible = getVisible();
   var body = document.getElementById('table-body');
   if(!visible.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="8">No submissions found.</td></tr>';
-    updateBulkBar();
+    body.innerHTML = '<tr class="empty-row"><td colspan="7">No submissions with feedback to export.</td></tr>';
+    updateActionBar();
     return;
   }
 
@@ -234,59 +220,25 @@ function render(){
     var grade = r.overall_grade_band || '-';
     var gradeCls = r.overall_grade_band ? 'grade grade-' + r.overall_grade_band : 'grade';
     var mark = r.final_mark != null ? r.final_mark : '-';
-    var checked = selected[r.submission_id] ? 'checked' : '';
-    var statusCls = statusClass(r.review_status);
-
-    var statusCell;
-    if(r.generation_id){
-      statusCell = '<select class="status-select-inline ' + statusCls + '" onchange="changeStatus(' + r.generation_id + ', this)">'
-        + '<option value="pending"' + (r.review_status === 'pending' ? ' selected' : '') + '>Pending</option>'
-        + '<option value="ai_generated"' + (r.review_status === 'ai_generated' ? ' selected' : '') + '>AI Generated</option>'
-        + '<option value="reviewed"' + (r.review_status === 'reviewed' ? ' selected' : '') + '>Reviewed</option>'
-        + '</select>';
-    } else {
-      statusCell = '<select class="status-select-inline pending" disabled><option>Pending</option></select>';
-    }
-
-    var action;
-    if(r.generation_id){
-      action = '<button class="btn-action btn-view" onclick="openReview(' + r.generation_id + ')">View Detail</button>';
-    } else {
-      action = '<button class="btn-action btn-generate" onclick="generateOne(' + r.submission_id + ')">Generate</button>';
-    }
-
+    var checked = selected[r.generation_id] ? 'checked' : '';
     return '<tr>'
-      + '<td><input type="checkbox" ' + checked + ' onchange="toggleOne(' + r.submission_id + ', this.checked)"></td>'
+      + '<td><input type="checkbox" ' + checked + ' onchange="toggleOne(' + r.generation_id + ', this.checked)"></td>'
       + '<td>' + shortId(r.student_identifier) + '</td>'
       + '<td>' + (r.assignment_name || '-') + '</td>'
       + '<td>' + formatDate(r.submitted_at) + '</td>'
       + '<td><span class="' + gradeCls + '">' + grade + '</span></td>'
       + '<td>' + mark + '</td>'
-      + '<td>' + statusCell + '</td>'
-      + '<td class="action-cell">' + action + '</td>'
+      + '<td>' + pill(r.review_status) + '</td>'
       + '</tr>';
   }).join('');
 
-  updateBulkBar();
-}
-
-function changeStatus(genId, sel){
-  var newStatus = sel.value;
-  sel.className = 'status-select-inline ' + statusClass(newStatus);
-  fetch('/api/feedback/' + genId + '/save', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({review_status: newStatus})
-  }).then(function(r){return r.json();}).then(function(){
-    var row = rows.find(function(r){ return r.generation_id === genId; });
-    if(row) row.review_status = newStatus;
-  });
+  updateActionBar();
 }
 
 function toggleOne(id, checked){
   if(checked) selected[id] = true;
   else delete selected[id];
-  updateBulkBar();
+  updateActionBar();
   syncSelectAll();
 }
 
@@ -295,40 +247,114 @@ function toggleAll(){
   var visible = getVisible();
   selected = {};
   if(all){
-    visible.forEach(function(r){ selected[r.submission_id] = true; });
+    visible.forEach(function(r){ selected[r.generation_id] = true; });
   }
   render();
 }
 
 function syncSelectAll(){
   var visible = getVisible();
-  var picked = visible.filter(function(r){ return selected[r.submission_id]; }).length;
+  var picked = visible.filter(function(r){ return selected[r.generation_id]; }).length;
   document.getElementById('cb-all').checked = visible.length > 0 && picked === visible.length;
 }
 
-function updateBulkBar(){
+function updateActionBar(){
   var n = Object.keys(selected).length;
-  document.getElementById('bulk-count').textContent = n;
-  document.getElementById('bulk-bar').classList.toggle('show', n > 0);
+  document.getElementById('selected-count').textContent = n;
+  document.getElementById('btn-export').disabled = n === 0;
 }
 
-function bulkGenerate(){
+
+function csvField(v){
+  if(v == null) return '';
+  var s = String(v).replace(/"/g, '""');
+  return '"' + s + '"';
+}
+
+function exportCsv(){
   var ids = Object.keys(selected);
-  alert('Generation for ' + ids.length + ' submission(s) will be handled by the backend pipeline.\n\nSubmission IDs: ' + ids.join(', '));
-}
+  if(!ids.length) return;
 
-function generateOne(id){
-  alert('Generation for submission ' + id + ' will be handled by the backend pipeline.');
-}
+  var btn = document.getElementById('btn-export');
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
 
-function openReview(id){
-  location.href = '/educator/feedback-review?id=' + id;
+  var fetches = ids.map(function(id){
+    return fetch('/api/feedback/' + id).then(function(r){ return r.json(); });
+  });
+
+  Promise.all(fetches).then(function(results){
+    var headers = [
+      'Student', 'Assignment', 'Submission Date',
+      'AI Grade Band', 'Final Mark', 'Status',
+      'Overall Comment', 'Key Strengths', 'Priority Improvements',
+      'Criterion', 'Criterion Strengths', 'Areas for Improvement',
+      'Improvement Suggestion', 'Suggested Level', 'Mark'
+    ];
+    var lines = [headers.map(csvField).join(',')];
+
+    results.forEach(function(d){
+      if(!d || d.error) return;
+      var run = d.run || {};
+      var overall = d.overall_feedback || {};
+      var crits = d.criterion_feedback || [];
+
+      var baseCols = [
+        run.student_identifier,
+        run.assignment_name,
+        run.submitted_at ? run.submitted_at.split(' ')[0] : '',
+        overall.overall_grade_band,
+        overall.final_mark,
+        run.review_status,
+        overall.overall_comment,
+        (overall.key_strengths || []).join('; '),
+        (overall.priority_improvements || []).join('; '),
+      ];
+
+      if(!crits.length){
+        lines.push(baseCols.concat(['', '', '', '', '', '']).map(csvField).join(','));
+        return;
+      }
+
+      crits.forEach(function(c){
+        var row = baseCols.concat([
+          c.criterion_name,
+          c.strengths,
+          c.areas_for_improvement,
+          c.improvement_suggestion,
+          c.suggested_level,
+          c.mark
+        ]);
+        lines.push(row.map(csvField).join(','));
+      });
+    });
+
+    var csv = lines.join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'});
+    var url = URL.createObjectURL(blob);
+
+    var unitCode = document.getElementById('unit-btn').textContent;
+    var stamp = new Date().toISOString().split('T')[0];
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = unitCode + '_feedback_' + stamp + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    btn.disabled = false;
+    btn.textContent = 'Export to CSV';
+  }).catch(function(){
+    btn.disabled = false;
+    btn.textContent = 'Export to CSV';
+    alert('Export failed. Please try again.');
+  });
 }
 
 document.getElementById('search').addEventListener('input', render);
-document.getElementById('status-filter').addEventListener('change', render);
 
-// font toggle
+
 var saved = localStorage.getItem('fl-font-size');
 if(saved){
   document.documentElement.style.fontSize = saved + 'px';
@@ -346,7 +372,7 @@ document.querySelectorAll('.font-btn').forEach(function(btn){
   });
 });
 
-// dropdowns
+
 function toggleUnitPicker(e){
   e.stopPropagation();
   document.getElementById('user-menu').classList.remove('show');
@@ -370,7 +396,7 @@ function filterUnits(){
     return !q || u.unit_code.toLowerCase().indexOf(q) !== -1 || u.unit_name.toLowerCase().indexOf(q) !== -1;
   });
   document.getElementById('unit-list').innerHTML = filtered.map(function(u){
-    return '<div class="unit-option" onclick="location.href=\'/educator/unit/' + u.unit_id + '\'">'
+    return '<div class="unit-option" onclick="location.href=\'/educator/unit/' + u.unit_id + '/export\'">'
       + '<div class="unit-option-meta">'
       +   '<div class="unit-option-code">' + u.unit_code + '</div>'
       +   '<div class="unit-option-name">' + u.unit_name + '</div>'
@@ -383,13 +409,11 @@ function filterUnits(){
 document.getElementById('link-dashboard').onclick = function(){
   location.href = '/educator/unit/' + unitId;
 };
-
+document.getElementById('link-submissions').onclick = function(){
+  location.href = '/educator/unit/' + unitId + '/submissions';
+};
 document.getElementById('link-ai').onclick = function(){
   location.href = '/educator/unit/' + unitId + '/ai-performance';
-};
-
-document.getElementById('link-export').onclick = function(){
-  location.href = '/educator/unit/' + unitId + '/export';
 };
 
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
@@ -401,16 +425,14 @@ fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(functi
   filterUnits();
 });
 
-
 fetch('/api/educator/unit/' + unitId + '/submissions')
-  .then(function(r){ return r.json(); })
-  .then(function(data){
+  .then(function(r){return r.json();}).then(function(data){
     if(data.error){
       document.getElementById('table-body').innerHTML =
-        '<tr class="empty-row"><td colspan="8" style="color:#c00">' + data.error + '</td></tr>';
+        '<tr class="empty-row"><td colspan="7" style="color:#c00">' + data.error + '</td></tr>';
       return;
     }
-    document.getElementById('page-title').textContent = 'Submissions - ' + data.unit.unit_code;
+    document.getElementById('page-title').textContent = 'Export Feedback - ' + data.unit.unit_code;
     document.getElementById('unit-btn').textContent = data.unit.unit_code;
     rows = data.submissions || [];
     render();
