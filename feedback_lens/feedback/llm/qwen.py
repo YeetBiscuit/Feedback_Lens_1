@@ -7,7 +7,7 @@ from feedback_lens.feedback.llm.base import LLMProvider
 QWEN_PROVIDER = "qwen"
 QWEN_API_KEY_ENV = "QWEN_API_KEY"
 QWEN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-QWEN_MODEL = "qwen3.5-plus"
+QWEN_MODEL = "qwen3.7-max"
 
 
 class QwenProvider(LLMProvider):
