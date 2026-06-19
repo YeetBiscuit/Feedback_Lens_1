@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Lead Lecturer Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:relative}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-link{background:transparent;color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer;font-family:inherit;font-weight:500}
+.nav-link:hover{background:rgba(255,255,255,.18)}
+.nav-link.active{background:rgba(255,255,255,.25)}
+.nav-right{display:flex;align-items:center;gap:.75rem;position:relative}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;cursor:pointer}
+
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
+
+.wrap{padding:1.5rem 2rem}
+.breadcrumb{font-size:.8125rem;color:#6b7280;margin-bottom:1rem}
+.breadcrumb span{color:#1f2937;font-weight:500}
+.welcome{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem}
+
+.grid{display:grid;grid-template-columns:18rem 1fr;gap:1rem;align-items:start}
+
+.panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem}
+.panel-title{font-size:1rem;font-weight:600;margin-bottom:1rem}
+
+.activity-list{display:flex;flex-direction:column;gap:.7rem}
+.activity-item{display:flex;gap:.5rem;align-items:flex-start;font-size:.875rem;color:#4b5563;line-height:1.5}
+.activity-dot{width:.5rem;height:.5rem;border-radius:50%;background:#2563eb;margin-top:.4rem;flex-shrink:0}
+
+.right-col{display:flex;flex-direction:column;gap:1rem}
+
+.overview-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.stat-card{border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem}
+.stat-card.units{background:linear-gradient(135deg,#dbeafe,#eff6ff)}
+.stat-card.subs{background:linear-gradient(135deg,#dcfce7,#f0fdf4)}
+.stat-card.pending{background:linear-gradient(135deg,#fef3c7,#fffbeb)}
+.stat-card.finalised{background:linear-gradient(135deg,#ede9fe,#f5f3ff)}
+.stat-label{font-size:.8125rem;color:#6b7280;margin-bottom:.5rem;font-weight:500}
+.stat-value{font-size:2rem;font-weight:700;line-height:1;margin-bottom:.3rem}
+.stat-hint{font-size:.75rem;color:#6b7280}
+.stat-card.units .stat-value{color:#1e40af}
+.stat-card.subs .stat-value{color:#15803d}
+.stat-card.pending .stat-value{color:#92400e}
+.stat-card.finalised .stat-value{color:#6d28d9}
+
+table{width:100%;border-collapse:collapse}
+thead{background:#f9fafb}
+th{text-align:left;padding:.75rem 1rem;font-size:.6875rem;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid #e5e7eb}
+td{padding:.85rem 1rem;font-size:.875rem;color:#1f2937;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover{background:#fafafa}
+.action-cell{text-align:right}
+.btn-action{padding:.35rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;margin-left:.25rem}
+.btn-manage{background:#2563eb;color:#fff}
+.btn-manage:hover{background:#1d4ed8}
+.btn-report{background:#1f2937;color:#fff}
+.btn-report:hover{background:#111827}
+
+.empty{color:#999;font-size:.875rem;text-align:center;padding:2rem 1rem;background:#fafafa;border-radius:8px}
+.loading{color:#888;font-size:.875rem;text-align:center;padding:1rem}
+.empty-row td{padding:2rem;text-align:center;color:#888}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-link active">Dashboard</button>
+    <button class="nav-link" onclick="location.href='/leadLecture/units'">Unit Management</button>
+    <button class="nav-link" onclick="location.href='/leadLecture/reporting'">Reporting</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Lead Lecturer</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="breadcrumb">Home &rsaquo; <span>Lead Lecturer</span></div>
+  <h1 class="welcome" id="welcome">Welcome!</h1>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-title">Recent Activity</div>
+      <div class="empty">
+        Activity log will be available once the backend tracking is connected.
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="panel">
+        <div class="panel-title">Overview</div>
+        <div class="overview-row" id="overview-row">
+          <div class="loading" style="grid-column:1 / -1">Loading overview...</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Unit Summary</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Unit</th>
+              <th>Educators</th>
+              <th>Submissions</th>
+              <th>Pending</th>
+              <th>Finalised</th>
+              <th class="action-cell">Action</th>
+            </tr>
+          </thead>
+          <tbody id="unit-summary">
+            <tr class="empty-row"><td colspan="6">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+
+
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
+// load the data
+fetch('/api/lead/dashboard').then(function(r){return r.json();}).then(function(data){
+  if(data.error){
+    document.getElementById('welcome').textContent = 'Error';
+    document.getElementById('overview-row').innerHTML = '<div style="color:#c00;grid-column:1 / -1">' + data.error + '</div>';
+    return;
+  }
+
+  var user = data.user;
+  var name = user.display_name || user.email;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-avatar').textContent = initials(name);
+  document.getElementById('user-menu-email').textContent = user.email || '';
+  document.getElementById('welcome').textContent = 'Welcome, ' + name + '!';
+
+  var t = data.totals || {};
+  document.getElementById('overview-row').innerHTML = ''
+    + '<div class="stat-card units"><div class="stat-label">Total Units Managed</div>'
+    +   '<div class="stat-value">' + (t.total_units || 0) + '</div>'
+    +   '<div class="stat-hint">Across all semesters</div></div>'
+    + '<div class="stat-card subs"><div class="stat-label">Total Submissions</div>'
+    +   '<div class="stat-value">' + (t.total_submissions || 0) + '</div>'
+    +   '<div class="stat-hint">All units</div></div>'
+    + '<div class="stat-card pending"><div class="stat-label">Pending Approvals</div>'
+    +   '<div class="stat-value">' + (t.pending_approvals || 0) + '</div>'
+    +   '<div class="stat-hint">Awaiting review</div></div>'
+    + '<div class="stat-card finalised"><div class="stat-label">Finalised Submissions</div>'
+    +   '<div class="stat-value">' + (t.finalised_submissions || 0) + '</div>'
+    +   '<div class="stat-hint">Reviewed by educators</div></div>';
+
+  var units = data.units || [];
+  var body = document.getElementById('unit-summary');
+  if(!units.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="6">No units found.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = units.map(function(u){
+    return '<tr>'
+      + '<td><strong>' + u.unit_code + '</strong> &middot; ' + (u.unit_name || '') + '</td>'
+      + '<td>' + (u.educator_count || 0) + '</td>'
+      + '<td>' + (u.submission_count || 0) + '</td>'
+      + '<td>' + (u.pending_count || 0) + '</td>'
+      + '<td>' + (u.finalised_count || 0) + '</td>'
+      + '<td class="action-cell">'
+      +   '<button class="btn-action btn-manage" onclick="manageUnit(' + u.unit_id + ')">Manage</button>'
+      +   '<button class="btn-action btn-report" onclick="viewReport(' + u.unit_id + ')">Report</button>'
+      + '</td>'
+      + '</tr>';
+  }).join('');
+});
+
+function manageUnit(id){
+  location.href = '/leadLecture/unit/' + id;
+}
+function viewReport(id){
+  location.href = '/leadLecture/unit/' + id + '/report';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Feedback Detail</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f5f5f4;
+  min-height: 100vh;
+  color: #1f2937;
+}
+
+.navbar {
+  background: #2563eb;
+  padding: .75rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+.nav-logo {
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.nav-logo-icon {
+  background: #fff;
+  color: #2563eb;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: .875rem;
+}
+.nav-center { display: flex; gap: .5rem; }
+.nav-link {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: .4rem 1rem;
+  border-radius: 20px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+}
+.nav-link:hover { background: rgba(255,255,255,.18); }
+.nav-link.active { background: rgba(255,255,255,.25); }
+
+.nav-right { display: flex; align-items: center; gap: .75rem; position: relative; }
+.font-toggle {
+  display: flex;
+  background: rgba(255,255,255,.18);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 2px;
+}
+.font-btn {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: .8rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.font-btn.active { background: #fff; color: #2563eb; font-weight: 600; }
+.nav-user { color: #fff; text-align: right; line-height: 1.2; }
+.nav-user-name { font-size: .875rem; font-weight: 600; }
+.nav-user-role { font-size: .75rem; opacity: .8; }
+.nav-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: #fff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .875rem;
+  cursor: pointer;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + .5rem);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 50;
+  display: none;
+}
+.dropdown.show { display: block; }
+.user-menu { right: 0; min-width: 11rem; padding: .5rem; }
+.user-menu-email {
+  padding: .5rem .75rem;
+  font-size: .8125rem;
+  color: #6b7280;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: .25rem;
+}
+.user-menu-item {
+  padding: .55rem .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .875rem;
+  color: #1f2937;
+}
+.user-menu-item:hover { background: #f9fafb; }
+.user-menu-item.danger { color: #dc2626; }
+
+.wrap { padding: 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+.breadcrumb { font-size: .8125rem; color: #6b7280; margin-bottom: 1rem; }
+.breadcrumb span { color: #1f2937; font-weight: 500; }
+
+
+.info-bar {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: .85rem 1.25rem;
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.info-item label {
+  display: block;
+  font-size: .75rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+.info-item .value {
+  font-size: .9375rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.panel-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+
+table { width: 100%; border-collapse: collapse; }
+thead { background: #f9fafb; }
+th {
+  text-align: left;
+  padding: .65rem .85rem;
+  font-size: .6875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+td {
+  padding: .75rem .85rem;
+  font-size: .875rem;
+  color: #1f2937;
+  border-bottom: 1px solid #f3f4f6;
+}
+tr:last-child td { border-bottom: none; }
+
+
+.accordion-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  overflow: hidden;
+}
+.accordion-header {
+  padding: .85rem 1rem;
+  background: #f9fafb;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .9375rem;
+  font-weight: 500;
+}
+.accordion-header:hover { background: #f3f4f6; }
+.accordion-arrow {
+  font-size: .75rem;
+  color: #6b7280;
+  transition: transform .15s;
+}
+.accordion-item.open .accordion-arrow { transform: rotate(90deg); }
+.accordion-body {
+  display: none;
+  padding: 1rem;
+  background: #fff;
+  position: relative;
+}
+.accordion-item.open .accordion-body { display: block; }
+.field-block { margin-bottom: .85rem; }
+.field-label {
+  font-size: .8125rem;
+  font-weight: 600;
+  color: #4b5563;
+  margin-bottom: .35rem;
+}
+.field-content {
+  font-size: .875rem;
+  color: #374151;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: .65rem .8rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.field-content.empty { color: #9ca3af; font-style: italic; }
+.mark-row {
+  display: flex;
+  gap: 2rem;
+  font-size: .875rem;
+  margin-top: .5rem;
+}
+.mark-row strong { color: #1f2937; }
+
+.btn-override {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  padding: .4rem 1rem;
+  background: #1f2937;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: .8125rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-override:hover { background: #111827; }
+
+
+.overall-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.preview-box {
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  max-height: 28rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  font-size: .8125rem;
+  line-height: 1.7;
+  color: #374151;
+}
+.analysis-block { display: flex; flex-direction: column; gap: 1rem; }
+.feedback-box {
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: .75rem;
+  font-size: .8125rem;
+  line-height: 1.6;
+  color: #374151;
+  max-height: 12rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+}
+.totals-row {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  font-size: .875rem;
+}
+.totals-row .row {
+  display: flex;
+  justify-content: space-between;
+  padding: .35rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.totals-row .row:last-child { border-bottom: none; }
+
+.overall-actions {
+  display: flex;
+  justify-content: center;
+  gap: .75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f3f4f6;
+}
+.btn-action {
+  padding: .55rem 1.5rem;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  border: none;
+  background: #1f2937;
+  color: #fff;
+}
+.btn-action:hover { background: #111827; }
+
+.bottom-bar { display: flex; justify-content: flex-end; }
+.btn-back {
+  padding: .5rem 1.25rem;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #374151;
+}
+.btn-back:hover { background: #f9fafb; }
+
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 28rem;
+  max-width: 92vw;
+  padding: 1.75rem;
+}
+.modal.confirm { text-align: center; }
+.modal-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+.btn-yes, .btn-no {
+  padding: .55rem 2rem;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+  border: none;
+}
+.btn-yes { background: #1f2937; color: #fff; }
+.btn-yes:hover { background: #111827; }
+.btn-no { background: #fff; border: 1px solid #d1d5db; color: #374151; }
+.btn-no:hover { background: #f9fafb; }
+
+.modal-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+.form-group { margin-bottom: .85rem; }
+.form-group label {
+  display: block;
+  font-size: .8125rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: .55rem .75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  font-family: inherit;
+}
+.form-group input:focus,
+.form-group textarea:focus { outline: none; border-color: #2563eb; }
+.form-group textarea { min-height: 7rem; resize: vertical; }
+.form-static {
+  padding: .55rem .75rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: .875rem;
+  color: #1f2937;
+}
+.error-text {
+  color: #dc2626;
+  font-size: .75rem;
+  margin-top: 4px;
+  display: none;
+}
+.error-text.show { display: block; }
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  margin-top: 1.25rem;
+}
+.btn-cancel {
+  padding: .55rem 1.25rem;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #374151;
+}
+.btn-cancel:hover { background: #f9fafb; }
+.btn-confirm {
+  padding: .55rem 1.25rem;
+  background: #1f2937;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-confirm:hover { background: #111827; }
+.loading { color: #888; padding: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-link" onclick="location.href='/leadLecture'">Dashboard</button>
+    <button class="nav-link" onclick="location.href='/leadLecture/units'">Unit Management</button>
+    <button class="nav-link active" onclick="location.href='/leadLecture/reporting'">Reporting</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Lead Lecturer</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="breadcrumb">Home &rsaquo; Lead Lecture &rsaquo; Reporting &rsaquo; <span>Feedback Detail</span></div>
+
+  <div id="content">
+    <div class="loading">Loading...</div>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-back" onclick="location.href='/leadLecture/reporting'">Back</button>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-approval">
+  <div class="modal confirm">
+    <div class="modal-text">Are you sure you want to<br>Approval this submission?</div>
+    <div class="modal-actions">
+      <button class="btn-yes" onclick="confirmApproval()">Yes</button>
+      <button class="btn-no" onclick="closeModal('modal-approval')">No</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-override-crit">
+  <div class="modal">
+    <div class="modal-title">Override</div>
+    <div class="form-group">
+      <label>Updated Final Mark</label>
+      <input type="text" id="oc-mark" placeholder="Enter mark">
+      <div class="error-text" id="oc-mark-err">Updated Final Mark is required</div>
+    </div>
+    <div class="form-group">
+      <label>Updated Feedback</label>
+      <textarea id="oc-feedback" placeholder="Enter updated feedback"></textarea>
+      <div class="error-text" id="oc-feedback-err">Updated Feedback is required</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-override-crit')">Cancel</button>
+      <button class="btn-confirm" onclick="submitOverrideCrit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal-override-mark">
+  <div class="modal">
+    <div class="modal-title">Override Mark</div>
+    <div class="form-group">
+      <label>AI Suggested Grade</label>
+      <div class="form-static" id="om-estimate">-</div>
+    </div>
+    <div class="form-group">
+      <label>Current Final Mark</label>
+      <div class="form-static" id="om-current">-</div>
+    </div>
+    <div class="form-group">
+      <label>Updated Final Mark</label>
+      <input type="text" id="om-updated" placeholder="Enter mark">
+      <div class="error-text" id="om-updated-err">Updated Final Mark is required</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-override-mark')">Cancel</button>
+      <button class="btn-confirm" onclick="submitOverrideMark()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-override-feedback">
+  <div class="modal">
+    <div class="modal-title">Override Feedback</div>
+    <div class="form-group">
+      <label>Current Educator Feedback</label>
+      <div class="form-static" id="of-current" style="max-height:8rem;overflow-y:auto;white-space:pre-wrap">-</div>
+    </div>
+    <div class="form-group">
+      <label>Updated Feedback</label>
+      <textarea id="of-updated" placeholder="Enter updated feedback"></textarea>
+      <div class="error-text" id="of-updated-err">Updated Feedback is required</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-override-feedback')">Cancel</button>
+      <button class="btn-confirm" onclick="submitOverrideFeedback()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var genId = {{ generation_id }};
+var data = null;
+var pendingOverrideCritId = null;
+
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+  });
+}
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
+fetch('/api/lead/dashboard').then(function(r){return r.json();}).then(function(d){
+  if(!d.user) return;
+  var name = d.user.display_name || d.user.email;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-avatar').textContent = initials(name);
+  document.getElementById('user-menu-email').textContent = d.user.email || '';
+});
+
+fetch('/api/lead/feedback/' + genId).then(function(r){return r.json();}).then(function(d){
+  if(d.error){
+    document.getElementById('content').innerHTML = '<div class="loading" style="color:#c00">' + d.error + '</div>';
+    return;
+  }
+  data = d;
+  render();
+});
+
+function render(){
+  var run = data.run || {};
+  var overall = data.overall_feedback || {};
+  var crits = data.criterion_feedback || [];
+
+  var totalMark = overall.final_mark != null ? overall.final_mark : '-';
+
+  var html = ''
+    + '<div class="info-bar">'
+    +   '<div class="info-item"><label>Student ID</label><div class="value">' + escapeHtml(run.student_identifier || '-') + '</div></div>'
+    +   '<div class="info-item"><label>Educator</label><div class="value">' + escapeHtml(run.educator_name || '-') + '</div></div>'
+    +   '<div class="info-item"><label>Assessment</label><div class="value">' + escapeHtml(run.assignment_name || '-') + '</div></div>'
+    +   '<div class="info-item"><label>Total Mark</label><div class="value">' + totalMark + '</div></div>'
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<div class="panel-title">Criterion Breakdown Summary</div>'
+    +   '<table>'
+    +     '<thead><tr>'
+    +       '<th>Criterion</th>'
+    +       '<th>Estimate Level</th>'
+    +       '<th>Educator Mark</th>'
+    +     '</tr></thead>'
+    +     '<tbody>' + renderBreakdownRows(crits) + '</tbody>'
+    +   '</table>'
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<div class="panel-title">Criterion-by-Criterion Detail</div>'
+    +   '<div id="accordion">' + renderAccordion(crits) + '</div>'
+    + '</div>'
+
+    + '<div class="panel">'
+    +   '<div class="panel-title">Overall Feedback</div>'
+    +   '<div class="overall-grid">'
+    +     '<div>'
+    +       '<div class="field-label">Submission Preview</div>'
+    +       '<div class="preview-box">' + escapeHtml(run.submission_text || '(no submission text available)') + '</div>'
+    +     '</div>'
+    +     '<div class="analysis-block">'
+    +       '<div>'
+    +         '<div class="field-label">AI Feedback</div>'
+    +         '<div class="feedback-box">' + escapeHtml(overall.overall_comment || '(none)') + '</div>'
+    +       '</div>'
+    +       '<div>'
+    +         '<div class="field-label">Educator Edited Feedback</div>'
+    +         '<div class="feedback-box empty">(educator override not yet recorded)</div>'
+    +       '</div>'
+    +       '<div class="totals-row">'
+    +         '<div class="row"><span>AI Suggested Grade:</span><strong>' + (overall.overall_grade_band || '-') + '</strong></div>'
+    +         '<div class="row"><span>Final Mark:</span><strong>' + totalMark + '</strong></div>'
+    +       '</div>'
+    +     '</div>'
+    +   '</div>'
+    +   '<div class="overall-actions">'
+    +     '<button class="btn-action" onclick="openApproval()">Approval</button>'
+    +     '<button class="btn-action" onclick="openOverrideMark()">Override Mark</button>'
+    +     '<button class="btn-action" onclick="openOverrideFeedback()">Override Feedback</button>'
+    +   '</div>'
+    + '</div>';
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function renderBreakdownRows(crits){
+  if(!crits.length){
+    return '<tr><td colspan="3" style="text-align:center;color:#888;padding:1.5rem">No criteria found.</td></tr>';
+  }
+  return crits.map(function(c){
+    var estimate = c.suggested_level || '-';
+    var educatorMark = c.mark != null ? c.mark : '-';
+    return '<tr>'
+      + '<td><strong>' + escapeHtml(c.criterion_name || '-') + '</strong></td>'
+      + '<td>' + estimate + '</td>'
+      + '<td>' + educatorMark + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderAccordion(crits){
+  if(!crits.length){
+    return '<div style="text-align:center;color:#888;padding:1.5rem">No criteria found.</div>';
+  }
+  return crits.map(function(c, i){
+    // join the three AI feedback fields into a single block for display
+    var aiText = ((c.strengths || '') + '\n\n' + (c.areas_for_improvement || '') + '\n\n' + (c.improvement_suggestion || '')).trim();
+    return '<div class="accordion-item" id="acc-' + i + '">'
+      + '<div class="accordion-header" onclick="toggleAcc(' + i + ')">'
+      +   '<span class="accordion-arrow">&#9654;</span>'
+      +   '<span>Criterion ' + (i + 1) + ': ' + escapeHtml(c.criterion_name || '-') + '</span>'
+      + '</div>'
+      + '<div class="accordion-body">'
+      +   '<div class="field-block">'
+      +     '<div class="field-label">AI Feedback</div>'
+      +     '<div class="field-content">' + escapeHtml(aiText || '(none)') + '</div>'
+      +   '</div>'
+      +   '<div class="field-block">'
+      +     '<div class="field-label">Educator Feedback</div>'
+      +     '<div class="field-content empty">(educator override not yet recorded)</div>'
+      +   '</div>'
+      +   '<div class="mark-row">'
+      +     '<div>Estimate Level: <strong>' + (c.suggested_level || '-') + '</strong></div>'
+      +     '<div>Educator Mark: <strong>' + (c.mark != null ? c.mark : '-') + '</strong></div>'
+      +   '</div>'
+      +   '<button class="btn-override" onclick="openOverrideCrit(' + c.criterion_id + ')">Override</button>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+function toggleAcc(i){
+  document.getElementById('acc-' + i).classList.toggle('open');
+}
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){
+  document.getElementById(id).classList.remove('show');
+  document.querySelectorAll('#' + id + ' .error-text').forEach(function(e){ e.classList.remove('show'); });
+}
+
+function openApproval(){ openModal('modal-approval'); }
+function confirmApproval(){
+  closeModal('modal-approval');
+  alert('Approval of generation ' + genId + ' will be handled by the backend.');
+}
+
+function openOverrideCrit(critId){
+  pendingOverrideCritId = critId;
+  document.getElementById('oc-mark').value = '';
+  document.getElementById('oc-feedback').value = '';
+  openModal('modal-override-crit');
+}
+function submitOverrideCrit(){
+  var mark = document.getElementById('oc-mark').value.trim();
+  var fb = document.getElementById('oc-feedback').value.trim();
+  var ok = true;
+  if(!mark){
+    document.getElementById('oc-mark-err').classList.add('show');
+    ok = false;
+  } else {
+    document.getElementById('oc-mark-err').classList.remove('show');
+  }
+  if(!fb){
+    document.getElementById('oc-feedback-err').classList.add('show');
+    ok = false;
+  } else {
+    document.getElementById('oc-feedback-err').classList.remove('show');
+  }
+  if(!ok) return;
+  closeModal('modal-override-crit');
+  alert('Override criterion ' + pendingOverrideCritId + ' will be handled by the backend.');
+  pendingOverrideCritId = null;
+}
+
+function openOverrideMark(){
+  var overall = data.overall_feedback || {};
+  document.getElementById('om-estimate').textContent = overall.overall_grade_band || '-';
+  document.getElementById('om-current').textContent = overall.final_mark != null ? overall.final_mark : '-';
+  document.getElementById('om-updated').value = '';
+  openModal('modal-override-mark');
+}
+function submitOverrideMark(){
+  var v = document.getElementById('om-updated').value.trim();
+  if(!v){
+    document.getElementById('om-updated-err').classList.add('show');
+    return;
+  }
+  document.getElementById('om-updated-err').classList.remove('show');
+  closeModal('modal-override-mark');
+  alert('Override final mark will be handled by the backend.');
+}
+
+function openOverrideFeedback(){
+  var overall = data.overall_feedback || {};
+  document.getElementById('of-current').textContent = overall.overall_comment || '(none)';
+  document.getElementById('of-updated').value = '';
+  openModal('modal-override-feedback');
+}
+function submitOverrideFeedback(){
+  var v = document.getElementById('of-updated').value.trim();
+  if(!v){
+    document.getElementById('of-updated-err').classList.add('show');
+    return;
+  }
+  document.getElementById('of-updated-err').classList.remove('show');
+  closeModal('modal-override-feedback');
+  alert('Override overall feedback will be handled by the backend.');
+}
+</script>
+</body>
+</html>

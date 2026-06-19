@@ -145,8 +145,84 @@ def admin():
 
 @app.route('/leadLecture')
 @login_required('lead_lecturer')
-def leadlecture():
-    return render_template("leadLecturer.html")
+def lead_lecture():
+    return render_template("lead_dashboard.html")
+
+
+@app.route('/api/lead/dashboard')
+def lead_dashboard_data():
+    user, error = api_session_user(required_role='lead_lecturer')
+    if error:
+        return error
+
+    with connect_db() as conn:
+        
+        units = conn.execute(
+            """
+            SELECT
+                u.unit_id,
+                u.unit_code,
+                u.unit_name,
+                u.semester,
+                u.year,
+                COUNT(DISTINCT ut.tutor_id) AS educator_count,
+                COUNT(DISTINCT ss.submission_id) AS submission_count,
+                COUNT(DISTINCT CASE
+                    WHEN gr.status = 'completed' AND hr.review_id IS NULL
+                    THEN ss.submission_id END) AS pending_count,
+                COUNT(DISTINCT CASE
+                    WHEN hr.review_id IS NOT NULL
+                    THEN ss.submission_id END) AS finalised_count
+            FROM units u
+            LEFT JOIN unit_tutors ut ON ut.unit_id = u.unit_id
+            LEFT JOIN assignments a ON a.unit_id = u.unit_id
+            LEFT JOIN student_submissions ss ON ss.assignment_id = a.assignment_id
+            LEFT JOIN generation_runs gr
+                ON gr.submission_id = ss.submission_id
+                AND gr.generation_id = (
+                    SELECT MAX(generation_id)
+                    FROM generation_runs
+                    WHERE submission_id = ss.submission_id
+                )
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            GROUP BY u.unit_id
+            ORDER BY u.unit_code
+            """,
+        ).fetchall()
+
+        totals = conn.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM units) AS total_units,
+                (SELECT COUNT(*) FROM student_submissions) AS total_submissions,
+                (SELECT COUNT(DISTINCT ss.submission_id)
+                    FROM student_submissions ss
+                    LEFT JOIN generation_runs gr
+                        ON gr.submission_id = ss.submission_id
+                        AND gr.generation_id = (
+                            SELECT MAX(generation_id) FROM generation_runs
+                            WHERE submission_id = ss.submission_id
+                        )
+                    LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+                    WHERE gr.status = 'completed' AND hr.review_id IS NULL
+                ) AS pending_approvals,
+                (SELECT COUNT(DISTINCT ss.submission_id)
+                    FROM student_submissions ss
+                    LEFT JOIN generation_runs gr
+                        ON gr.submission_id = ss.submission_id
+                    LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+                    WHERE hr.review_id IS NOT NULL
+                ) AS finalised_submissions
+            """,
+        ).fetchone()
+
+    return jsonify({
+        'user': dict(user),
+        'totals': dict(totals) if totals else {},
+        'units': [dict(u) for u in units],
+    })
+
+
 
 @app.route('/educator')
 @login_required('educator')
@@ -338,6 +414,228 @@ def educator_dashboard_data():
             'role': user['role'],
         },
         'units': [dict(u) for u in units]
+    })
+
+@app.route('/leadLecture/units')
+@login_required('lead_lecturer')
+def lead_units_page():
+    return render_template('lead_units.html')
+
+
+@app.route('/leadLecture/unit/<int:unit_id>')
+@login_required('lead_lecturer')
+def lead_unit_detail_page(unit_id):
+    return render_template('lead_unit_detail.html', unit_id=unit_id)
+
+
+@app.route('/leadLecture/reporting')
+@login_required('lead_lecturer')
+def lead_reporting_page():
+    return render_template('lead_reporting.html')
+
+
+@app.route('/leadLecture/feedback/<int:generation_id>')
+@login_required('lead_lecturer')
+def lead_feedback_detail_page(generation_id):
+    return render_template('lead_feedback_detail.html', generation_id=generation_id)
+
+
+@app.route('/api/lead/reporting')
+def lead_reporting_data():
+    user, error = api_session_user(required_role='lead_lecturer')
+    if error:
+        return error
+
+    with connect_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                gr.generation_id,
+                ss.submission_id,
+                ss.student_identifier,
+                ss.submitted_at,
+                a.assignment_id,
+                a.assignment_name,
+                u.unit_id,
+                u.unit_code,
+                u.unit_name,
+                t.full_name AS educator_name,
+                t.tutor_id AS educator_id,
+                of.overall_grade_band,
+                of.final_mark,
+                CASE
+                    WHEN hr.review_id IS NOT NULL THEN 'reviewed'
+                    WHEN gr.status = 'completed' THEN 'ai_generated'
+                    ELSE 'pending'
+                END AS status
+            FROM generation_runs gr
+            JOIN student_submissions ss ON ss.submission_id = gr.submission_id
+            JOIN assignments a ON a.assignment_id = gr.assignment_id
+            JOIN units u ON u.unit_id = a.unit_id
+            LEFT JOIN unit_tutors ut ON ut.unit_id = u.unit_id
+            LEFT JOIN tutors t ON t.tutor_id = ut.tutor_id
+            LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            WHERE gr.generation_id IN (
+                SELECT MAX(generation_id) FROM generation_runs GROUP BY submission_id
+            )
+            GROUP BY gr.generation_id
+            ORDER BY gr.generation_id DESC
+        """).fetchall()
+
+    return jsonify({'submissions': [dict(r) for r in rows]})
+
+
+@app.route('/api/lead/feedback/<int:generation_id>')
+def lead_feedback_detail(generation_id):
+    user, error = api_session_user(required_role='lead_lecturer')
+    if error:
+        return error
+
+    with connect_db() as conn:
+        try:
+            data = fetch_generation_review(conn, generation_id)
+        except ValueError as err:
+            return jsonify({'error': str(err)}), 404
+
+        submission = conn.execute("""
+            SELECT
+                ss.cleaned_text,
+                ss.submitted_at,
+                a.unit_id,
+                u.unit_code,
+                u.unit_name
+            FROM student_submissions ss
+            JOIN assignments a ON a.assignment_id = ss.assignment_id
+            JOIN units u ON u.unit_id = a.unit_id
+            WHERE ss.submission_id = ?
+        """, (data['run']['submission_id'],)).fetchone()
+
+        review = conn.execute("""
+            SELECT review_id, reviewed_at
+            FROM human_reviews
+            WHERE generation_id = ?
+            ORDER BY reviewed_at DESC, review_id DESC
+            LIMIT 1
+        """, (generation_id,)).fetchone()
+
+        educator = conn.execute("""
+            SELECT t.full_name, t.email
+            FROM unit_tutors ut
+            JOIN tutors t ON t.tutor_id = ut.tutor_id
+            WHERE ut.unit_id = ?
+            LIMIT 1
+        """, (submission['unit_id'] if submission else None,)).fetchone() if submission else None
+
+    run = dict(data['run'])
+    if submission:
+        run['submission_text'] = submission['cleaned_text']
+        run['submitted_at'] = submission['submitted_at']
+        run['unit_id'] = submission['unit_id']
+        run['unit_code'] = submission['unit_code']
+        run['unit_name'] = submission['unit_name']
+    if educator:
+        run['educator_name'] = educator['full_name']
+        run['educator_email'] = educator['email']
+    if review:
+        run['review_status'] = 'reviewed'
+        run['reviewed_at'] = review['reviewed_at']
+    elif run.get('status') == 'completed':
+        run['review_status'] = 'ai_generated'
+    else:
+        run['review_status'] = 'pending'
+
+    overall = dict(data.get('overall_feedback') or {})
+    if overall:
+        overall['key_strengths'] = parse_json_text_list(overall.get('key_strengths'))
+        overall['priority_improvements'] = parse_json_text_list(overall.get('priority_improvements'))
+
+    criteria = [dict(c) for c in (data.get('criterion_feedback') or [])]
+
+    return jsonify({
+        'run': run,
+        'overall_feedback': overall,
+        'criterion_feedback': criteria,
+    })
+
+
+@app.route('/api/lead/units')
+def lead_units_list():
+    user, error = api_session_user(required_role='lead_lecturer')
+    if error:
+        return error
+
+    with connect_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                u.unit_id, u.unit_code, u.unit_name, u.semester, u.year,
+                COUNT(DISTINCT ut.tutor_id) AS educator_count,
+                COUNT(DISTINCT a.assignment_id) AS task_count
+            FROM units u
+            LEFT JOIN unit_tutors ut ON ut.unit_id = u.unit_id
+            LEFT JOIN assignments a ON a.unit_id = u.unit_id
+            GROUP BY u.unit_id
+            ORDER BY u.unit_code
+        """).fetchall()
+
+    return jsonify({'units': [dict(r) for r in rows]})
+
+
+@app.route('/api/lead/unit/<int:unit_id>')
+def lead_unit_detail(unit_id):
+    user, error = api_session_user(required_role='lead_lecturer')
+    if error:
+        return error
+
+    with connect_db() as conn:
+        unit = conn.execute("""
+            SELECT unit_id, unit_code, unit_name, semester, year
+            FROM units WHERE unit_id = ?
+        """, (unit_id,)).fetchone()
+
+        if unit is None:
+            return jsonify({'error': 'Unit not found'}), 404
+
+        assignments = conn.execute("""
+            SELECT
+                a.assignment_id,
+                a.assignment_name,
+                a.assignment_type,
+                a.due_date,
+                (SELECT COUNT(*) FROM assignment_specs s WHERE s.assignment_id = a.assignment_id)
+                + (SELECT COUNT(*) FROM unit_materials m WHERE m.assignment_id = a.assignment_id)
+                AS file_count,
+                (SELECT COUNT(DISTINCT ss.submission_id) FROM student_submissions ss WHERE ss.assignment_id = a.assignment_id)
+                AS submission_count
+            FROM assignments a
+            WHERE a.unit_id = ?
+            ORDER BY a.assignment_id
+        """, (unit_id,)).fetchall()
+
+        educators = conn.execute("""
+            SELECT t.tutor_id, t.full_name, t.email
+            FROM unit_tutors ut
+            JOIN tutors t ON t.tutor_id = ut.tutor_id
+            WHERE ut.unit_id = ?
+        """, (unit_id,)).fetchall()
+
+        # scoping notes = unit-level materials (assignment_id IS NULL)
+        scoping_notes = conn.execute("""
+            SELECT
+                material_id,
+                title,
+                material_type,
+                source_file_path,
+                created_at
+            FROM unit_materials
+            WHERE unit_id = ? AND assignment_id IS NULL
+            ORDER BY material_id
+        """, (unit_id,)).fetchall()
+
+    return jsonify({
+        'unit': dict(unit),
+        'assignments': [dict(a) for a in assignments],
+        'educators': [dict(e) for e in educators],
+        'scoping_notes': [dict(n) for n in scoping_notes],
     })
 
 @app.route('/api/feedback/<int:generation_id>')

@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Unit Detail</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f5f5f4;
+  min-height: 100vh;
+  color: #1f2937;
+}
+
+.navbar {
+  background: #2563eb;
+  padding: .75rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+}
+.nav-logo {
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.nav-logo-icon {
+  background: #fff;
+  color: #2563eb;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: .875rem;
+}
+.nav-center { display: flex; gap: .5rem; }
+.nav-link {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: .4rem 1rem;
+  border-radius: 20px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 500;
+}
+.nav-link:hover { background: rgba(255,255,255,.18); }
+.nav-link.active { background: rgba(255,255,255,.25); }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  position: relative;
+}
+.font-toggle {
+  display: flex;
+  background: rgba(255,255,255,.18);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 2px;
+}
+.font-btn {
+  background: transparent;
+  color: #fff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: .8rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.font-btn.active { background: #fff; color: #2563eb; font-weight: 600; }
+.nav-user { color: #fff; text-align: right; line-height: 1.2; }
+.nav-user-name { font-size: .875rem; font-weight: 600; }
+.nav-user-role { font-size: .75rem; opacity: .8; }
+.nav-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background: #fff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .875rem;
+  cursor: pointer;
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + .5rem);
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 50;
+  display: none;
+}
+.dropdown.show { display: block; }
+.user-menu { right: 0; min-width: 11rem; padding: .5rem; }
+.user-menu-email {
+  padding: .5rem .75rem;
+  font-size: .8125rem;
+  color: #6b7280;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: .25rem;
+}
+.user-menu-item {
+  padding: .55rem .75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: .875rem;
+  color: #1f2937;
+}
+.user-menu-item:hover { background: #f9fafb; }
+.user-menu-item.danger { color: #dc2626; }
+
+.wrap { padding: 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+.breadcrumb { font-size: .8125rem; color: #6b7280; margin-bottom: 1rem; }
+.breadcrumb span { color: #1f2937; font-weight: 500; }
+
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.page-title { font-size: 1.5rem; font-weight: 700; }
+.btn-back {
+  padding: .5rem 1.25rem;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #374151;
+}
+.btn-back:hover { background: #f9fafb; }
+
+.panel {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.panel-title { font-size: 1.125rem; font-weight: 600; }
+.panel-sub { font-size: .8125rem; color: #6b7280; margin-bottom: .75rem; }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.form-row label {
+  font-size: .875rem;
+  color: #4b5563;
+  font-weight: 500;
+}
+.form-row input[type=text],
+.form-row select {
+  padding: .55rem .75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  color: #1f2937;
+  font-family: inherit;
+  background: #fff;
+}
+.form-row input[type=text]:focus,
+.form-row select:focus { outline: none; border-color: #2563eb; }
+
+.save-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.btn-save {
+  padding: .55rem 1.25rem;
+  background: #1f2937;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-save:hover { background: #111827; }
+
+.btn-add {
+  padding: .45rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-add:hover { background: #1d4ed8; }
+
+table { width: 100%; border-collapse: collapse; }
+thead { background: #f9fafb; }
+th {
+  text-align: left;
+  padding: .65rem .85rem;
+  font-size: .6875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  border-bottom: 1px solid #e5e7eb;
+}
+td {
+  padding: .75rem .85rem;
+  font-size: .875rem;
+  color: #1f2937;
+  border-bottom: 1px solid #f3f4f6;
+}
+tr:last-child td { border-bottom: none; }
+.action-cell { text-align: right; }
+.btn-row {
+  padding: .35rem .85rem;
+  border-radius: 6px;
+  font-size: .8125rem;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+}
+.btn-row:hover { background: #f9fafb; }
+.btn-row.danger { color: #dc2626; border-color: #fecaca; }
+.btn-row.danger:hover { background: #fef2f2; }
+
+.empty-row td {
+  padding: 1.5rem;
+  text-align: center;
+  color: #999;
+}
+
+.file-list { display: flex; flex-direction: column; gap: .4rem; margin-bottom: .75rem; }
+.file-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .55rem .8rem;
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: .8125rem;
+}
+.file-item .name { color: #1f2937; }
+.file-item .meta { color: #9ca3af; font-size: .75rem; margin-left: .5rem; }
+.file-item .remove-btn {
+  cursor: pointer;
+  color: #dc2626;
+  background: none;
+  border: none;
+  font-size: .8125rem;
+  font-family: inherit;
+}
+.file-item .remove-btn:hover { text-decoration: underline; }
+
+.upload-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.upload-hint { font-size: .75rem; color: #6b7280; }
+.btn-upload {
+  padding: .4rem .9rem;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: .8125rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #374151;
+}
+.btn-upload:hover { background: #f9fafb; }
+
+.status-pill {
+  display: inline-block;
+  padding: .2rem .65rem;
+  border-radius: 12px;
+  font-size: .75rem;
+  font-weight: 500;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.bottom-bar { display: flex; justify-content: flex-end; margin-top: 1rem; }
+
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.4);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 30rem;
+  max-width: 92vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+.modal-title { font-size: 1.125rem; font-weight: 600; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #6b7280;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: .5rem;
+  margin-top: 1rem;
+}
+.btn-cancel {
+  padding: .55rem 1.25rem;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+  color: #374151;
+}
+.btn-cancel:hover { background: #f9fafb; }
+.btn-confirm {
+  padding: .55rem 1.25rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: .875rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-confirm:hover { background: #1d4ed8; }
+.btn-confirm.danger { background: #dc2626; }
+.btn-confirm.danger:hover { background: #b91c1c; }
+
+.modal .form-group { margin-bottom: .75rem; }
+.modal .form-group label {
+  display: block;
+  font-size: .8125rem;
+  color: #4b5563;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.modal .form-group input,
+.modal .form-group select {
+  width: 100%;
+  padding: .55rem .75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: .875rem;
+  font-family: inherit;
+}
+.modal .form-group input:focus,
+.modal .form-group select:focus { outline: none; border-color: #2563eb; }
+.modal-text { font-size: .9375rem; color: #374151; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-link" onclick="location.href='/leadLecture'">Dashboard</button>
+    <button class="nav-link active" onclick="location.href='/leadLecture/units'">Unit Management</button>
+    <button class="nav-link" onclick="location.href='/leadLecture/reporting'">Reporting</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Lead Lecturer</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="breadcrumb">Home &rsaquo; Lead Lecture &rsaquo; Unit Management &rsaquo; <span id="bc-unit">Unit</span></div>
+
+  <div class="title-row">
+    <h1 class="page-title" id="page-title">Unit Detail</h1>
+    <button class="btn-back" onclick="location.href='/leadLecture/units'">Back</button>
+  </div>
+
+  
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Unit Structure</div>
+    </div>
+    <div class="form-row">
+      <label>Unit Code:</label>
+      <input type="text" id="f-code" disabled>
+    </div>
+    <div class="form-row">
+      <label>Unit Name:</label>
+      <input type="text" id="f-name" disabled>
+    </div>
+    <div class="form-row">
+      <label>Faculty:</label>
+      <input type="text" id="f-faculty" placeholder="Not set" disabled>
+    </div>
+    <div class="form-row">
+      <label>Academic Level:</label>
+      <select id="f-level" disabled>
+        <option value="">Not set</option>
+        <option value="undergraduate">Undergraduate</option>
+        <option value="postgraduate">Postgraduate</option>
+      </select>
+    </div>
+    <div class="save-row">
+      <button class="btn-save" onclick="enableStructureEdit()">Edit</button>
+    </div>
+  </div>
+
+ 
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Assessments</div>
+      <button class="btn-add" onclick="openCreateAssessment()">Create Assessment</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Task Name</th>
+          <th>Weight</th>
+          <th>Educators Assigned</th>
+          <th>Files Uploaded</th>
+          <th>Status</th>
+          <th class="action-cell">Action</th>
+        </tr>
+      </thead>
+      <tbody id="assess-body">
+        <tr class="empty-row"><td colspan="6">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Uploaded Scoping Notes (PDF/Text)</div>
+    </div>
+    <div class="panel-sub">
+      System will segment and index content for vector retrieval.
+    </div>
+    <div class="file-list" id="scoping-files">
+      <div class="file-item">
+        <span class="name">Loading...</span>
+      </div>
+    </div>
+    <div class="upload-row">
+      <span class="upload-hint">Upload will be handled by the backend.</span>
+      <button class="btn-upload" onclick="openUploadScoping()">Upload</button>
+    </div>
+  </div>
+
+  
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Educators</div>
+      <button class="btn-add" onclick="openAddEducator()">Add Educator</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Educator Name</th>
+          <th>Role</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th class="action-cell">Action</th>
+        </tr>
+      </thead>
+      <tbody id="edu-body">
+        <tr class="empty-row"><td colspan="5">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="bottom-bar">
+    <button class="btn-back" onclick="location.href='/leadLecture/units'">Back</button>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-create-assess">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Create Assessment</div>
+      <button class="modal-close" onclick="closeModal('modal-create-assess')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>Task Name</label>
+      <input type="text" id="new-task-name" placeholder="e.g. Assignment 1">
+    </div>
+    <div class="form-group">
+      <label>Weight (%)</label>
+      <input type="text" id="new-task-weight" placeholder="e.g. 30">
+    </div>
+    <div class="form-group">
+      <label>Due Date</label>
+      <input type="text" id="new-task-due" placeholder="dd/mm/yyyy">
+    </div>
+    <div class="form-group">
+      <label>Assignment Specification (PDF)</label>
+      <input type="text" disabled placeholder="File upload available after backend integration">
+    </div>
+    <div class="form-group">
+      <label>Rubric (PDF)</label>
+      <input type="text" disabled placeholder="File upload available after backend integration">
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-create-assess')">Cancel</button>
+      <button class="btn-confirm" onclick="submitCreateAssessment()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-upload-scoping">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Upload Scoping Note</div>
+      <button class="modal-close" onclick="closeModal('modal-upload-scoping')">&times;</button>
+    </div>
+    <div class="modal-text">
+      Once backend file upload is wired in, you'll be able to select a PDF or text file here. The system will segment it for vector retrieval.
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-upload-scoping')">Cancel</button>
+      <button class="btn-confirm" onclick="submitUploadScoping()">Upload</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-add-educator">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Educator</div>
+      <button class="modal-close" onclick="closeModal('modal-add-educator')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>Search by name, email or unit</label>
+      <input type="text" id="edu-search" placeholder="Search...">
+    </div>
+    <div class="modal-text" style="color:#6b7280; font-size:.8125rem">
+      Search and select functionality will be wired in once the backend is connected.
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-add-educator')">Cancel</button>
+      <button class="btn-confirm" onclick="submitAddEducator()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-remove-educator">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Remove Educator</div>
+      <button class="modal-close" onclick="closeModal('modal-remove-educator')">&times;</button>
+    </div>
+    <div class="modal-text">
+      Are you sure you want to remove <strong id="remove-edu-name">this educator</strong> from this unit?
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-remove-educator')">No</button>
+      <button class="btn-confirm danger" onclick="submitRemoveEducator()">Yes, remove</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-backdrop" id="modal-remove-file">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Remove File</div>
+      <button class="modal-close" onclick="closeModal('modal-remove-file')">&times;</button>
+    </div>
+    <div class="modal-text">
+      Are you sure you want to remove <strong id="remove-file-name">this file</strong>?
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('modal-remove-file')">No</button>
+      <button class="btn-confirm danger" onclick="submitRemoveFile()">Yes, remove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var unitId = {{ unit_id }};
+var pendingRemoveEduId = null;
+var pendingRemoveFileId = null;
+
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+
+
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('user-menu').addEventListener('click', function(e){
+  e.stopPropagation();
+});
+
+
+fetch('/api/lead/dashboard').then(function(r){ return r.json(); }).then(function(d){
+  if(!d.user) return;
+  var name = d.user.display_name || d.user.email;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-avatar').textContent = initials(name);
+  document.getElementById('user-menu-email').textContent = d.user.email || '';
+});
+
+fetch('/api/lead/unit/' + unitId).then(function(r){ return r.json(); }).then(function(data){
+  if(data.error){
+    document.getElementById('page-title').textContent = 'Error';
+    return;
+  }
+
+  var u = data.unit;
+  document.getElementById('page-title').textContent = u.unit_code + ' - ' + u.unit_name;
+  document.getElementById('bc-unit').textContent = u.unit_code;
+  document.getElementById('f-code').value = u.unit_code || '';
+  document.getElementById('f-name').value = u.unit_name || '';
+
+  renderAssessments(data.assignments || []);
+  renderEducators(data.educators || []);
+  renderScopingFiles(data.scoping_notes || []);
+});
+
+function renderAssessments(list){
+  var body = document.getElementById('assess-body');
+  if(!list.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="6">No assessments yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(function(a){
+    return '<tr>'
+      + '<td><strong>' + (a.assignment_name || '-') + '</strong></td>'
+      + '<td>-</td>'
+      + '<td>-</td>'
+      + '<td>' + (a.file_count || 0) + '</td>'
+      + '<td><span class="status-pill">Active</span></td>'
+      + '<td class="action-cell"><button class="btn-row" onclick="manageAssessment(' + a.assignment_id + ')">Manage</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderEducators(list){
+  var body = document.getElementById('edu-body');
+  if(!list.length){
+    body.innerHTML = '<tr class="empty-row"><td colspan="5">No educators assigned.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(function(e){
+    var name = e.full_name || 'Unknown';
+    return '<tr>'
+      + '<td>' + name + '</td>'
+      + '<td>Educator</td>'
+      + '<td>' + (e.email || '-') + '</td>'
+      + '<td><span class="status-pill">Active</span></td>'
+      + '<td class="action-cell"><button class="btn-row danger" onclick="openRemoveEducator(' + e.tutor_id + ', \'' + name.replace(/'/g, "\\'") + '\')">Remove</button></td>'
+      + '</tr>';
+  }).join('');
+}
+
+function renderScopingFiles(list){
+  var box = document.getElementById('scoping-files');
+  if(!list.length){
+    box.innerHTML = '<div class="file-item"><span class="name" style="color:#9ca3af">No scoping notes uploaded yet.</span></div>';
+    return;
+  }
+  box.innerHTML = list.map(function(f){
+    var fname = (f.source_file_path || f.title || '').split('/').pop();
+    return '<div class="file-item">'
+      + '<div>'
+      +   '<span class="name">' + fname + '</span>'
+      +   '<span class="meta">(' + (f.material_type || 'material') + ')</span>'
+      + '</div>'
+      + '<button class="remove-btn" onclick="openRemoveFile(' + f.material_id + ', \'' + fname.replace(/'/g, "\\'") + '\')">Remove</button>'
+      + '</div>';
+  }).join('');
+}
+
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+
+function enableStructureEdit(){
+  alert('Editing unit structure will be handled by the backend.');
+}
+
+function openCreateAssessment(){
+  document.getElementById('new-task-name').value = '';
+  document.getElementById('new-task-weight').value = '';
+  document.getElementById('new-task-due').value = '';
+  openModal('modal-create-assess');
+}
+function submitCreateAssessment(){
+  var name = document.getElementById('new-task-name').value.trim();
+  if(!name){
+    alert('Please enter a task name.');
+    return;
+  }
+  closeModal('modal-create-assess');
+  alert('Create assessment will be handled by the backend.');
+}
+
+function manageAssessment(id){
+  alert('Manage assessment ' + id + ' will be handled by the backend.');
+}
+
+function openUploadScoping(){
+  openModal('modal-upload-scoping');
+}
+function submitUploadScoping(){
+  closeModal('modal-upload-scoping');
+  alert('Upload scoping note will be handled by the backend.');
+}
+
+function openRemoveFile(id, fname){
+  pendingRemoveFileId = id;
+  document.getElementById('remove-file-name').textContent = fname;
+  openModal('modal-remove-file');
+}
+function submitRemoveFile(){
+  closeModal('modal-remove-file');
+  alert('Remove file ' + pendingRemoveFileId + ' will be handled by the backend.');
+  pendingRemoveFileId = null;
+}
+
+function openAddEducator(){
+  document.getElementById('edu-search').value = '';
+  openModal('modal-add-educator');
+}
+function submitAddEducator(){
+  closeModal('modal-add-educator');
+  alert('Add educator will be handled by the backend.');
+}
+
+
+function openRemoveEducator(tutorId, name){
+  pendingRemoveEduId = tutorId;
+  document.getElementById('remove-edu-name').textContent = name;
+  openModal('modal-remove-educator');
+}
+function submitRemoveEducator(){
+  closeModal('modal-remove-educator');
+  alert('Remove educator ' + pendingRemoveEduId + ' will be handled by the backend.');
+  pendingRemoveEduId = null;
+}
+</script>
+</body>
+</html>
