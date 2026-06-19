@@ -43,6 +43,17 @@ python main.py
 
 Then choose option `1` and type `YES`.
 
+### Demo Educator Account
+
+The local database seeds a demo educator account that can be used to log in to the frontend:
+
+- Email: `educator@test.com`
+- Password: `123456`
+- Role: `educator`
+- Display name: `Demo Educator`
+
+The account is linked to tutor identifier `DEV-TUTOR-001`. During local seeding, it is assigned as an educator for all units currently in the database.
+
 ## 2. Create A Unit And Assignment
 
 Run:

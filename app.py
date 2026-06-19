@@ -9,7 +9,7 @@ from feedback_lens.feedback.pipeline import (
     generate_feedback_for_submission,
     regenerate_feedback_for_criterion,
 )
-from feedback_lens.feedback.prompt import DEFAULT_FEEDBACK_LENGTH, DEFAULT_FEEDBACK_TONE
+from feedback_lens.feedback.prompt import DEFAULT_FEEDBACK_MODIFIER_MODE
 from feedback_lens.feedback.review import fetch_generation_review, parse_json_text_list
 
 app = Flask(__name__)
@@ -98,6 +98,29 @@ def _coerce_optional_float(value, label):
         return float(value)
     except (TypeError, ValueError) as err:
         raise ValueError(f"{label} must be a number.") from err
+
+
+def _resolve_feedback_modifier_payload(data):
+    feedback_length = data.get('feedback_length')
+    feedback_tone = data.get('feedback_tone')
+    length_supplied = feedback_length is not None and feedback_length != ''
+    tone_supplied = feedback_tone is not None and feedback_tone != ''
+    feedback_modifier_mode = (
+        data.get('feedback_modifier_mode')
+        or data.get('feedback_customisation_mode')
+    )
+    if feedback_modifier_mode is None:
+        feedback_modifier_mode = (
+            'custom'
+            if length_supplied or tone_supplied
+            else DEFAULT_FEEDBACK_MODIFIER_MODE
+        )
+
+    return (
+        feedback_modifier_mode,
+        feedback_length if length_supplied else None,
+        feedback_tone if tone_supplied else None,
+    )
 
 
 def _fetch_authorised_submission(conn, submission_id, tutor_id):
@@ -429,6 +452,9 @@ def generate_feedback():
     prompt_template_version = data.get('prompt_template_version') or data.get('prompt')
     if prompt_template_version is None and context_mode == DEFAULT_FEEDBACK_GENERATION_MODE:
         prompt_template_version = DEFAULT_RETRIEVAL_PROMPT_TEMPLATE
+    feedback_modifier_mode, feedback_length, feedback_tone = (
+        _resolve_feedback_modifier_payload(data)
+    )
 
     with connect_db() as conn:
         submission = _fetch_authorised_submission(
@@ -451,8 +477,9 @@ def generate_feedback():
                 prompt_template_version=prompt_template_version,
                 context_mode=context_mode,
                 retrieval_strategy=retrieval_strategy,
-                feedback_length=data.get('feedback_length') or DEFAULT_FEEDBACK_LENGTH,
-                feedback_tone=data.get('feedback_tone') or DEFAULT_FEEDBACK_TONE,
+                feedback_modifier_mode=feedback_modifier_mode,
+                feedback_length=feedback_length,
+                feedback_tone=feedback_tone,
             )
         except ValueError as err:
             return jsonify({'error': str(err)}), 400
@@ -475,6 +502,7 @@ def generate_feedback():
         'retrieval_strategy': result.retrieval_strategy,
         'per_cue_top_k': result.per_cue_top_k,
         'max_final_chunks': result.max_final_chunks,
+        'feedback_modifier_mode': result.feedback_modifier_mode,
         'feedback_length': result.feedback_length,
         'feedback_tone': result.feedback_tone,
     })
@@ -492,6 +520,9 @@ def regenerate_criterion_feedback(generation_id, criterion_id):
         return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     data = request.get_json(silent=True) or {}
+    feedback_modifier_mode, feedback_length, feedback_tone = (
+        _resolve_feedback_modifier_payload(data)
+    )
     with connect_db() as conn:
         generation = _fetch_authorised_generation(
             conn,
@@ -506,8 +537,9 @@ def regenerate_criterion_feedback(generation_id, criterion_id):
                 conn,
                 generation_id=generation_id,
                 criterion_id=criterion_id,
-                feedback_length=data.get('feedback_length') or DEFAULT_FEEDBACK_LENGTH,
-                feedback_tone=data.get('feedback_tone') or DEFAULT_FEEDBACK_TONE,
+                feedback_modifier_mode=feedback_modifier_mode,
+                feedback_length=feedback_length,
+                feedback_tone=feedback_tone,
             )
         except ValueError as err:
             return jsonify({'error': str(err)}), 400
@@ -519,8 +551,9 @@ def regenerate_criterion_feedback(generation_id, criterion_id):
         'generation_id': generation_id,
         'criterion_id': criterion_id,
         'criterion_feedback': criterion_feedback,
-        'feedback_length': data.get('feedback_length') or DEFAULT_FEEDBACK_LENGTH,
-        'feedback_tone': data.get('feedback_tone') or DEFAULT_FEEDBACK_TONE,
+        'feedback_modifier_mode': feedback_modifier_mode,
+        'feedback_length': feedback_length,
+        'feedback_tone': feedback_tone,
     })
 
 

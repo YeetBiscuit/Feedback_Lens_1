@@ -84,8 +84,9 @@ def _generation_result(**overrides):
         "retrieval_strategy": "llm_planned_cue_v1",
         "per_cue_top_k": 5,
         "max_final_chunks": 10,
-        "feedback_length": "standard",
-        "feedback_tone": "clear_supportive",
+        "feedback_modifier_mode": "system_default",
+        "feedback_length": None,
+        "feedback_tone": None,
     }
     values.update(overrides)
     return SimpleNamespace(**values)
@@ -131,8 +132,9 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         self.assertEqual(payload["provider"], "nvidia_deepseek")
         self.assertEqual(payload["retrieval_strategy"], "llm_planned_cue_v1")
         self.assertEqual(payload["prompt_template_version"], "unit_grounded_feedback_json_v2")
-        self.assertEqual(payload["feedback_length"], "standard")
-        self.assertEqual(payload["feedback_tone"], "clear_supportive")
+        self.assertEqual(payload["feedback_modifier_mode"], "system_default")
+        self.assertIsNone(payload["feedback_length"])
+        self.assertIsNone(payload["feedback_tone"])
         mock_generate.assert_called_once()
         _, kwargs = mock_generate.call_args
         self.assertEqual(kwargs["submission_id"], 1)
@@ -141,8 +143,9 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         self.assertEqual(kwargs["context_mode"], "retrieval")
         self.assertEqual(kwargs["retrieval_strategy"], "planned")
         self.assertEqual(kwargs["prompt_template_version"], "unit-grounded-v2")
-        self.assertEqual(kwargs["feedback_length"], "standard")
-        self.assertEqual(kwargs["feedback_tone"], "clear_supportive")
+        self.assertEqual(kwargs["feedback_modifier_mode"], "system_default")
+        self.assertIsNone(kwargs["feedback_length"])
+        self.assertIsNone(kwargs["feedback_tone"])
 
     def test_generate_feedback_preserves_explicit_overrides(self) -> None:
         conn = _connect_app_feedback_db()
@@ -157,6 +160,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
                     model="test-model",
                     retrieval_strategy="assignment_spec_multi_cue_v1",
                     prompt_template_version="baseline_feedback_json_v1",
+                    feedback_modifier_mode="custom",
                     feedback_length="concise",
                     feedback_tone="direct_no_fluff",
                 ),
@@ -187,6 +191,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         self.assertEqual(kwargs["per_cue_top_k"], 3)
         self.assertEqual(kwargs["max_final_chunks"], 8)
         self.assertEqual(kwargs["temperature"], 0.3)
+        self.assertEqual(kwargs["feedback_modifier_mode"], "custom")
         self.assertEqual(kwargs["feedback_length"], "concise")
         self.assertEqual(kwargs["feedback_tone"], "direct_no_fluff")
 
@@ -338,8 +343,59 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         _, kwargs = mock_regenerate.call_args
         self.assertEqual(kwargs["generation_id"], 123)
         self.assertEqual(kwargs["criterion_id"], 1)
+        self.assertEqual(kwargs["feedback_modifier_mode"], "custom")
         self.assertEqual(kwargs["feedback_length"], "concise")
         self.assertEqual(kwargs["feedback_tone"], "direct_no_fluff")
+
+    def test_regenerate_criterion_route_accepts_system_default_modifiers(self) -> None:
+        conn = _connect_app_feedback_db()
+        conn.execute(
+            """
+            INSERT INTO generation_runs
+                (generation_id, submission_id, assignment_id, rubric_id,
+                 pipeline_version, llm_provider, llm_model,
+                 prompt_template_version, retrieval_strategy, status)
+            VALUES
+                (123, 1, 1, 1, 'baseline_retrieval_v1', 'qwen', 'test-model',
+                 'baseline_feedback_json_v1', 'assignment_spec_multi_cue_v1',
+                 'completed')
+            """
+        )
+        conn.commit()
+        client = self._client_with_user(1, "allowed@example.test")
+
+        regenerated = {
+            "criterion_id": 1,
+            "criterion_name": "Analysis",
+            "strengths": "Updated strength.",
+            "areas_for_improvement": "Updated improvement.",
+            "improvement_suggestion": "Updated suggestion.",
+            "suggested_level": "D",
+            "evidence_summary": "Updated evidence.",
+            "mark": 82,
+        }
+        with (
+            patch("app.connect_db", return_value=conn),
+            patch(
+                "app.regenerate_feedback_for_criterion",
+                return_value=regenerated,
+            ) as mock_regenerate,
+        ):
+            response = client.post(
+                "/api/feedback/123/criterion/1/regenerate",
+                json={"feedback_modifier_mode": "system_default"},
+            )
+
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["feedback_modifier_mode"], "system_default")
+        self.assertIsNone(payload["feedback_length"])
+        self.assertIsNone(payload["feedback_tone"])
+        _, kwargs = mock_regenerate.call_args
+        self.assertEqual(kwargs["feedback_modifier_mode"], "system_default")
+        self.assertIsNone(kwargs["feedback_length"])
+        self.assertIsNone(kwargs["feedback_tone"])
 
     def test_regenerate_criterion_route_rejects_unassigned_educator(self) -> None:
         conn = _connect_app_feedback_db()

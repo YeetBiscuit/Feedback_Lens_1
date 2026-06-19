@@ -266,8 +266,9 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertEqual(result.per_cue_top_k, 5)
         self.assertEqual(result.max_final_chunks, 10)
         self.assertEqual(result.prompt_template_version, "unit_grounded_feedback_json_v2")
-        self.assertEqual(result.feedback_length, "standard")
-        self.assertEqual(result.feedback_tone, "clear_supportive")
+        self.assertEqual(result.feedback_modifier_mode, "system_default")
+        self.assertIsNone(result.feedback_length)
+        self.assertIsNone(result.feedback_tone)
         self.assertEqual(run["llm_provider"], "nvidia_deepseek")
         self.assertEqual(run["llm_model"], "deepseek-ai/deepseek-v4-pro")
         self.assertEqual(run["pipeline_version"], "planned_retrieval_v1")
@@ -279,9 +280,9 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertIsNotNone(planning)
         self.assertEqual(planning["status"], "completed")
         self.assertEqual(planning["strategy"], "llm_planned_cue_v1")
-        self.assertIn("Feedback customisation requirements:", run["prompt_text"])
-        self.assertIn("- feedback_length: standard", run["prompt_text"])
-        self.assertIn("- feedback_tone: clear_supportive", run["prompt_text"])
+        self.assertNotIn("Feedback customisation requirements:", run["prompt_text"])
+        self.assertNotIn("- feedback_length:", run["prompt_text"])
+        self.assertNotIn("- feedback_tone:", run["prompt_text"])
         self.assertIn("Retrieved-context grounding requirements:", run["prompt_text"])
         self.assertEqual(retrieval_cues[0]["label"], "Reflective analysis concepts")
         self.assertEqual(retrieval_cues[0]["text"], "course concepts for reflective analysis")
@@ -448,6 +449,7 @@ class FeedbackPipelineModeTests(unittest.TestCase):
 
         self.assertEqual(result.feedback_length, "concise")
         self.assertEqual(result.feedback_tone, "direct_no_fluff")
+        self.assertEqual(result.feedback_modifier_mode, "custom")
         self.assertIn("- feedback_length: concise", run["prompt_text"])
         self.assertIn("Keep feedback short and low-density.", run["prompt_text"])
         self.assertIn("- feedback_tone: direct_no_fluff", run["prompt_text"])
@@ -512,6 +514,41 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertIn("Week 2 Concepts", regen_prompt)
         self.assertEqual(mock_generate_text.call_count, 1)
 
+    def test_system_default_feedback_modifiers_keep_grounding_without_custom_rules(self) -> None:
+        with (
+            patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,
+            patch(
+                "feedback_lens.feedback.pipeline.retrieve_relevant_chunks"
+            ) as mock_retrieve,
+        ):
+            mock_generate_text.return_value = _feedback_response()
+            mock_retrieve.return_value = _retrieval_result("Task\nreflection report")
+
+            with _connect_minimal_feedback_db() as conn:
+                result = generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    provider="qwen",
+                    model="test-model",
+                    context_mode="retrieval",
+                    retrieval_strategy="baseline",
+                    feedback_modifier_mode="system_default",
+                    feedback_length="concise",
+                    feedback_tone="direct_no_fluff",
+                )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs WHERE generation_id = ?",
+                    (result.generation_id,),
+                ).fetchone()
+
+        self.assertEqual(result.feedback_modifier_mode, "system_default")
+        self.assertIsNone(result.feedback_length)
+        self.assertIsNone(result.feedback_tone)
+        self.assertNotIn("Feedback customisation requirements:", run["prompt_text"])
+        self.assertNotIn("Keep feedback short and low-density.", run["prompt_text"])
+        self.assertNotIn("Be direct and efficient.", run["prompt_text"])
+        self.assertIn("Retrieved-context grounding requirements:", run["prompt_text"])
+
     def test_invalid_feedback_customisation_is_rejected_before_generation_run(self) -> None:
         with _connect_minimal_feedback_db() as conn:
             with self.assertRaisesRegex(ValueError, "feedback_length must be one of"):
@@ -519,6 +556,20 @@ class FeedbackPipelineModeTests(unittest.TestCase):
                     conn,
                     submission_id=1,
                     feedback_length="rambling",
+                )
+            run_count = conn.execute(
+                "SELECT COUNT(*) AS count FROM generation_runs"
+            ).fetchone()["count"]
+
+        self.assertEqual(run_count, 0)
+
+    def test_invalid_feedback_modifier_mode_is_rejected_before_generation_run(self) -> None:
+        with _connect_minimal_feedback_db() as conn:
+            with self.assertRaisesRegex(ValueError, "feedback_modifier_mode must be one of"):
+                generate_feedback_for_submission(
+                    conn,
+                    submission_id=1,
+                    feedback_modifier_mode="chaos",
                 )
             run_count = conn.execute(
                 "SELECT COUNT(*) AS count FROM generation_runs"

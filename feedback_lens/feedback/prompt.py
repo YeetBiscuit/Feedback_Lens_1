@@ -7,6 +7,9 @@ BASELINE_DIRECT_FEEDBACK_PROMPT_JSON_V1 = "baseline_direct_feedback_json_v1"
 UNIT_GROUNDED_FEEDBACK_PROMPT_JSON_V2 = "unit_grounded_feedback_json_v2"
 DEFAULT_FEEDBACK_LENGTH = "standard"
 DEFAULT_FEEDBACK_TONE = "clear_supportive"
+SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE = "system_default"
+CUSTOM_FEEDBACK_MODIFIER_MODE = "custom"
+DEFAULT_FEEDBACK_MODIFIER_MODE = SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE
 
 FEEDBACK_LENGTH_OPTIONS = {
     "concise",
@@ -17,6 +20,10 @@ FEEDBACK_TONE_OPTIONS = {
     DEFAULT_FEEDBACK_TONE,
     "gentle_encouraging",
     "direct_no_fluff",
+}
+FEEDBACK_MODIFIER_MODE_OPTIONS = {
+    SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE,
+    CUSTOM_FEEDBACK_MODIFIER_MODE,
 }
 
 RETRIEVAL_FEEDBACK_PROMPT_TEMPLATE_VERSIONS = {
@@ -80,6 +87,27 @@ def validate_feedback_tone(feedback_tone: str | None) -> str:
     return value
 
 
+def validate_feedback_modifier_mode(feedback_modifier_mode: str | None) -> str:
+    value = (feedback_modifier_mode or DEFAULT_FEEDBACK_MODIFIER_MODE).strip().lower()
+    aliases = {
+        "default": SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE,
+        "none": SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE,
+        "no_modifiers": SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE,
+        "system": SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE,
+        "system-default": SYSTEM_DEFAULT_FEEDBACK_MODIFIER_MODE,
+        "modifiers": CUSTOM_FEEDBACK_MODIFIER_MODE,
+        "length_tone": CUSTOM_FEEDBACK_MODIFIER_MODE,
+        "length-tone": CUSTOM_FEEDBACK_MODIFIER_MODE,
+    }
+    value = aliases.get(value, value)
+    if value not in FEEDBACK_MODIFIER_MODE_OPTIONS:
+        raise ValueError(
+            "feedback_modifier_mode must be one of: "
+            f"{', '.join(sorted(FEEDBACK_MODIFIER_MODE_OPTIONS))}"
+        )
+    return value
+
+
 def validate_feedback_prompt_template_version(
     prompt_template_version: str,
     context_mode: str,
@@ -118,6 +146,7 @@ def build_feedback_prompt(
     retrieved_chunks: list[dict] | None = None,
     include_retrieved_context: bool = True,
     prompt_template_version: str | None = None,
+    feedback_modifier_mode: str | None = None,
     feedback_length: str | None = None,
     feedback_tone: str | None = None,
 ) -> str:
@@ -125,6 +154,13 @@ def build_feedback_prompt(
     resolved_prompt_template_version = validate_feedback_prompt_template_version(
         prompt_template_version or default_feedback_prompt_template_version(context_mode),
         context_mode,
+    )
+    if feedback_modifier_mode is None and (
+        feedback_length is not None or feedback_tone is not None
+    ):
+        feedback_modifier_mode = CUSTOM_FEEDBACK_MODIFIER_MODE
+    resolved_feedback_modifier_mode = validate_feedback_modifier_mode(
+        feedback_modifier_mode
     )
     resolved_feedback_length = validate_feedback_length(feedback_length)
     resolved_feedback_tone = validate_feedback_tone(feedback_tone)
@@ -238,7 +274,9 @@ Retrieved-context grounding requirements:
             "- Reduce warm-up phrasing and avoid unnecessary reassurance while staying respectful."
         ),
     }
-    customisation_rules = f"""
+    customisation_rules = ""
+    if resolved_feedback_modifier_mode == CUSTOM_FEEDBACK_MODIFIER_MODE:
+        customisation_rules = f"""
 Feedback customisation requirements:
 - feedback_length: {resolved_feedback_length}
 {length_rules[resolved_feedback_length]}
