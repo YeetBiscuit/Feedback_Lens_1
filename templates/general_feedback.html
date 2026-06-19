@@ -158,6 +158,7 @@ var genId = null;
 var gradeVisible = false;
 var settingsStorageKey = 'fl-feedback-generation-settings';
 var defaultGenerationSettings = {
+  feedback_modifier_mode: 'system_default',
   feedback_length: 'standard',
   feedback_tone: 'clear_supportive'
 };
@@ -181,21 +182,41 @@ function escapeHtml(s){
   });
 }
 
-function getGenerationSettings(){
+function readGenerationSettings(){
   return {
+    feedback_modifier_mode: document.getElementById('feedback-modifier-mode').value,
     feedback_length: document.getElementById('feedback-length').value,
     feedback_tone: document.getElementById('feedback-tone').value
   };
 }
 
+function getGenerationSettings(){
+  var settings = readGenerationSettings();
+  if(settings.feedback_modifier_mode !== 'custom'){
+    return {feedback_modifier_mode: settings.feedback_modifier_mode};
+  }
+  return settings;
+}
+
 function saveGenerationSettings(){
-  var settings = getGenerationSettings();
+  var settings = readGenerationSettings();
   localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
 }
 
+function syncFeedbackModifierControls(){
+  var isCustom = document.getElementById('feedback-modifier-mode').value === 'custom';
+  document.querySelectorAll('.modifier-setting').forEach(function(el){
+    el.style.display = isCustom ? '' : 'none';
+  });
+  document.getElementById('feedback-length').disabled = !isCustom;
+  document.getElementById('feedback-tone').disabled = !isCustom;
+}
+
 function resetGenerationSettings(){
+  document.getElementById('feedback-modifier-mode').value = defaultGenerationSettings.feedback_modifier_mode;
   document.getElementById('feedback-length').value = defaultGenerationSettings.feedback_length;
   document.getElementById('feedback-tone').value = defaultGenerationSettings.feedback_tone;
+  syncFeedbackModifierControls();
   saveGenerationSettings();
 }
 
@@ -206,10 +227,17 @@ function initGenerationSettings(){
   } catch(e) {
     savedSettings = null;
   }
+  document.getElementById('feedback-modifier-mode').value =
+    (savedSettings && savedSettings.feedback_modifier_mode) || defaultGenerationSettings.feedback_modifier_mode;
   document.getElementById('feedback-length').value =
     (savedSettings && savedSettings.feedback_length) || defaultGenerationSettings.feedback_length;
   document.getElementById('feedback-tone').value =
     (savedSettings && savedSettings.feedback_tone) || defaultGenerationSettings.feedback_tone;
+  syncFeedbackModifierControls();
+  document.getElementById('feedback-modifier-mode').addEventListener('change', function(){
+    syncFeedbackModifierControls();
+    saveGenerationSettings();
+  });
   document.getElementById('feedback-length').addEventListener('change', saveGenerationSettings);
   document.getElementById('feedback-tone').addEventListener('change', saveGenerationSettings);
 }
@@ -218,6 +246,13 @@ function buildGenerationSettingsPanel(buttonText, actionName){
   return '<div class="card gen-form">'
     + '<div class="card-title">Feedback Settings</div>'
     + '<label class="settings-control">'
+    + '<span>Modifiers</span>'
+    + '<select id="feedback-modifier-mode">'
+    + '<option value="system_default">System default</option>'
+    + '<option value="custom">Custom length/tone</option>'
+    + '</select>'
+    + '</label>'
+    + '<label class="settings-control modifier-setting">'
     + '<span>Length</span>'
     + '<select id="feedback-length">'
     + '<option value="concise">Concise</option>'
@@ -225,7 +260,7 @@ function buildGenerationSettingsPanel(buttonText, actionName){
     + '<option value="detailed">Detailed</option>'
     + '</select>'
     + '</label>'
-    + '<label class="settings-control">'
+    + '<label class="settings-control modifier-setting">'
     + '<span>Tone</span>'
     + '<select id="feedback-tone">'
     + '<option value="clear_supportive">Clear + supportive</option>'

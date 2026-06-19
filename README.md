@@ -79,6 +79,17 @@ $env:NVIDIA_API_KEY="your_key_here"
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 
+## Demo Educator Account
+
+Local database connections seed a demo educator account for frontend testing:
+
+- Email: `educator@test.com`
+- Password: `123456`
+- Role: `educator`
+- Display name: `Demo Educator`
+
+The account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to all units currently present in the local database.
+
 ## Code Layout
 
 - `feedback_lens/setup/` - setup and schema logic

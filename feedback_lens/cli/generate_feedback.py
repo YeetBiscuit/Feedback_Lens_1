@@ -6,8 +6,8 @@ from feedback_lens.feedback.pipeline import (
     generate_feedback_for_submission,
 )
 from feedback_lens.feedback.prompt import (
-    DEFAULT_FEEDBACK_LENGTH,
-    DEFAULT_FEEDBACK_TONE,
+    CUSTOM_FEEDBACK_MODIFIER_MODE,
+    DEFAULT_FEEDBACK_MODIFIER_MODE,
     FEEDBACK_PROMPT_TEMPLATE_CHOICES,
     FEEDBACK_LENGTH_OPTIONS,
     FEEDBACK_TONE_OPTIONS,
@@ -28,6 +28,12 @@ class _PromptTemplateAction(argparse.Action):
         setattr(namespace, "prompt_template_explicit", True)
 
 
+class _FeedbackModifierAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values)
+        setattr(namespace, "feedback_modifier_mode", CUSTOM_FEEDBACK_MODIFIER_MODE)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Generate rubric-aligned feedback for an existing student submission.",
@@ -35,16 +41,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("submission_id", type=int)
     parser.add_argument("--provider", default=DEFAULT_FEEDBACK_PROVIDER)
     parser.add_argument("--model")
+    parser.set_defaults(feedback_modifier_mode=DEFAULT_FEEDBACK_MODIFIER_MODE)
     parser.add_argument(
         "--feedback-length",
         choices=sorted(FEEDBACK_LENGTH_OPTIONS),
-        default=DEFAULT_FEEDBACK_LENGTH,
+        action=_FeedbackModifierAction,
         help="Controls feedback density and detail.",
     )
     parser.add_argument(
         "--feedback-tone",
         choices=sorted(FEEDBACK_TONE_OPTIONS),
-        default=DEFAULT_FEEDBACK_TONE,
+        action=_FeedbackModifierAction,
         help="Controls feedback directness and supportiveness.",
     )
     parser.set_defaults(prompt_template_explicit=False)
@@ -132,6 +139,7 @@ def main() -> None:
             prompt_template_version=prompt_template_version,
             context_mode=args.mode,
             retrieval_strategy=args.retrieval_strategy,
+            feedback_modifier_mode=args.feedback_modifier_mode,
             feedback_length=args.feedback_length,
             feedback_tone=args.feedback_tone,
         )
@@ -143,8 +151,9 @@ def main() -> None:
         f"retrieval_cues={result.retrieval_cue_count}, "
         f"per_cue_top_k={result.per_cue_top_k}, "
         f"max_final_chunks={result.max_final_chunks}, "
-        f"feedback_length={result.feedback_length}, "
-        f"feedback_tone={result.feedback_tone}, "
+        f"feedback_modifier_mode={result.feedback_modifier_mode}, "
+        f"feedback_length={result.feedback_length or 'None'}, "
+        f"feedback_tone={result.feedback_tone or 'None'}, "
         f"deduplicated_chunks={result.deduplicated_chunk_count}, "
         f"criterion_count={result.criterion_count}, "
         f"overall_grade_band={result.overall_grade_band or 'None'}."

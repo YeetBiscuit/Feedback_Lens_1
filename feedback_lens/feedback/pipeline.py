@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from feedback_lens.db.connection import ensure_schema_updates, fetch_latest_version_row
 from feedback_lens.feedback.llm.providers import generate_text, resolve_model_name
 from feedback_lens.feedback.prompt import (
-    DEFAULT_FEEDBACK_LENGTH,
-    DEFAULT_FEEDBACK_TONE,
+    CUSTOM_FEEDBACK_MODIFIER_MODE,
     build_feedback_prompt,
     default_feedback_prompt_template_version,
     validate_feedback_length,
+    validate_feedback_modifier_mode,
     validate_feedback_prompt_template_version,
     validate_feedback_tone,
 )
@@ -54,8 +54,9 @@ class FeedbackGenerationResult:
     retrieval_strategy: str
     per_cue_top_k: int
     max_final_chunks: int
-    feedback_length: str
-    feedback_tone: str
+    feedback_modifier_mode: str
+    feedback_length: str | None
+    feedback_tone: str | None
 
 
 def _normalise_context_mode(value: str) -> str:
@@ -110,6 +111,27 @@ def _normalise_positive_int(value: int | None, default: int, label: str) -> int:
     if resolved_int < 1:
         raise ValueError(f"{label} must be a positive integer.")
     return resolved_int
+
+
+def _resolve_feedback_modifier_settings(
+    feedback_modifier_mode: str | None,
+    feedback_length: str | None,
+    feedback_tone: str | None,
+) -> tuple[str, str | None, str | None]:
+    if feedback_modifier_mode is None and (
+        feedback_length is not None or feedback_tone is not None
+    ):
+        feedback_modifier_mode = CUSTOM_FEEDBACK_MODIFIER_MODE
+
+    resolved_mode = validate_feedback_modifier_mode(feedback_modifier_mode)
+    if resolved_mode != CUSTOM_FEEDBACK_MODIFIER_MODE:
+        return resolved_mode, None, None
+
+    return (
+        resolved_mode,
+        validate_feedback_length(feedback_length),
+        validate_feedback_tone(feedback_tone),
+    )
 
 
 def _default_pipeline_version(context_mode: str, retrieval_strategy: str) -> str:
@@ -537,8 +559,9 @@ def generate_feedback_for_submission(
     prompt_template_version: str | None = None,
     context_mode: str = "retrieval",
     retrieval_strategy: str | None = None,
-    feedback_length: str | None = DEFAULT_FEEDBACK_LENGTH,
-    feedback_tone: str | None = DEFAULT_FEEDBACK_TONE,
+    feedback_modifier_mode: str | None = None,
+    feedback_length: str | None = None,
+    feedback_tone: str | None = None,
     planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
 ) -> FeedbackGenerationResult:
     ensure_schema_updates(conn)
@@ -561,8 +584,15 @@ def generate_feedback_for_submission(
         resolved_prompt_template_version,
         resolved_context_mode,
     )
-    resolved_feedback_length = validate_feedback_length(feedback_length)
-    resolved_feedback_tone = validate_feedback_tone(feedback_tone)
+    (
+        resolved_feedback_modifier_mode,
+        resolved_feedback_length,
+        resolved_feedback_tone,
+    ) = _resolve_feedback_modifier_settings(
+        feedback_modifier_mode,
+        feedback_length,
+        feedback_tone,
+    )
     resolved_model = resolve_model_name(provider, model)
     if resolved_context_mode == "direct":
         resolved_per_cue_top_k = 0
@@ -698,6 +728,7 @@ def generate_feedback_for_submission(
             retrieved_chunks,
             include_retrieved_context=resolved_context_mode == "retrieval",
             prompt_template_version=resolved_prompt_template_version,
+            feedback_modifier_mode=resolved_feedback_modifier_mode,
             feedback_length=resolved_feedback_length,
             feedback_tone=resolved_feedback_tone,
         )
@@ -800,6 +831,7 @@ def generate_feedback_for_submission(
             retrieval_strategy=resolved_retrieval_strategy,
             per_cue_top_k=resolved_per_cue_top_k,
             max_final_chunks=resolved_max_final_chunks,
+            feedback_modifier_mode=resolved_feedback_modifier_mode,
             feedback_length=resolved_feedback_length,
             feedback_tone=resolved_feedback_tone,
         )
@@ -827,12 +859,20 @@ def regenerate_feedback_for_criterion(
     conn: sqlite3.Connection,
     generation_id: int,
     criterion_id: int,
-    feedback_length: str | None = DEFAULT_FEEDBACK_LENGTH,
-    feedback_tone: str | None = DEFAULT_FEEDBACK_TONE,
+    feedback_modifier_mode: str | None = None,
+    feedback_length: str | None = None,
+    feedback_tone: str | None = None,
 ) -> dict:
     ensure_schema_updates(conn)
-    resolved_feedback_length = validate_feedback_length(feedback_length)
-    resolved_feedback_tone = validate_feedback_tone(feedback_tone)
+    (
+        resolved_feedback_modifier_mode,
+        resolved_feedback_length,
+        resolved_feedback_tone,
+    ) = _resolve_feedback_modifier_settings(
+        feedback_modifier_mode,
+        feedback_length,
+        feedback_tone,
+    )
     inputs = _load_generation_inputs_for_run(conn, generation_id)
     run = inputs["run"]
     criteria = [
@@ -882,6 +922,7 @@ def regenerate_feedback_for_criterion(
         retrieved_chunks,
         include_retrieved_context=context_mode == "retrieval",
         prompt_template_version=prompt_template_version,
+        feedback_modifier_mode=resolved_feedback_modifier_mode,
         feedback_length=resolved_feedback_length,
         feedback_tone=resolved_feedback_tone,
     )

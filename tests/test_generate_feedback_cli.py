@@ -10,8 +10,9 @@ class GenerateFeedbackCliTests(unittest.TestCase):
         self.assertEqual(args.provider, "nvidia_deepseek")
         self.assertEqual(args.retrieval_strategy, "planned")
         self.assertEqual(args.prompt_template_version, "unit-grounded-v2")
-        self.assertEqual(args.feedback_length, "standard")
-        self.assertEqual(args.feedback_tone, "clear_supportive")
+        self.assertEqual(args.feedback_modifier_mode, "system_default")
+        self.assertIsNone(args.feedback_length)
+        self.assertIsNone(args.feedback_tone)
         self.assertFalse(args.prompt_template_explicit)
 
     def test_feedback_customisation_arguments_are_configurable(self) -> None:
@@ -25,8 +26,16 @@ class GenerateFeedbackCliTests(unittest.TestCase):
             ]
         )
 
+        self.assertEqual(args.feedback_modifier_mode, "custom")
         self.assertEqual(args.feedback_length, "concise")
         self.assertEqual(args.feedback_tone, "direct_no_fluff")
+
+    def test_one_feedback_customisation_argument_switches_to_custom_mode(self) -> None:
+        args = build_parser().parse_args(["1", "--feedback-length", "concise"])
+
+        self.assertEqual(args.feedback_modifier_mode, "custom")
+        self.assertEqual(args.feedback_length, "concise")
+        self.assertIsNone(args.feedback_tone)
 
     def test_strategy_argument_sets_retrieval_strategy(self) -> None:
         args = build_parser().parse_args(["1", "--strategy", "planned"])
