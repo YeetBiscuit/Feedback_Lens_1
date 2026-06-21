@@ -254,8 +254,458 @@ def educator():
 
 @app.route('/student')
 @login_required('student')
-def student():
-    return render_template("student.html")
+def student_home():
+    return render_template('student_home.html')
+
+
+@app.route('/student/units')
+@login_required('student')
+def student_units():
+    return render_template('student_units.html')
+
+
+@app.route('/student/unit/<int:unit_id>')
+@login_required('student')
+def student_unit_detail(unit_id):
+    return render_template('student_unit_detail.html', unit_id=unit_id)
+
+
+@app.route('/student/assessments')
+@login_required('student')
+def student_assessments():
+    return render_template('student_assessments.html')
+
+
+@app.route('/student/assessment/<int:assignment_id>')
+@login_required('student')
+def student_assessment_detail(assignment_id):
+    return render_template('student_assessment_detail.html', assignment_id=assignment_id)
+
+
+@app.route('/student/feedback')
+@login_required('student')
+def student_feedback():
+    return render_template('student_feedback.html')
+
+
+@app.route('/student/feedback/<int:generation_id>')
+@login_required('student')
+def student_feedback_detail(generation_id):
+    return render_template('student_feedback_detail.html', generation_id=generation_id)
+
+
+def _student_identifier_or_error():
+    user, error = api_session_user(required_role='student')
+    if error:
+        return None, None, error
+    
+    with connect_db() as conn:
+        row = conn.execute(
+            "SELECT student_identifier FROM users WHERE user_id = ?",
+            (user['user_id'],)
+        ).fetchone()
+    sid = row['student_identifier'] if row else None
+    if not sid:
+        return None, None, (jsonify({'error': 'Student account is not linked to a student record'}), 403)
+    user['student_identifier'] = sid
+    return user, sid, None
+
+
+@app.route('/api/student/home')
+def student_home_data():
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        counts = conn.execute("""
+            SELECT
+                (SELECT COUNT(*) FROM student_submissions WHERE student_identifier = ?) AS total_submissions,
+                (SELECT COUNT(DISTINCT of.generation_id)
+                    FROM overall_feedback of
+                    JOIN generation_runs gr ON gr.generation_id = of.generation_id
+                    JOIN student_submissions ss ON ss.submission_id = gr.submission_id
+                    WHERE ss.student_identifier = ?
+                ) AS total_feedback
+        """, (sid, sid)).fetchone()
+
+    return jsonify({
+        'user': dict(user),
+        'counts': dict(counts) if counts else {}
+    })
+
+
+@app.route('/api/student/units')
+def student_units_data():
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        # check if is_archived column exists (it may not exist yet, will be added by backend)- please fix it
+        cols = [r['name'] for r in conn.execute("PRAGMA table_info(units)").fetchall()]
+        has_archived = 'is_archived' in cols
+        archived_select = 'u.is_archived' if has_archived else '0 AS is_archived'
+
+        units = conn.execute(f"""
+            SELECT DISTINCT
+                u.unit_id, u.unit_code, u.unit_name, u.semester, u.year,
+                {archived_select},
+                (SELECT COUNT(*) FROM assignments a2 WHERE a2.unit_id = u.unit_id) AS total_assignments,
+                (SELECT COUNT(*) FROM student_submissions ss2
+                    JOIN assignments a3 ON a3.assignment_id = ss2.assignment_id
+                    WHERE a3.unit_id = u.unit_id AND ss2.student_identifier = ?
+                ) AS submitted_count
+            FROM units u
+            JOIN assignments a ON a.unit_id = u.unit_id
+            JOIN student_submissions ss ON ss.assignment_id = a.assignment_id
+            WHERE ss.student_identifier = ?
+            ORDER BY u.unit_code
+        """, (sid, sid)).fetchall()
+
+    return jsonify({'units': [dict(u) for u in units]})
+
+
+@app.route('/api/student/unit/<int:unit_id>')
+def student_unit_data(unit_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        unit = conn.execute("""
+            SELECT unit_id, unit_code, unit_name FROM units WHERE unit_id = ?
+        """, (unit_id,)).fetchone()
+        if unit is None:
+            return jsonify({'error': 'Unit not found'}), 404
+
+        assignments = conn.execute("""
+            SELECT
+                a.assignment_id, a.assignment_name, a.assignment_type, a.due_date,
+                ss.submission_id, ss.submitted_at,
+                gr.generation_id,
+                CASE
+                    WHEN hr.review_id IS NOT NULL THEN 'marked'
+                    WHEN ss.submission_id IS NOT NULL THEN 'pending'
+                    ELSE 'not_submitted'
+                END AS status
+            FROM assignments a
+            LEFT JOIN student_submissions ss
+                ON ss.assignment_id = a.assignment_id AND ss.student_identifier = ?
+            LEFT JOIN generation_runs gr
+                ON gr.submission_id = ss.submission_id
+                AND gr.generation_id = (
+                    SELECT MAX(generation_id) FROM generation_runs WHERE submission_id = ss.submission_id
+                )
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            WHERE a.unit_id = ?
+            ORDER BY a.assignment_id
+        """, (sid, unit_id)).fetchall()
+
+    return jsonify({
+        'unit': dict(unit),
+        'assignments': [dict(a) for a in assignments]
+    })
+
+
+@app.route('/api/student/assessments')
+def student_assessments_data():
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                a.assignment_id, a.assignment_name, a.assignment_type, a.due_date,
+                u.unit_id, u.unit_code, u.unit_name,
+                ss.submission_id, ss.submitted_at,
+                gr.generation_id,
+                CASE
+                    WHEN hr.review_id IS NOT NULL THEN 'marked'
+                    WHEN ss.submission_id IS NOT NULL THEN 'pending'
+                    ELSE 'not_submitted'
+                END AS status
+            FROM assignments a
+            JOIN units u ON u.unit_id = a.unit_id
+            LEFT JOIN student_submissions ss
+                ON ss.assignment_id = a.assignment_id AND ss.student_identifier = ?
+            LEFT JOIN generation_runs gr
+                ON gr.submission_id = ss.submission_id
+                AND gr.generation_id = (
+                    SELECT MAX(generation_id) FROM generation_runs WHERE submission_id = ss.submission_id
+                )
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            WHERE a.unit_id IN (
+                SELECT DISTINCT a2.unit_id
+                FROM assignments a2
+                JOIN student_submissions ss2 ON ss2.assignment_id = a2.assignment_id
+                WHERE ss2.student_identifier = ?
+            )
+            ORDER BY a.due_date, a.assignment_id
+        """, (sid, sid)).fetchall()
+
+    return jsonify({'assignments': [dict(r) for r in rows]})
+
+
+@app.route('/api/student/download/spec/<int:spec_id>')
+def student_download_spec(spec_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        row = conn.execute("""
+            SELECT s.source_file_path, s.assignment_id
+            FROM assignment_specs s
+            JOIN assignments a ON a.assignment_id = s.assignment_id
+            JOIN student_submissions ss ON ss.assignment_id = a.assignment_id
+            WHERE s.spec_id = ? AND ss.student_identifier = ?
+            LIMIT 1
+        """, (spec_id, sid)).fetchone()
+
+    if not row or not row['source_file_path']:
+        return jsonify({'error': 'File not found'}), 404
+
+    return _send_file_safe(row['source_file_path'])
+
+
+@app.route('/api/student/download/material/<int:material_id>')
+def student_download_material(material_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        row = conn.execute("""
+            SELECT m.source_file_path
+            FROM unit_materials m
+            JOIN assignments a ON a.assignment_id = m.assignment_id
+            JOIN student_submissions ss ON ss.assignment_id = a.assignment_id
+            WHERE m.material_id = ? AND ss.student_identifier = ?
+            LIMIT 1
+        """, (material_id, sid)).fetchone()
+
+    if not row or not row['source_file_path']:
+        return jsonify({'error': 'File not found'}), 404
+
+    return _send_file_safe(row['source_file_path'])
+
+
+@app.route('/api/student/download/submission/<int:submission_id>')
+def student_download_submission(submission_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        row = conn.execute("""
+            SELECT original_file_path
+            FROM student_submissions
+            WHERE submission_id = ? AND student_identifier = ?
+        """, (submission_id, sid)).fetchone()
+
+    if not row or not row['original_file_path']:
+        return jsonify({'error': 'File not found'}), 404
+
+    return _send_file_safe(row['original_file_path'])
+
+
+def _send_file_safe(file_path):
+    import os
+    from flask import send_file, abort
+    # resolve to absolute path and check it exists
+    if not os.path.exists(file_path):
+        # try relative to project root
+        abs_path = os.path.join(os.path.dirname(__file__), file_path)
+        if not os.path.exists(abs_path):
+            return jsonify({'error': 'File missing on disk'}), 404
+        file_path = abs_path
+    return send_file(file_path, as_attachment=True)
+
+@app.route('/api/student/assessment/<int:assignment_id>')
+def student_assessment_data(assignment_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        a = conn.execute("""
+            SELECT
+                a.assignment_id, a.assignment_name, a.assignment_type, a.due_date,
+                u.unit_id, u.unit_code, u.unit_name
+            FROM assignments a
+            JOIN units u ON u.unit_id = a.unit_id
+            WHERE a.assignment_id = ?
+        """, (assignment_id,)).fetchone()
+        if a is None:
+            return jsonify({'error': 'Assessment not found'}), 404
+
+        sub = conn.execute("""
+            SELECT submission_id, submitted_at, original_file_path
+            FROM student_submissions
+            WHERE assignment_id = ? AND student_identifier = ?
+            ORDER BY submission_id DESC
+            LIMIT 1
+        """, (assignment_id, sid)).fetchone()
+
+        gen = None
+        review_status = 'not_submitted'
+        if sub:
+            gen = conn.execute("""
+                SELECT generation_id, status
+                FROM generation_runs
+                WHERE submission_id = ?
+                ORDER BY generation_id DESC
+                LIMIT 1
+            """, (sub['submission_id'],)).fetchone()
+            if gen:
+                hr = conn.execute("""
+                    SELECT review_id FROM human_reviews WHERE generation_id = ?
+                """, (gen['generation_id'],)).fetchone()
+                review_status = 'marked' if hr else 'pending'
+            else:
+                review_status = 'pending'
+
+        spec = conn.execute("""
+            SELECT spec_id, source_file_path FROM assignment_specs WHERE assignment_id = ?
+        """, (assignment_id,)).fetchone()
+        materials = conn.execute("""
+            SELECT material_id, title, material_type, source_file_path
+            FROM unit_materials WHERE assignment_id = ?
+        """, (assignment_id,)).fetchall()
+
+    return jsonify({
+        'assignment': dict(a),
+        'submission': dict(sub) if sub else None,
+        'generation_id': gen['generation_id'] if gen else None,
+        'status': review_status,
+        'spec': dict(spec) if spec else None,
+        'materials': [dict(m) for m in materials]
+    })
+
+
+@app.route('/api/student/feedback-list')
+def student_feedback_list():
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        units = conn.execute("""
+            SELECT
+                u.unit_id, u.unit_code, u.unit_name,
+                COUNT(DISTINCT gr.generation_id) AS feedback_count
+            FROM units u
+            JOIN assignments a ON a.unit_id = u.unit_id
+            JOIN student_submissions ss ON ss.assignment_id = a.assignment_id
+            JOIN generation_runs gr ON gr.submission_id = ss.submission_id
+            JOIN overall_feedback of ON of.generation_id = gr.generation_id
+            WHERE ss.student_identifier = ?
+            GROUP BY u.unit_id
+            HAVING feedback_count > 0
+            ORDER BY u.unit_code
+        """, (sid,)).fetchall()
+
+    return jsonify({'units': [dict(u) for u in units]})
+
+
+@app.route('/api/student/feedback-list/<int:unit_id>')
+def student_feedback_by_unit(unit_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        items = conn.execute("""
+            SELECT
+                gr.generation_id,
+                a.assignment_name,
+                ss.submitted_at,
+                of.overall_grade_band,
+                of.final_mark,
+                CASE
+                    WHEN hr.review_id IS NOT NULL THEN 'marked'
+                    ELSE 'pending'
+                END AS status
+            FROM generation_runs gr
+            JOIN student_submissions ss ON ss.submission_id = gr.submission_id
+            JOIN assignments a ON a.assignment_id = ss.assignment_id
+            LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
+            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            WHERE a.unit_id = ? AND ss.student_identifier = ?
+            ORDER BY gr.generation_id DESC
+        """, (unit_id, sid)).fetchall()
+
+    return jsonify({'items': [dict(i) for i in items]})
+
+
+@app.route('/api/student/feedback/<int:generation_id>')
+def student_feedback_detail_data(generation_id):
+    user, sid, error = _student_identifier_or_error()
+    if error:
+        return error
+
+    with connect_db() as conn:
+        #confirm this feedback belongs to this student
+        check = conn.execute("""
+            SELECT gr.generation_id
+            FROM generation_runs gr
+            JOIN student_submissions ss ON ss.submission_id = gr.submission_id
+            WHERE gr.generation_id = ? AND ss.student_identifier = ?
+        """, (generation_id, sid)).fetchone()
+        if not check:
+            return jsonify({'error': 'Feedback not found'}), 404
+
+        try:
+            data = fetch_generation_review(conn, generation_id)
+        except ValueError as err:
+            return jsonify({'error': str(err)}), 404
+
+        submission = conn.execute("""
+            SELECT
+                ss.cleaned_text, ss.submitted_at,
+                u.unit_id, u.unit_code, u.unit_name,
+                a.assignment_name
+            FROM student_submissions ss
+            JOIN assignments a ON a.assignment_id = ss.assignment_id
+            JOIN units u ON u.unit_id = a.unit_id
+            WHERE ss.submission_id = ?
+        """, (data['run']['submission_id'],)).fetchone()
+
+        # look up the educator linked to this unit
+        educator = None
+        if submission:
+            educator = conn.execute("""
+                SELECT t.full_name
+                FROM unit_tutors ut
+                JOIN tutors t ON t.tutor_id = ut.tutor_id
+                WHERE ut.unit_id = ?
+                LIMIT 1
+            """, (submission['unit_id'],)).fetchone()
+
+    run = dict(data['run'])
+    if submission:
+        run['submission_text'] = submission['cleaned_text']
+        run['submitted_at'] = submission['submitted_at']
+        run['unit_code'] = submission['unit_code']
+        run['unit_name'] = submission['unit_name']
+        run['assignment_name'] = submission['assignment_name']
+    if educator:
+        run['educator_name'] = educator['full_name']
+
+    overall = dict(data.get('overall_feedback') or {})
+    if overall:
+        overall['key_strengths'] = parse_json_text_list(overall.get('key_strengths'))
+        overall['priority_improvements'] = parse_json_text_list(overall.get('priority_improvements'))
+
+    criteria = [dict(c) for c in (data.get('criterion_feedback') or [])]
+
+    return jsonify({
+        'run': run,
+        'overall_feedback': overall,
+        'criterion_feedback': criteria
+    })
 
 @app.route('/educator/feedback-review')
 @login_required('educator')

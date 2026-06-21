@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Assessments</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:relative}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-link{background:transparent;color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer;font-family:inherit;font-weight:500}
+.nav-link:hover{background:rgba(255,255,255,.18)}
+.nav-link.active{background:rgba(255,255,255,.25)}
+.nav-right{display:flex;align-items:center;gap:.75rem;position:relative}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;cursor:pointer}
+
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
+
+.wrap{padding:1.5rem 2rem;max-width:1100px;margin:0 auto}
+.breadcrumb{font-size:.8125rem;color:#6b7280;margin-bottom:1rem}
+.breadcrumb span{color:#1f2937;font-weight:500}
+.page-title{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem}
+
+.filter-bar{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:.85rem;margin-bottom:1rem;display:flex;gap:.75rem;align-items:center;position:relative}
+.search-box{flex:1}
+.search-box input{width:100%;padding:.55rem .75rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;font-family:inherit}
+.search-box input:focus{outline:none;border-color:#2563eb}
+.btn-filter,.btn-apply{padding:.55rem 1rem;border-radius:8px;font-size:.875rem;cursor:pointer;font-family:inherit}
+.btn-filter{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-filter:hover{background:#f9fafb}
+.btn-apply{background:#1f2937;color:#fff;border:none}
+.btn-apply:hover{background:#111827}
+
+.filter-panel{position:absolute;top:calc(100% + .25rem);left:0;right:0;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1rem;box-shadow:0 8px 24px rgba(0,0,0,.08);z-index:20;display:none;grid-template-columns:1fr 1fr 1fr;gap:.75rem}
+.filter-panel.show{display:grid}
+.filter-panel .group label{display:block;font-size:.75rem;color:#6b7280;margin-bottom:4px;font-weight:500}
+.filter-panel select{width:100%;padding:.5rem .65rem;border:1px solid #d1d5db;border-radius:8px;font-size:.8125rem;background:#fff;font-family:inherit}
+
+.assess-list{display:flex;flex-direction:column;gap:.6rem}
+.assess-card{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border:1px solid #e5e7eb;border-radius:10px;background:#fff;cursor:pointer;transition:transform .1s, box-shadow .1s}
+.assess-card:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.04);border-color:#bfdbfe}
+.assess-info .name{font-size:.9375rem;font-weight:600;color:#1f2937;margin-bottom:.2rem}
+.assess-info .meta{font-size:.75rem;color:#6b7280}
+.assess-info .meta .code{font-weight:600;color:#1e40af;background:#eff6ff;padding:2px 7px;border-radius:8px;margin-right:.5rem;font-size:.6875rem}
+.assess-right{display:flex;align-items:center;gap:1rem}
+.due{font-size:.8125rem;color:#6b7280}
+.status-pill{display:inline-block;padding:.25rem .75rem;border-radius:12px;font-size:.75rem;font-weight:500}
+.status-not-submitted{background:#f3f4f6;color:#6b7280}
+.status-pending{background:#fef3c7;color:#92400e}
+.status-marked{background:#dcfce7;color:#15803d}
+
+.empty{color:#9ca3af;font-size:.875rem;text-align:center;padding:2rem 1rem;background:#fafafa;border-radius:8px}
+.loading{color:#888;text-align:center;padding:1.5rem}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-link" onclick="location.href='/student'">Home</button>
+    <button class="nav-link" onclick="location.href='/student/units'">My Units</button>
+    <button class="nav-link active">Assessments</button>
+    <button class="nav-link" onclick="location.href='/student/feedback'">Feedback</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Student</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="breadcrumb">Home &rsaquo; <span>Assessments</span></div>
+  <h1 class="page-title">Assessments</h1>
+
+  <div class="filter-bar">
+    <div class="search-box">
+      <input type="text" id="search" placeholder="Search by title, unit...">
+    </div>
+    <button class="btn-filter" onclick="toggleFilter(event)">Filter</button>
+    <button class="btn-apply" onclick="applyFilter()">Apply</button>
+    <div class="filter-panel" id="filter-panel">
+      <div class="group">
+        <label>Unit</label>
+        <select id="f-unit"><option value="">All</option></select>
+      </div>
+      <div class="group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="">All</option>
+          <option value="not_submitted">Not Submitted</option>
+          <option value="pending">Pending</option>
+          <option value="marked">Marked</option>
+        </select>
+      </div>
+      <div class="group">
+        <label>Sort By</label>
+        <select id="f-sort">
+          <option value="due">Due Date</option>
+          <option value="unit">Unit</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="assess-list" id="assess-list">
+    <div class="loading">Loading...</div>
+  </div>
+</div>
+
+<script>
+var allAssignments = [];
+var filters = {unit: '', status: '', sort: 'due'};
+
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+function formatDate(s){
+  if(!s) return 'TBA';
+  return s.split(' ')[0];
+}
+
+function statusPill(s){
+  if(s === 'marked') return '<span class="status-pill status-marked">Marked</span>';
+  if(s === 'pending') return '<span class="status-pill status-pending">Pending</span>';
+  return '<span class="status-pill status-not-submitted">Not Submitted</span>';
+}
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(e){
+  document.getElementById('user-menu').classList.remove('show');
+  var fp = document.getElementById('filter-panel');
+  if(fp.classList.contains('show') && !fp.contains(e.target) && !e.target.classList.contains('btn-filter')){
+    fp.classList.remove('show');
+  }
+});
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+document.getElementById('filter-panel').addEventListener('click', function(e){ e.stopPropagation(); });
+
+function toggleFilter(e){
+  e.stopPropagation();
+  document.getElementById('filter-panel').classList.toggle('show');
+}
+
+fetch('/api/student/home').then(function(r){return r.json();}).then(function(d){
+  if(!d.user) return;
+  var name = d.user.display_name || d.user.email;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-avatar').textContent = initials(name);
+  document.getElementById('user-menu-email').textContent = d.user.email || '';
+});
+
+fetch('/api/student/assessments').then(function(r){return r.json();}).then(function(data){
+  allAssignments = data.assignments || [];
+  populateUnits();
+  render();
+});
+
+function populateUnits(){
+  var units = {};
+  allAssignments.forEach(function(a){
+    if(a.unit_id) units[a.unit_id] = a.unit_code;
+  });
+  var sel = document.getElementById('f-unit');
+  Object.keys(units).forEach(function(id){
+    var o = document.createElement('option');
+    o.value = id;
+    o.textContent = units[id];
+    sel.appendChild(o);
+  });
+}
+
+function applyFilter(){
+  filters.unit = document.getElementById('f-unit').value;
+  filters.status = document.getElementById('f-status').value;
+  filters.sort = document.getElementById('f-sort').value;
+  document.getElementById('filter-panel').classList.remove('show');
+  render();
+}
+
+function getVisible(){
+  var q = document.getElementById('search').value.trim().toLowerCase();
+  var list = allAssignments.filter(function(a){
+    if(filters.unit && String(a.unit_id) !== filters.unit) return false;
+    if(filters.status && a.status !== filters.status) return false;
+    if(q){
+      var t = ((a.assignment_name || '') + ' ' + (a.unit_code || '') + ' ' + (a.unit_name || '')).toLowerCase();
+      return t.indexOf(q) !== -1;
+    }
+    return true;
+  });
+  if(filters.sort === 'unit'){
+    list.sort(function(x, y){ return (x.unit_code || '').localeCompare(y.unit_code || ''); });
+  }
+  return list;
+}
+
+function render(){
+  var list = getVisible();
+  var box = document.getElementById('assess-list');
+  if(!list.length){
+    box.innerHTML = '<div class="empty">No assessments found.</div>';
+    return;
+  }
+  box.innerHTML = list.map(function(a){
+    return '<div class="assess-card" onclick="location.href=\'/student/assessment/' + a.assignment_id + '\'">'
+      + '<div class="assess-info">'
+      +   '<div class="name">' + a.assignment_name + '</div>'
+      +   '<div class="meta"><span class="code">' + a.unit_code + '</span>' + (a.assignment_type || 'Assessment') + '</div>'
+      + '</div>'
+      + '<div class="assess-right">'
+      +   '<span class="due">Due: ' + formatDate(a.due_date) + '</span>'
+      +   statusPill(a.status)
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+document.getElementById('search').addEventListener('input', render);
+</script>
+</body>
+</html>

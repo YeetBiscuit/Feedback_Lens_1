@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:relative}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-link{background:transparent;color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer;font-family:inherit;font-weight:500}
+.nav-link:hover{background:rgba(255,255,255,.18)}
+.nav-link.active{background:rgba(255,255,255,.25)}
+.nav-right{display:flex;align-items:center;gap:.75rem;position:relative}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;cursor:pointer}
+
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
+
+.wrap{padding:1.5rem 2rem;max-width:1100px;margin:0 auto}
+.welcome{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem}
+
+.banner{background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe;border-radius:12px;padding:2rem;margin-bottom:1.5rem;color:#1e3a8a}
+.banner h2{font-size:1.25rem;font-weight:600;margin-bottom:.4rem}
+.banner p{font-size:.875rem;line-height:1.5}
+
+.stat-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.5rem}
+.stat-label{font-size:.8125rem;color:#6b7280;margin-bottom:.5rem;font-weight:500}
+.stat-value{font-size:2.5rem;font-weight:700;line-height:1;color:#1f2937}
+.stat-hint{font-size:.75rem;color:#9ca3af;margin-top:.5rem}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.panel{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:1.25rem}
+.panel-title{font-size:1rem;font-weight:600;margin-bottom:.75rem}
+.empty{color:#9ca3af;font-size:.875rem;text-align:center;padding:2rem 1rem;background:#fafafa;border-radius:8px}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-link active">Home</button>
+    <button class="nav-link" onclick="location.href='/student/units'">My Units</button>
+    <button class="nav-link" onclick="location.href='/student/assessments'">Assessments</button>
+    <button class="nav-link" onclick="location.href='/student/feedback'">Feedback</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Student</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <h1 class="welcome" id="welcome">Welcome!</h1>
+
+  <div class="banner">
+    <h2>Stay on top of your feedback</h2>
+    <p>Use the menu above to browse your units, manage assessments, and review the feedback you've received.</p>
+  </div>
+
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Submissions</div>
+      <div class="stat-value" id="total-submissions">-</div>
+      <div class="stat-hint">Across all units</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Feedback</div>
+      <div class="stat-value" id="total-feedback">-</div>
+      <div class="stat-hint">Pieces of feedback received</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="panel-title">Upcoming</div>
+      <div class="empty">Upcoming deadlines will appear here once the schedule is connected.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Updates</div>
+      <div class="empty">Notifications will appear here once the notification system is connected.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
+fetch('/api/student/home').then(function(r){return r.json();}).then(function(data){
+  if(data.error){
+    document.getElementById('welcome').textContent = data.error;
+    return;
+  }
+  var u = data.user;
+  var name = u.display_name || u.email;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-avatar').textContent = initials(name);
+  document.getElementById('user-menu-email').textContent = u.email || '';
+  document.getElementById('welcome').textContent = 'Welcome, ' + name + '!';
+
+  var c = data.counts || {};
+  document.getElementById('total-submissions').textContent = c.total_submissions || 0;
+  document.getElementById('total-feedback').textContent = c.total_feedback || 0;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Units</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-height:100vh;color:#1f2937}
+
+.navbar{background:#2563eb;padding:.75rem 2rem;display:flex;justify-content:space-between;align-items:center;position:relative}
+.nav-logo{color:#fff;font-size:1.125rem;font-weight:700;display:flex;align-items:center;gap:.5rem}
+.nav-logo-icon{background:#fff;color:#2563eb;width:2rem;height:2rem;border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.875rem}
+.nav-center{display:flex;gap:.5rem}
+.nav-link{background:transparent;color:#fff;border:none;padding:.4rem 1rem;border-radius:20px;font-size:.875rem;cursor:pointer;font-family:inherit;font-weight:500}
+.nav-link:hover{background:rgba(255,255,255,.18)}
+.nav-link.active{background:rgba(255,255,255,.25)}
+.nav-right{display:flex;align-items:center;gap:.75rem;position:relative}
+.font-toggle{display:flex;background:rgba(255,255,255,.18);border-radius:20px;padding:3px;gap:2px}
+.font-btn{background:transparent;color:#fff;border:none;padding:4px 10px;border-radius:16px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.font-btn.active{background:#fff;color:#2563eb;font-weight:600}
+.nav-user{color:#fff;text-align:right;line-height:1.2}
+.nav-user-name{font-size:.875rem;font-weight:600}
+.nav-user-role{font-size:.75rem;opacity:.8}
+.nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;cursor:pointer}
+
+.dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
+.dropdown.show{display:block}
+.user-menu{right:0;min-width:11rem;padding:.5rem}
+.user-menu-email{padding:.5rem .75rem;font-size:.8125rem;color:#6b7280;border-bottom:1px solid #f3f4f6;margin-bottom:.25rem}
+.user-menu-item{padding:.55rem .75rem;border-radius:6px;cursor:pointer;font-size:.875rem;color:#1f2937}
+.user-menu-item:hover{background:#f9fafb}
+.user-menu-item.danger{color:#dc2626}
+
+.wrap{padding:1.5rem 2rem;max-width:1100px;margin:0 auto}
+.breadcrumb{font-size:.8125rem;color:#6b7280;margin-bottom:1rem}
+.breadcrumb span{color:#1f2937;font-weight:500}
+.page-title{font-size:1.5rem;font-weight:700;margin-bottom:1.5rem}
+
+.section-title{font-size:1rem;font-weight:600;margin-bottom:.75rem;color:#374151}
+.section-sub{font-size:.8125rem;color:#6b7280;margin-bottom:1rem}
+
+.unit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:1rem;margin-bottom:2rem}
+.unit-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:1.1rem;cursor:pointer;transition:transform .1s, box-shadow .1s}
+.unit-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.06);border-color:#bfdbfe}
+.unit-card .code-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.unit-card .code{font-size:.75rem;font-weight:700;background:#eff6ff;color:#1e40af;padding:3px 8px;border-radius:10px}
+.unit-card .pct{font-size:.75rem;color:#6b7280;font-weight:500}
+.unit-card .name{font-size:.9375rem;font-weight:600;color:#1f2937;margin-bottom:.5rem;line-height:1.3}
+.unit-card .meta{font-size:.75rem;color:#9ca3af}
+
+.empty{color:#9ca3af;font-size:.875rem;text-align:center;padding:2rem 1rem;background:#fafafa;border-radius:8px;margin-bottom:2rem}
+.loading{color:#888;text-align:center;padding:1.5rem}
+</style>
+</head>
+<body>
+
+<div class="navbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">FL</div>
+    FeedbackLens
+  </div>
+  <div class="nav-center">
+    <button class="nav-link" onclick="location.href='/student'">Home</button>
+    <button class="nav-link active">My Units</button>
+    <button class="nav-link" onclick="location.href='/student/assessments'">Assessments</button>
+    <button class="nav-link" onclick="location.href='/student/feedback'">Feedback</button>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button class="font-btn" data-size="14">A-</button>
+      <button class="font-btn active" data-size="16">A</button>
+      <button class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">-</div>
+      <div class="nav-user-role">Student</div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="breadcrumb">Home &rsaquo; <span>My Units</span></div>
+  <h1 class="page-title">My Units</h1>
+
+  <div class="section-title">In Progress</div>
+  <div class="section-sub">Units you currently have ongoing assessments in.</div>
+  <div class="unit-grid" id="in-progress-grid">
+    <div class="loading">Loading...</div>
+  </div>
+
+  <div class="section-title">Completed</div>
+  <div class="section-sub">Units where all your assessments have been submitted.</div>
+  <div class="unit-grid" id="completed-grid">
+    <div class="loading">Loading...</div>
+  </div>
+</div>
+
+<script>
+function initials(name){
+  if(!name) return '?';
+  var p = name.trim().split(/\s+/);
+  return (p[0][0] + (p[1] ? p[1][0] : '')).toUpperCase();
+}
+
+var saved = localStorage.getItem('fl-font-size');
+if(saved){
+  document.documentElement.style.fontSize = saved + 'px';
+  document.querySelectorAll('.font-btn').forEach(function(b){
+    b.classList.toggle('active', b.dataset.size === saved);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    var s = btn.dataset.size;
+    document.documentElement.style.fontSize = s + 'px';
+    localStorage.setItem('fl-font-size', s);
+    document.querySelectorAll('.font-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById('user-menu').classList.toggle('show');
+}
+document.addEventListener('click', function(){
+  document.getElementById('user-menu').classList.remove('show');
+});
+document.getElementById('user-menu').addEventListener('click', function(e){ e.stopPropagation(); });
+
+fetch('/api/student/home').then(function(r){return r.json();}).then(function(d){
+  if(!d.user) return;
+  var name = d.user.display_name || d.user.email;
+  document.getElementById('nav-name').textContent = name;
+  document.getElementById('nav-avatar').textContent = initials(name);
+  document.getElementById('user-menu-email').textContent = d.user.email || '';
+});
+
+fetch('/api/student/units').then(function(r){return r.json();}).then(function(data){
+  var units = data.units || [];
+  
+  var inProgress = [];
+  var completed = [];
+  units.forEach(function(u){
+    if(u.is_archived) {
+        completed.push(u);
+    } else {
+        inProgress.push(u);
+    }
+    });
+  renderGroup('in-progress-grid', inProgress);
+  renderGroup('completed-grid', completed);
+});
+
+function renderGroup(targetId, list){
+  var box = document.getElementById(targetId);
+  if(!list.length){
+    box.innerHTML = '<div class="empty" style="grid-column:1 / -1">No units in this category.</div>';
+    return;
+  }
+  box.innerHTML = list.map(function(u){
+    var total = u.total_assignments || 0;
+    var done = u.submitted_count || 0;
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    return '<div class="unit-card" onclick="location.href=\'/student/unit/' + u.unit_id + '\'">'
+      + '<div class="code-row">'
+      +   '<span class="code">' + u.unit_code + '</span>'
+      +   '<span class="pct">' + pct + '%</span>'
+      + '</div>'
+      + '<div class="name">' + u.unit_name + '</div>'
+      + '<div class="meta">' + done + ' of ' + total + ' submitted</div>'
+      + '</div>';
+  }).join('');
+}
+</script>
+</body>
+</html>
