@@ -2,9 +2,12 @@ import json
 import re
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import chromadb
-from sentence_transformers import SentenceTransformer
+
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 from feedback_lens.paths import CHROMA_DIR as DEFAULT_CHROMA_DIR
 
@@ -14,7 +17,15 @@ MODEL_NAME = "all-MiniLM-L6-v2"
 
 
 @lru_cache(maxsize=1)
-def get_embedding_model() -> SentenceTransformer:
+def get_embedding_model() -> "SentenceTransformer":
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError as err:
+        raise RuntimeError(
+            "Embedding support requires sentence-transformers. "
+            "Install the project dependencies with 'pip install -r requirements.txt'."
+        ) from err
+
     print(f"Loading embedding model: {MODEL_NAME}")
     return SentenceTransformer(MODEL_NAME)
 
