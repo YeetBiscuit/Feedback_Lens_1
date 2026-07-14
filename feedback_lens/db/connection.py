@@ -94,6 +94,14 @@ def is_default_db_path(db_path: str | Path) -> bool:
 
 def ensure_schema_updates(conn: sqlite3.Connection) -> None:
     changed = False
+    changed |= ensure_column(conn, "units", "faculty", "TEXT")
+    changed |= ensure_column(conn, "units", "academic_level", "TEXT")
+    changed |= ensure_column(
+        conn,
+        "units",
+        "is_archived",
+        "INTEGER NOT NULL DEFAULT 0 CHECK (is_archived IN (0, 1))",
+    )
     changed |= ensure_column(conn, "units", "level", "TEXT")
     changed |= ensure_column(conn, "units", "discipline", "TEXT")
     changed |= ensure_column(conn, "units", "credit_points", "REAL")
@@ -133,6 +141,7 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL CHECK (role IN ('admin', 'lead_lecturer', 'educator', 'student')),
             display_name TEXT,
+            student_identifier TEXT,
             tutor_id INTEGER UNIQUE,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -142,6 +151,7 @@ def ensure_schema_updates(conn: sqlite3.Connection) -> None:
         )
         """,
     )
+    changed |= ensure_column(conn, "users", "student_identifier", "TEXT")
     changed |= ensure_trigger(
         conn,
         "trg_users_updated_at",
@@ -335,6 +345,35 @@ def seed_local_demo_accounts(conn: sqlite3.Connection) -> None:
             generate_password_hash("123456"),
             "admin",
             "Demo Admin",
+            None,
+        ),
+    )
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO users
+            (email, password_hash, role, display_name, tutor_id)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            "lead@test.com",
+            generate_password_hash("123456"),
+            "lead_lecturer",
+            "Dr. Sarah Chen",
+            None,
+        ),
+    )
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO users
+            (email, password_hash, role, display_name, student_identifier, tutor_id)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            "student@test.com",
+            generate_password_hash("123456"),
+            "student",
+            "Demo Student",
+            "DEMO-STUDENT-001",
             None,
         ),
     )
