@@ -37,7 +37,7 @@ python -m venv .venv
 # Windows PowerShell
 .venv\Scripts\Activate.ps1
 pip install -U pip
-pip install chromadb sentence-transformers pymupdf openai
+pip install -r requirements.txt
 python build.py
 ```
 
@@ -79,16 +79,18 @@ $env:NVIDIA_API_KEY="your_key_here"
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 
-## Demo Educator Account
+## Demo Accounts
 
-Local database connections seed a demo educator account for frontend testing:
+Local database connections seed demo accounts for each frontend role:
 
-- Email: `educator@test.com`
-- Password: `123456`
-- Role: `educator`
-- Display name: `Demo Educator`
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | `admin@test.com` | `123456` |
+| Lead lecturer | `lead@test.com` | `123456` |
+| Educator | `educator@test.com` | `123456` |
+| Student | `student@test.com` | `123456` |
 
-The account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to all units currently present in the local database.
+The educator account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to all units currently present in the local database. The student account uses the local demo identifier `DEMO-STUDENT-001`.
 
 ## Code Layout
 
