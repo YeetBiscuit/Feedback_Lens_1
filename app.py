@@ -342,15 +342,10 @@ def student_units_data():
         return error
 
     with connect_db() as conn:
-        # check if is_archived column exists (it may not exist yet, will be added by backend)- please fix it
-        cols = [r['name'] for r in conn.execute("PRAGMA table_info(units)").fetchall()]
-        has_archived = 'is_archived' in cols
-        archived_select = 'u.is_archived' if has_archived else '0 AS is_archived'
-
-        units = conn.execute(f"""
+        units = conn.execute("""
             SELECT DISTINCT
                 u.unit_id, u.unit_code, u.unit_name, u.semester, u.year,
-                {archived_select},
+                u.is_archived,
                 (SELECT COUNT(*) FROM assignments a2 WHERE a2.unit_id = u.unit_id) AS total_assignments,
                 (SELECT COUNT(*) FROM student_submissions ss2
                     JOIN assignments a3 ON a3.assignment_id = ss2.assignment_id
