@@ -437,6 +437,7 @@ def get_unit_detail(
         SELECT
             material.material_id,
             material.title,
+            material.material_type,
             material.source_file_path,
             material.created_at,
             material.is_active,
@@ -444,7 +445,6 @@ def get_unit_detail(
         FROM unit_materials AS material
         WHERE material.unit_id = ?
           AND material.assignment_id IS NULL
-          AND material.material_type = 'scoping_note'
         ORDER BY material.material_id DESC
         """,
         (unit["legacy_unit_id"],),

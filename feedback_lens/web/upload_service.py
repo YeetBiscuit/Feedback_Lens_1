@@ -558,14 +558,13 @@ def deactivate_scoping_note(
           ON offering.legacy_unit_id = unit.unit_id
         WHERE material.material_id = ?
           AND material.assignment_id IS NULL
-          AND material.material_type = 'scoping_note'
         """,
         (material_id,),
     ).fetchone()
     if row is None:
         raise ApiError(
-            "scoping_note_not_found",
-            "Scoping note not found.",
+            "scoping_material_not_found",
+            "Scoping material not found.",
             404,
         )
     if not can_administer_unit(
@@ -611,7 +610,10 @@ def deactivate_scoping_note(
         "unit_material",
         material_id,
         actor_user_id=actor_user_id,
-        metadata={"reason": reason},
+        metadata={
+            "reason": reason,
+            "material_type": row["material_type"],
+        },
     )
     conn.commit()
     if vector_ids:

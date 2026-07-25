@@ -30,6 +30,7 @@ from feedback_lens.web.admin_service import (
     create_assessment,
     create_roster_import,
     create_unit,
+    get_unit_detail,
     preview_roster_import,
 )
 from feedback_lens.web.errors import ApiError
@@ -38,6 +39,7 @@ from feedback_lens.web.storage import StoredUpload
 from feedback_lens.web.upload_service import (
     activate_latest_assessment_version,
     create_submission_batch,
+    deactivate_scoping_note,
     get_submission_batch,
     handle_processing_job,
     resolve_submission_batch_item,
@@ -158,6 +160,74 @@ class WebFeatureServiceTests(unittest.TestCase):
                     (assessment["assessment"]["assessment_plan_id"],),
                 ).fetchone()[0]
             )
+
+    def test_unit_scoping_materials_include_legacy_and_uploaded_types(
+        self,
+    ) -> None:
+        with self._migrated_connection() as conn:
+            offering_id = conn.execute(
+                "SELECT unit_offering_id FROM unit_offerings"
+            ).fetchone()[0]
+            conn.executemany(
+                """
+                INSERT INTO unit_materials
+                    (unit_id, assignment_id, material_type, title,
+                     source_file_path, cleaned_text)
+                VALUES (1, ?, ?, ?, ?, ?)
+                """,
+                (
+                    (
+                        None,
+                        "lecture_transcript",
+                        "Week 1 lecture",
+                        "lectures/week_01.txt",
+                        "Lecture context.",
+                    ),
+                    (
+                        None,
+                        "scoping_note",
+                        "Additional note",
+                        "uploads/scope.pdf",
+                        "Additional context.",
+                    ),
+                    (
+                        1,
+                        "tutorial_sheet",
+                        "Assignment worksheet",
+                        "tutorials/a1.pdf",
+                        "Assignment context.",
+                    ),
+                ),
+            )
+            conn.commit()
+
+            details = get_unit_detail(conn, 1, offering_id)
+            self.assertEqual(
+                {
+                    material["material_type"]
+                    for material in details["scoping_notes"]
+                },
+                {"lecture_transcript", "scoping_note"},
+            )
+
+            lecture = next(
+                material
+                for material in details["scoping_notes"]
+                if material["material_type"] == "lecture_transcript"
+            )
+            deactivate_scoping_note(
+                conn,
+                1,
+                lecture["material_id"],
+                "Superseded teaching context.",
+            )
+            refreshed = get_unit_detail(conn, 1, offering_id)
+            inactive_lecture = next(
+                material
+                for material in refreshed["scoping_notes"]
+                if material["material_id"] == lecture["material_id"]
+            )
+            self.assertEqual(inactive_lecture["is_active"], 0)
 
     def test_roster_preview_requires_withdrawal_decision(self) -> None:
         with (
