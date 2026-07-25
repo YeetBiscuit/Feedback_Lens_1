@@ -12,6 +12,80 @@ Current defaults in the codebase:
 
 These are local machine paths and are intentionally not shared through git.
 
+## Web Admin And Uploads
+
+The Admin console stores uploaded source files under `uploads/` by default.
+This directory is local operational data and is ignored by git.
+
+Relevant environment variables:
+
+- `FEEDBACK_LENS_ENV` - use `production` on a deployed server; development is
+  the default
+- `FEEDBACK_LENS_UPLOAD_ROOT` - upload storage directory
+- `FEEDBACK_LENS_DOCUMENT_LIMIT_BYTES` - individual document limit; default
+  25 MiB
+- `FEEDBACK_LENS_ZIP_LIMIT_BYTES` - Moodle ZIP limit; default 1 GiB
+- `FEEDBACK_LENS_ZIP_ENTRY_LIMIT` - maximum ZIP entries; default 5,000
+- `FEEDBACK_LENS_ZIP_UNCOMPRESSED_LIMIT_BYTES` - maximum expanded ZIP size;
+  default 4 GiB
+- `FEEDBACK_LENS_ZIP_COMPRESSION_RATIO_LIMIT` - maximum permitted compression
+  ratio; default 100
+- `FEEDBACK_LENS_PUBLIC_BASE_URL` - public origin used in activation and reset
+  links; local default `http://127.0.0.1:5001`
+- `FEEDBACK_LENS_START_WORKER` - set to `0` when the web process must not start
+  the local background worker
+- `FEEDBACK_LENS_JOB_STALE_SECONDS` - time before an abandoned running job is
+  recovered; default 300 seconds
+
+`python app.py` starts the worker in a background thread for local development.
+For a deployed service, run `python worker.py` independently and configure the
+web process with `FEEDBACK_LENS_START_WORKER=0`.
+
+The Moodle summative importer expects the original **Download submissions in
+folders** ZIP. It rejects unsafe paths, symbolic links, deceptive PDF
+extensions, excessive entry counts, expanded sizes, and compression ratios.
+
+## Student Account Email
+
+Set `FEEDBACK_LENS_MAIL_BACKEND` to one of:
+
+- `memory` - tests only
+- `console` - local development; prints the email to the server console
+- `smtp` - deployed environment
+- `disabled` - account activation is shown as unavailable, while uploads remain
+  available
+
+Development defaults to `console`. When `FEEDBACK_LENS_ENV=production`, the
+mail backend defaults to `disabled` unless it is explicitly configured.
+
+SMTP requires:
+
+- `FEEDBACK_LENS_SMTP_HOST`
+- `FEEDBACK_LENS_SMTP_PORT` - default `587`
+- `FEEDBACK_LENS_MAIL_FROM`
+- `FEEDBACK_LENS_SMTP_USERNAME` and `FEEDBACK_LENS_SMTP_PASSWORD` when the
+  approved server requires authentication
+- `FEEDBACK_LENS_SMTP_STARTTLS` - default `1`
+
+Production email should use an SMTP service approved by the school. Feedback
+Lens does not require a commercial email subscription if the institution
+provides an approved SMTP relay.
+
+Activation links are valid for 72 hours by default and password-reset links for
+60 minutes. Override these with `FEEDBACK_LENS_ACTIVATION_TTL_HOURS` and
+`FEEDBACK_LENS_PASSWORD_RESET_TTL_MINUTES`.
+
+## Web Security
+
+Set a long random `FEEDBACK_LENS_SECRET_KEY` in every deployed environment. Do
+not use the development fallback in production. Set
+`FEEDBACK_LENS_SECURE_COOKIES=1` when the site is served over HTTPS.
+
+Account request limits default to five requests per identity and 30 per source
+address per hour. Configure them with `FEEDBACK_LENS_IDENTITY_RATE_LIMIT` and
+`FEEDBACK_LENS_SOURCE_RATE_LIMIT`. Only keyed, irreversible request hashes are
+recorded for these limits.
+
 ## LLM Provider Selection
 
 Feedback generation uses a provider registry in `feedback_lens/feedback/llm/providers.py`.

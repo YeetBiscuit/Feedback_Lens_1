@@ -79,6 +79,30 @@ $env:NVIDIA_API_KEY="your_key_here"
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 
+## Admin Upload Workflow
+
+The web Admin console replaces the per-file `ingest_unit.py` workflow for new
+teaching data:
+
+1. Run `python app.py` and log in as a Chief Admin or Unit Admin.
+2. Open `/admin/units`.
+3. Create the Unit and assessment, import the Moodle roster CSV, and upload
+   scoping notes, the assignment specification, and the rubric.
+4. Upload Moodle's original **Download submissions in folders** ZIP on the
+   assessment page.
+5. Review unmatched or invalid records while valid matched submissions
+   continue into the system.
+
+`python app.py` starts a local background worker automatically. In a deployed
+environment, run `python worker.py` as a separate long-running service and set
+`FEEDBACK_LENS_START_WORKER=0` for the web process.
+
+Student accounts are activated from a shared Unit link published in Moodle.
+The link only sends an activation email when the submitted student ID and
+institutional email match an active roster record. See
+[docs/configuration.md](docs/configuration.md) for upload, email, URL, and
+security settings.
+
 ## Demo Educator Account
 
 `python build.py` seeds a demo educator account when it initialises the

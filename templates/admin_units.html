@@ -1,0 +1,70 @@
+{% extends "admin_base.html" %}
+{% block title %}Units · Feedback Lens{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div><h1>Units</h1><p class="sub">Manage teaching periods, Unit Admins and assessments.</p></div>
+  <button id="create-btn" class="hidden" onclick="openCreate()">Create Unit</button>
+</div>
+<div id="message" class="hidden"></div>
+<div class="card">
+  <table>
+    <thead><tr><th>Unit</th><th>Period</th><th>Students</th><th>Assessments</th><th></th></tr></thead>
+    <tbody id="units"><tr><td colspan="5">Loading…</td></tr></tbody>
+  </table>
+</div>
+<dialog id="create-dialog">
+  <form class="dialog-body" onsubmit="submitCreate(event)">
+    <h2>Create Unit</h2>
+    <div class="grid">
+      <div><label>Unit code</label><input id="course-code" required placeholder="COMP3001"></div>
+      <div><label>Unit name</label><input id="course-name" required></div>
+      <div><label>Academic year</label><input id="academic-year" type="number" required></div>
+      <div><label>Teaching period</label><input id="teaching-period" required placeholder="Semester 1"></div>
+      <div><label>Faculty</label><input id="faculty"></div>
+      <div><label>Academic level</label><select id="academic-level"><option value="">Not set</option><option>Undergraduate</option><option>Postgraduate</option></select></div>
+    </div>
+    <div style="margin-top:14px"><label>Unit Admin</label><select id="unit-admin" required></select></div>
+    <div class="dialog-actions"><button type="button" class="secondary" onclick="document.getElementById('create-dialog').close()">Cancel</button><button>Create</button></div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+let candidates = [];
+async function load(){
+  try{
+    const data = await api('/api/admin/units');
+    document.getElementById('create-btn').classList.toggle('hidden', !data.is_chief_admin);
+    document.getElementById('units').innerHTML = data.units.length ? data.units.map(u => `
+      <tr><td><strong>${escapeHtml(u.course_code)}</strong><br><span class="muted">${escapeHtml(u.course_name)}</span></td>
+      <td>${escapeHtml(u.academic_year)} · ${escapeHtml(u.teaching_period)}</td>
+      <td>${u.active_student_count}</td><td>${u.assessment_count}</td>
+      <td><a class="button secondary" href="/admin/unit/${u.unit_offering_id}">Manage</a></td></tr>`).join('') : '<tr><td colspan="5">No Units are available.</td></tr>';
+    if(data.is_chief_admin){
+      const c = await api('/api/admin/unit-admin-candidates'); candidates = c.users;
+      document.getElementById('unit-admin').innerHTML = candidates.map(u => `<option value="${u.user_id}">${escapeHtml(u.display_name || u.email)} · ${escapeHtml(u.email)}</option>`).join('');
+    }
+  }catch(e){showMessage('message', e.message, true);}
+}
+function openCreate(){
+  document.getElementById('academic-year').value = new Date().getFullYear();
+  document.getElementById('create-dialog').showModal();
+}
+async function submitCreate(event){
+  event.preventDefault();
+  try{
+    const result = await api('/api/admin/units',{method:'POST',body:JSON.stringify({
+      course_code:document.getElementById('course-code').value,
+      course_name:document.getElementById('course-name').value,
+      academic_year:document.getElementById('academic-year').value,
+      teaching_period:document.getElementById('teaching-period').value,
+      faculty:document.getElementById('faculty').value,
+      academic_level:document.getElementById('academic-level').value,
+      unit_admin_user_id:document.getElementById('unit-admin').value
+    })});
+    location.href='/admin/unit/'+result.unit.unit_offering_id;
+  }catch(e){alert(e.message);}
+}
+load();
+</script>
+{% endblock %}

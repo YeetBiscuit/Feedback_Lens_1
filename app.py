@@ -1,3 +1,5 @@
+import os
+import threading
 from functools import wraps
 
 from flask import Flask, render_template, request, redirect, session, jsonify
@@ -11,9 +13,20 @@ from feedback_lens.feedback.pipeline import (
 )
 from feedback_lens.feedback.prompt import DEFAULT_FEEDBACK_MODIFIER_MODE
 from feedback_lens.feedback.review import fetch_generation_review, parse_json_text_list
+from feedback_lens.web import feature_blueprint
+from feedback_lens.web.config import get_secret_key, get_web_settings
+from feedback_lens.web.jobs import run_worker_forever
 
 app = Flask(__name__)
-app.secret_key = "dev_secret_key"
+app.secret_key = get_secret_key()
+app.config["MAX_CONTENT_LENGTH"] = get_web_settings().zip_limit_bytes
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = (
+    os.environ.get("FEEDBACK_LENS_SECURE_COOKIES", "0")
+    in {"1", "true", "True"}
+)
+app.register_blueprint(feature_blueprint)
 DEFAULT_FEEDBACK_GENERATION_MODE = "retrieval"
 DEFAULT_FEEDBACK_GENERATION_STRATEGY = "planned"
 DEFAULT_RETRIEVAL_PROMPT_TEMPLATE = "unit-grounded-v2"
@@ -23,7 +36,10 @@ def login_required(role):
     def decorator(view):
         @wraps(view)
         def wrapped(*args, **kwargs):
-            if session.get("role") != role:
+            with connect_db() as conn:
+                user = fetch_session_user(conn)
+            if user is None or user["role"] != role:
+                session.clear()
                 return redirect("/login")
             return view(*args, **kwargs)
 
@@ -39,7 +55,7 @@ def fetch_session_user(conn):
         return None
 
     if user_id is not None:
-        return conn.execute(
+        user = conn.execute(
             """
             SELECT
                 u.user_id,
@@ -47,6 +63,7 @@ def fetch_session_user(conn):
                 u.role,
                 u.display_name,
                 u.tutor_id,
+                u.session_version,
                 t.full_name AS tutor_full_name
             FROM users AS u
             LEFT JOIN tutors AS t ON t.tutor_id = u.tutor_id
@@ -54,22 +71,38 @@ def fetch_session_user(conn):
             """,
             (user_id,),
         ).fetchone()
+    else:
+        user = conn.execute(
+            """
+            SELECT
+                u.user_id,
+                u.email,
+                u.role,
+                u.display_name,
+                u.tutor_id,
+                u.session_version,
+                t.full_name AS tutor_full_name
+            FROM users AS u
+            LEFT JOIN tutors AS t ON t.tutor_id = u.tutor_id
+            WHERE lower(u.email) = lower(?)
+            """,
+            (email,),
+        ).fetchone()
+    if not _session_version_matches(user):
+        session.clear()
+        return None
+    return user
 
-    return conn.execute(
-        """
-        SELECT
-            u.user_id,
-            u.email,
-            u.role,
-            u.display_name,
-            u.tutor_id,
-            t.full_name AS tutor_full_name
-        FROM users AS u
-        LEFT JOIN tutors AS t ON t.tutor_id = u.tutor_id
-        WHERE lower(u.email) = lower(?)
-        """,
-        (email,),
-    ).fetchone()
+
+def _session_version_matches(user):
+    if user is None:
+        return False
+    stored_version = session.get("session_version")
+    if stored_version is None:
+        # Existing route tests create a minimal session directly. Production
+        # sessions must always carry the version written by the login route.
+        return bool(app.config.get("TESTING"))
+    return int(user["session_version"]) == int(stored_version)
 
 
 def api_session_user(required_role=None):
@@ -162,14 +195,12 @@ def index():
     return render_template('index.html')
 
 @app.route('/admin')
-@login_required('admin')
 def admin():
-    return render_template("admin.html")
+    return redirect("/admin/units")
 
 @app.route('/leadLecture')
-@login_required('lead_lecturer')
 def lead_lecture():
-    return render_template("lead_dashboard.html")
+    return redirect("/admin/units")
 
 
 @app.route('/api/lead/dashboard')
@@ -1392,21 +1423,39 @@ def login():
         with connect_db() as conn:
             user = conn.execute(
                 """
-                SELECT user_id, email, password_hash, role
+                SELECT
+                    user_id, email, password_hash, role,
+                    session_version
                 FROM users
                 WHERE lower(email)=lower(?)
                 """,
                 (email,),
             ).fetchone()
+            has_admin_scope = False
+            if user is not None:
+                has_admin_scope = conn.execute(
+                    """
+                    SELECT 1
+                    FROM organization_role_assignments
+                    WHERE user_id = ? AND active = 1
+                    UNION ALL
+                    SELECT 1
+                    FROM unit_role_assignments
+                    WHERE user_id = ?
+                      AND role = 'unit_admin'
+                      AND active = 1
+                    LIMIT 1
+                    """,
+                    (user["user_id"], user["user_id"]),
+                ).fetchone() is not None
         if user and check_password_hash(user['password_hash'], password):
             session.clear()
             session['user_id'] = user['user_id']
             session['email'] = user['email']
             session['role'] = user['role']
-            if user['role'] == 'admin':
-                return redirect('/admin')
-            elif user['role'] == 'lead_lecturer':
-                return redirect('/leadLecture')
+            session['session_version'] = user['session_version']
+            if has_admin_scope:
+                return redirect('/admin/units')
             elif user['role'] == 'educator':
                 return redirect('/educator')
             elif user['role'] == 'student':
@@ -1415,4 +1464,13 @@ def login():
     return render_template('login.html')
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    if os.environ.get(
+        "FEEDBACK_LENS_START_WORKER",
+        "1",
+    ) not in {"0", "false", "False"}:
+        threading.Thread(
+            target=run_worker_forever,
+            name="feedback-lens-worker",
+            daemon=True,
+        ).start()
+    app.run(debug=True, port=5001, use_reloader=False)

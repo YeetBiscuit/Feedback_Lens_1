@@ -135,6 +135,7 @@ def _fetch_rows_by_vector_id(
         JOIN unit_materials AS um ON um.material_id = mc.material_id
         WHERE cem.vector_store_name = ?
           AND cem.vector_id IN ({placeholders})
+          AND um.is_active = 1
         """,
         (collection_name, *vector_ids),
     ).fetchall()
