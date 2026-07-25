@@ -149,7 +149,11 @@ class DatabaseV2Tests(unittest.TestCase):
             ).fetchall()
             self.assertEqual(
                 [(row["version"], row["name"]) for row in migrations],
-                [(1, "legacy_stabilization"), (2, "database_v2")],
+                [
+                    (1, "legacy_stabilization"),
+                    (2, "database_v2"),
+                    (3, "feature_completion"),
+                ],
             )
 
     def test_existing_records_are_backfilled_into_v2(self) -> None:

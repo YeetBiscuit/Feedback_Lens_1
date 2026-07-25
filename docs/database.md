@@ -56,11 +56,28 @@ That reset:
 
 The operator must type `YES` exactly to proceed.
 
-## V2 Domain Model
+## Frozen Domain Model
 
 Database V2 adds a durable domain model around the original generation tables.
 The original tables remain temporarily as a compatibility layer so the current
 generation, review, import, and export features continue to work unchanged.
+
+The final `feature_completion` migration does not introduce another domain
+redesign. It only adds the persistence required by the frozen student-account
+and administrative-upload workflows:
+
+- roster CSV preview, mapped rows, import differences, and withdrawal review;
+- roster-restricted activation and password-reset token state;
+- durable processing jobs for the supported uploads and account email;
+- per-folder Moodle batch matching and exception review;
+- one explicit current summative attempt per student and immutable invalid
+  history after replacement;
+- student institutional name/email, login session invalidation, and scoping
+  material deactivation.
+
+Schema changes are now frozen for this delivery. Multi-file submissions, OCR,
+Moodle API synchronisation, student summative upload, and provider-specific
+email infrastructure are future scope rather than placeholders in this schema.
 
 ### Organisation, permissions, and enrolment
 
@@ -208,12 +225,14 @@ The baseline schema is `feedback_lens/setup/schema.sql`. Ordered migration SQL
 lives under `feedback_lens/setup/migrations/`, and migration orchestration and
 data backfill live in `feedback_lens/db/migrations.py`.
 
-The current schema version is 2:
+The current schema version is 3:
 
 1. V1 stabilization converts former runtime patches into a one-time migration
    and normalizes legacy indexes and columns.
 2. V2 creates the scoped role, assessment, submission workflow, revision,
    provenance, audit, and privacy tables, then backfills existing data.
+3. `feature_completion` supplies the bounded account and upload state listed
+   above without replacing the V2 domain model.
 
 Migration execution is transactional, checksum-verified, idempotent, and ends
 with a foreign-key check. Application code should call `connect_db()`; setup and

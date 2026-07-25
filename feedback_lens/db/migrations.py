@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "setup" / "migrations"
 
 
@@ -1637,6 +1637,164 @@ def _migration_002_database_v2(conn: sqlite3.Connection) -> None:
     _backfill_retrieval_provenance(conn)
 
 
+def _migration_003_feature_completion(conn: sqlite3.Connection) -> None:
+    """
+    Add the bounded persistence needed by the frozen account/upload workflows.
+
+    This migration deliberately leaves the V2 domain model intact.  It adds
+    identity/contact fields, account-token state, roster and upload processing
+    records, batch review items, and explicit summative-attempt validity.
+    """
+
+    _ensure_column(
+        conn,
+        "users",
+        "session_version",
+        "INTEGER NOT NULL DEFAULT 1 CHECK (session_version > 0)",
+    )
+    _ensure_column(conn, "students", "full_name", "TEXT")
+    _ensure_column(
+        conn,
+        "students",
+        "institution_email",
+        "TEXT COLLATE NOCASE",
+    )
+    _ensure_column(
+        conn,
+        "unit_materials",
+        "is_active",
+        "INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1))",
+    )
+    _ensure_column(
+        conn,
+        "unit_materials",
+        "deactivated_by_user_id",
+        "INTEGER REFERENCES users(user_id) ON DELETE SET NULL",
+    )
+    _ensure_column(conn, "unit_materials", "deactivated_at", "TEXT")
+    _ensure_column(conn, "unit_materials", "deactivation_reason", "TEXT")
+    _ensure_column(
+        conn,
+        "submission_attempts",
+        "validity_status",
+        (
+            "TEXT NOT NULL DEFAULT 'valid' "
+            "CHECK (validity_status IN ('valid', 'superseded', 'void'))"
+        ),
+    )
+    _ensure_column(
+        conn,
+        "submission_attempts",
+        "superseded_by_attempt_id",
+        (
+            "INTEGER REFERENCES submission_attempts(submission_attempt_id) "
+            "ON DELETE RESTRICT"
+        ),
+    )
+    _ensure_column(
+        conn,
+        "submission_attempts",
+        "invalidated_by_user_id",
+        "INTEGER REFERENCES users(user_id) ON DELETE SET NULL",
+    )
+    _ensure_column(conn, "submission_attempts", "invalidated_at", "TEXT")
+    _ensure_column(conn, "submission_attempts", "invalidation_reason", "TEXT")
+
+    duplicate_email = conn.execute(
+        """
+        SELECT lower(trim(email)) AS normalized_email
+        FROM users
+        GROUP BY lower(trim(email))
+        HAVING COUNT(*) > 1
+        LIMIT 1
+        """
+    ).fetchone()
+    if duplicate_email is not None:
+        raise DatabaseSchemaError(
+            "Student account support requires case-insensitive unique user "
+            "emails. Resolve the duplicate email before migrating: "
+            f"{duplicate_email['normalized_email']}"
+        )
+
+    conn.execute(
+        """
+        UPDATE students
+        SET full_name = COALESCE(
+                full_name,
+                (
+                    SELECT display_name
+                    FROM users
+                    WHERE users.user_id = students.user_id
+                )
+            ),
+            institution_email = COALESCE(
+                institution_email,
+                (
+                    SELECT email
+                    FROM users
+                    WHERE users.user_id = students.user_id
+                )
+            )
+        WHERE user_id IS NOT NULL
+        """
+    )
+
+    migration_path = MIGRATIONS_DIR / "003_feature_completion.sql"
+    if not migration_path.exists():
+        raise DatabaseSchemaError(
+            f"Database migration file is missing: {migration_path}"
+        )
+    _execute_sql_script(
+        conn,
+        migration_path.read_text(encoding="utf-8"),
+    )
+
+    # Existing V2 summative attempts become the initial current attempt for
+    # their primary participant.  Later replacements update this pointer
+    # before invalidating the previous attempt.
+    conn.execute(
+        """
+        INSERT OR IGNORE INTO current_summative_attempts
+            (assessment_activity_id, student_id, submission_attempt_id)
+        SELECT
+            attempt.assessment_activity_id,
+            participant.student_id,
+            attempt.submission_attempt_id
+        FROM submission_attempts AS attempt
+        JOIN submission_participants AS participant
+          ON participant.submission_attempt_id =
+             attempt.submission_attempt_id
+         AND participant.participant_role = 'primary'
+        WHERE attempt.purpose = 'summative'
+          AND attempt.validity_status = 'valid'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM submission_attempts AS newer_attempt
+              JOIN submission_participants AS newer_participant
+                ON newer_participant.submission_attempt_id =
+                   newer_attempt.submission_attempt_id
+               AND newer_participant.participant_role = 'primary'
+              WHERE newer_attempt.assessment_activity_id =
+                    attempt.assessment_activity_id
+                AND newer_participant.student_id =
+                    participant.student_id
+                AND newer_attempt.purpose = 'summative'
+                AND newer_attempt.validity_status = 'valid'
+                AND (
+                    newer_attempt.attempt_number >
+                    attempt.attempt_number
+                    OR (
+                        newer_attempt.attempt_number =
+                        attempt.attempt_number
+                        AND newer_attempt.submission_attempt_id >
+                            attempt.submission_attempt_id
+                    )
+                )
+          )
+        """
+    )
+
+
 def _migration_checksum(version: int) -> str:
     if version == 1:
         content = b"001_legacy_stabilization_v1"
@@ -1646,6 +1804,12 @@ def _migration_checksum(version: int) -> str:
             migration_path.read_bytes()
             + b"\n002_database_v2_backfill_v1"
         )
+    elif version == 3:
+        migration_path = MIGRATIONS_DIR / "003_feature_completion.sql"
+        content = (
+            migration_path.read_bytes()
+            + b"\n003_feature_completion_backfill_v1"
+        )
     else:
         raise ValueError(f"Unknown migration version: {version}")
     return hashlib.sha256(content).hexdigest()
@@ -1654,6 +1818,7 @@ def _migration_checksum(version: int) -> str:
 MIGRATIONS = (
     (1, "legacy_stabilization", _migration_001_legacy_stabilization),
     (2, "database_v2", _migration_002_database_v2),
+    (3, "feature_completion", _migration_003_feature_completion),
 )
 
 
