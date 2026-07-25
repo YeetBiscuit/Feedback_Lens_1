@@ -2,7 +2,7 @@ import sqlite3
 import unittest
 from unittest.mock import patch
 
-from feedback_lens.db.connection import ensure_schema_updates
+from feedback_lens.db.migrations import migrate_database
 from feedback_lens.feedback.retrieval import retrieve_relevant_chunks
 from feedback_lens.paths import SCHEMA_PATH
 
@@ -12,7 +12,7 @@ def _connect_retrieval_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    ensure_schema_updates(conn)
+    migrate_database(conn)
 
     conn.execute(
         """

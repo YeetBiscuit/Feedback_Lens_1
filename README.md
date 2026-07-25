@@ -81,19 +81,22 @@ The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 
 ## Demo Educator Account
 
-Local database connections seed a demo educator account for frontend testing:
+`python build.py` seeds a demo educator account when it initialises the
+repository's default local database:
 
 - Email: `educator@test.com`
 - Password: `123456`
 - Role: `educator`
 - Display name: `Demo Educator`
 
-The account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to all units currently present in the local database.
+The account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to
+all units currently present in the local database. Opening an ordinary database
+connection never creates accounts or changes the schema.
 
 ## Code Layout
 
-- `feedback_lens/setup/` - setup and schema logic
-- `feedback_lens/db/` - database connection and schema-update helpers
+- `feedback_lens/setup/` - baseline schema and versioned migration SQL
+- `feedback_lens/db/` - database connections, schema validation, and migration runner
 - `feedback_lens/file_management/` - document readers, importers, parsing, ingestion, chunking, and embedding
 - `feedback_lens/feedback/` - retrieval, prompting, LLM providers, and feedback pipeline
 - `feedback_lens/cli/` - internal CLI implementations

@@ -4,7 +4,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import app as app_module
-from feedback_lens.db.connection import ensure_schema_updates
+from feedback_lens.db.migrations import migrate_database
 from feedback_lens.paths import SCHEMA_PATH
 
 
@@ -13,7 +13,7 @@ def _connect_app_feedback_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    ensure_schema_updates(conn)
+    migrate_database(conn)
 
     conn.execute(
         """

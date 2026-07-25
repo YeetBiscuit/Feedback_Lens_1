@@ -3,6 +3,9 @@
 -- Baseline version
 -- =====================================================
 
+-- Feedback Lens legacy baseline schema.
+-- New databases must run the ordered migrations after this script; use
+-- `python build.py` rather than executing this file alone.
 PRAGMA foreign_keys = ON;
 
 -- =========================

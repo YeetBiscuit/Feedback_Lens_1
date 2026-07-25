@@ -2,7 +2,7 @@ import json
 import sqlite3
 import unittest
 
-from feedback_lens.db.connection import ensure_schema_updates
+from feedback_lens.db.migrations import migrate_database
 from feedback_lens.feedback.review import (
     DETAIL_FULL,
     DETAIL_RESULT_ONLY,
@@ -20,7 +20,7 @@ def _connect_sample_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    ensure_schema_updates(conn)
+    migrate_database(conn)
 
     conn.execute(
         """
