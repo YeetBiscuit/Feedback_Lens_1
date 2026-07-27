@@ -5,10 +5,12 @@ from pathlib import Path
 
 from flask import (
     Blueprint,
+    current_app,
     jsonify,
     redirect,
     render_template,
     request,
+    send_file,
     session,
 )
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -30,12 +32,16 @@ from feedback_lens.web.admin_service import (
     create_assessment,
     create_roster_import,
     create_unit,
+    get_assessment_document_download,
     get_assessment_detail,
     get_roster_import,
+    get_scoping_note_download,
     get_unit_detail,
     list_admin_units,
     list_unit_admin_candidates,
     preview_roster_import,
+    update_assessment,
+    update_unit,
 )
 from feedback_lens.web.errors import ApiError
 from feedback_lens.web.config import get_web_settings
@@ -57,7 +63,9 @@ from feedback_lens.web.upload_service import (
     activate_latest_assessment_version,
     create_submission_batch,
     deactivate_scoping_note,
+    delete_scoping_note,
     enqueue_document_upload,
+    enqueue_scoping_note_restore,
     get_submission_batch,
     resolve_submission_batch_item,
 )
@@ -215,6 +223,23 @@ def api_admin_units():
                 ),
             }
         )
+
+
+@feature_blueprint.patch(
+    "/api/admin/unit-offerings/<int:unit_offering_id>"
+)
+@require_json_user
+@require_csrf
+def api_update_unit(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = update_unit(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result)
 
 
 @feature_blueprint.post("/api/admin/units")
@@ -409,29 +434,91 @@ def api_upload_scoping_note(unit_offering_id: int):
             unit_offering_id,
         ):
             raise ApiError("unit_forbidden", "Not authorised.", 403)
-        upload = store_upload(
-            request.files.get("file"),
-            "scoping-notes",
-            {".pdf", ".txt"},
-        )
-        try:
-            job_id = enqueue_document_upload(
-                conn,
-                int(user["user_id"]),
-                "scoping_note_ingest",
-                upload,
-                unit_offering_id=unit_offering_id,
-                title=request.form.get("title"),
+        files = request.files.getlist("files")
+        if not files:
+            files = [request.files.get("file")]
+        results = []
+        job_ids = []
+        for file_storage in files:
+            file_name = (
+                Path(file_storage.filename).name
+                if file_storage is not None and file_storage.filename
+                else "Unnamed file"
             )
-        except Exception:
-            remove_stored_upload(upload.storage_path)
-            raise
-    return jsonify(
-        {
-            "processing_job_id": job_id,
-            "status_url": f"/api/jobs/{job_id}",
-        }
-    ), 202
+            try:
+                upload = store_upload(
+                    file_storage,
+                    "scoping-notes",
+                    {".pdf", ".txt"},
+                )
+            except UploadValidationError as exc:
+                results.append(
+                    {
+                        "file_name": file_name,
+                        "status": "rejected",
+                        "error": str(exc),
+                    }
+                )
+                continue
+            try:
+                job_id = enqueue_document_upload(
+                    conn,
+                    int(user["user_id"]),
+                    "scoping_note_ingest",
+                    upload,
+                    unit_offering_id=unit_offering_id,
+                    title=(
+                        request.form.get("title")
+                        if len(files) == 1
+                        else None
+                    ),
+                )
+            except Exception:
+                remove_stored_upload(upload.storage_path)
+                current_app.logger.exception(
+                    "Could not queue scoping material %s",
+                    file_name,
+                )
+                results.append(
+                    {
+                        "file_name": file_name,
+                        "status": "rejected",
+                        "error": "The file could not be queued for processing.",
+                    }
+                )
+                continue
+            job_ids.append(job_id)
+            results.append(
+                {
+                    "file_name": upload.original_file_name,
+                    "status": "queued",
+                    "processing_job_id": job_id,
+                    "status_url": f"/api/jobs/{job_id}",
+                }
+            )
+    if not job_ids:
+        return (
+            jsonify(
+                {
+                    "error": {
+                        "code": "upload_invalid",
+                        "message": "No scoping materials were accepted.",
+                        "details": {"uploads": results},
+                    }
+                }
+            ),
+            422,
+        )
+    response = {
+        "accepted_count": len(job_ids),
+        "rejected_count": len(results) - len(job_ids),
+        "processing_job_ids": job_ids,
+        "uploads": results,
+    }
+    if len(job_ids) == 1:
+        response["processing_job_id"] = job_ids[0]
+        response["status_url"] = f"/api/jobs/{job_ids[0]}"
+    return jsonify(response), 202
 
 
 @feature_blueprint.post(
@@ -452,6 +539,63 @@ def api_deactivate_scoping_note(material_id: int):
     return jsonify({"status": "deactivated"})
 
 
+@feature_blueprint.post(
+    "/api/admin/scoping-notes/<int:material_id>/restore"
+)
+@require_json_user
+@require_csrf
+def api_restore_scoping_note(material_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        job_id = enqueue_scoping_note_restore(
+            conn,
+            int(user["user_id"]),
+            material_id,
+        )
+    return jsonify(
+        {
+            "status": "queued",
+            "processing_job_id": job_id,
+            "status_url": f"/api/jobs/{job_id}",
+        }
+    ), 202
+
+
+@feature_blueprint.delete(
+    "/api/admin/scoping-notes/<int:material_id>"
+)
+@require_json_user
+@require_csrf
+def api_delete_scoping_note(material_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        delete_scoping_note(
+            conn,
+            int(user["user_id"]),
+            material_id,
+        )
+    return jsonify({"status": "deleted"})
+
+
+@feature_blueprint.get(
+    "/api/admin/scoping-notes/<int:material_id>/download"
+)
+@require_json_user
+def api_download_scoping_note(material_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        path, download_name = get_scoping_note_download(
+            conn,
+            int(user["user_id"]),
+            material_id,
+        )
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=download_name,
+    )
+
+
 @feature_blueprint.get(
     "/api/admin/assessments/<int:assessment_plan_id>"
 )
@@ -465,6 +609,63 @@ def api_assessment_detail(assessment_plan_id: int):
             assessment_plan_id,
         )
     return jsonify(result)
+
+
+@feature_blueprint.patch(
+    "/api/admin/assessments/<int:assessment_plan_id>"
+)
+@require_json_user
+@require_csrf
+def api_update_assessment(assessment_plan_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = update_assessment(
+            conn,
+            int(user["user_id"]),
+            assessment_plan_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.get(
+    "/api/admin/specifications/<int:spec_id>/download"
+)
+@require_json_user
+def api_download_specification(spec_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        path, download_name = get_assessment_document_download(
+            conn,
+            int(user["user_id"]),
+            "specification",
+            spec_id,
+        )
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=download_name,
+    )
+
+
+@feature_blueprint.get(
+    "/api/admin/rubrics/<int:rubric_id>/download"
+)
+@require_json_user
+def api_download_rubric(rubric_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        path, download_name = get_assessment_document_download(
+            conn,
+            int(user["user_id"]),
+            "rubric",
+            rubric_id,
+        )
+    return send_file(
+        path,
+        as_attachment=True,
+        download_name=download_name,
+    )
 
 
 def _enqueue_assessment_document(

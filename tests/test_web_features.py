@@ -1,6 +1,7 @@
 import gc
 import hashlib
 import io
+import json
 import os
 import re
 import sqlite3
@@ -32,6 +33,8 @@ from feedback_lens.web.admin_service import (
     create_unit,
     get_unit_detail,
     preview_roster_import,
+    update_assessment,
+    update_unit,
 )
 from feedback_lens.web.errors import ApiError
 from feedback_lens.web.mail import MEMORY_OUTBOX
@@ -40,6 +43,8 @@ from feedback_lens.web.upload_service import (
     activate_latest_assessment_version,
     create_submission_batch,
     deactivate_scoping_note,
+    delete_scoping_note,
+    enqueue_scoping_note_restore,
     get_submission_batch,
     handle_processing_job,
     resolve_submission_batch_item,
@@ -161,6 +166,209 @@ class WebFeatureServiceTests(unittest.TestCase):
                 ).fetchone()[0]
             )
 
+    def test_unit_edit_is_audited_and_code_locks_after_materials(
+        self,
+    ) -> None:
+        with self._migrated_connection() as conn:
+            with self.assertRaises(ApiError) as create_conflict:
+                create_unit(
+                    conn,
+                    1,
+                    {
+                        "course_code": "COMP2001",
+                        "course_name": "Accidental Wrong Name",
+                        "academic_year": 2026,
+                        "teaching_period": "Semester 2",
+                        "unit_admin_user_id": 2,
+                    },
+                )
+            self.assertEqual(
+                create_conflict.exception.code,
+                "unit_code_conflict",
+            )
+            self.assertEqual(
+                conn.execute(
+                    """
+                    SELECT course_name
+                    FROM courses
+                    WHERE course_code = 'COMP2001'
+                    """
+                ).fetchone()[0],
+                "Database Systems",
+            )
+
+            created = create_unit(
+                conn,
+                1,
+                {
+                    "course_code": "COMP3999",
+                    "course_name": "Honours Project",
+                    "academic_year": 2026,
+                    "teaching_period": "Semester 2",
+                    "unit_admin_user_id": 2,
+                },
+            )
+            offering_id = created["unit"]["unit_offering_id"]
+            updated = update_unit(
+                conn,
+                1,
+                offering_id,
+                {
+                    "course_code": "COMP3998",
+                    "course_name": "Honours Research Project",
+                },
+            )
+            self.assertEqual(
+                updated["unit"]["course_code"],
+                "COMP3998",
+            )
+            self.assertEqual(
+                tuple(
+                    conn.execute(
+                        """
+                        SELECT unit_code, unit_name
+                        FROM units
+                        WHERE unit_id = ?
+                        """,
+                        (updated["unit"]["legacy_unit_id"],),
+                    ).fetchone()
+                ),
+                ("COMP3998", "Honours Research Project"),
+            )
+            self.assertEqual(
+                conn.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM audit_events
+                    WHERE event_type = 'unit.updated'
+                      AND entity_id = ?
+                    """,
+                    (str(offering_id),),
+                ).fetchone()[0],
+                1,
+            )
+            with self.assertRaises(ApiError) as conflict:
+                update_unit(
+                    conn,
+                    1,
+                    offering_id,
+                    {
+                        "course_code": "COMP2001",
+                        "course_name": "Updated Project Name",
+                    },
+                )
+            self.assertEqual(conflict.exception.code, "unit_code_conflict")
+
+            conn.execute(
+                """
+                INSERT INTO unit_materials
+                    (unit_id, material_type, title, cleaned_text)
+                VALUES (?, 'scoping_note', 'Context', 'Teaching context')
+                """,
+                (updated["unit"]["legacy_unit_id"],),
+            )
+            conn.commit()
+            with self.assertRaises(ApiError) as locked:
+                update_unit(
+                    conn,
+                    1,
+                    offering_id,
+                    {
+                        "course_code": "COMP3997",
+                        "course_name": "Honours Research Project",
+                    },
+                )
+            self.assertEqual(locked.exception.code, "unit_code_locked")
+
+            renamed = update_unit(
+                conn,
+                1,
+                offering_id,
+                {
+                    "course_code": "COMP3998",
+                    "course_name": "Updated Project Name",
+                },
+            )
+            self.assertEqual(
+                renamed["unit"]["course_name"],
+                "Updated Project Name",
+            )
+
+    def test_assessment_metadata_edit_preserves_grading_state(self) -> None:
+        with self._migrated_connection() as conn:
+            plan_id = conn.execute(
+                "SELECT assessment_plan_id FROM assessment_plans"
+            ).fetchone()[0]
+            before = {
+                "versions": conn.execute(
+                    "SELECT COUNT(*) FROM assessment_plan_versions"
+                ).fetchone()[0],
+                "attempts": conn.execute(
+                    "SELECT COUNT(*) FROM submission_attempts"
+                ).fetchone()[0],
+                "results": [
+                    tuple(row)
+                    for row in conn.execute(
+                        """
+                        SELECT submission_attempt_id,
+                               current_feedback_revision_id,
+                               calculated_total_mark,
+                               final_total_mark,
+                               marker_confirmed_by_user_id,
+                               admin_confirmed_by_user_id
+                        FROM assessment_results
+                        ORDER BY submission_attempt_id
+                        """
+                    )
+                ],
+            }
+            updated = update_assessment(
+                conn,
+                1,
+                plan_id,
+                {
+                    "assessment_code": "A1-UPDATED",
+                    "title": "Updated assignment title",
+                    "due_date": "2026-09-30",
+                    "weight": 45,
+                },
+            )
+            assessment = updated["assessment"]
+            self.assertEqual(assessment["assessment_code"], "A1-UPDATED")
+            self.assertEqual(assessment["title"], "Updated assignment title")
+            self.assertEqual(assessment["due_date"], "2026-09-30")
+            self.assertEqual(assessment["weight"], 45)
+            self.assertEqual(
+                conn.execute(
+                    "SELECT COUNT(*) FROM assessment_plan_versions"
+                ).fetchone()[0],
+                before["versions"],
+            )
+            self.assertEqual(
+                conn.execute(
+                    "SELECT COUNT(*) FROM submission_attempts"
+                ).fetchone()[0],
+                before["attempts"],
+            )
+            self.assertEqual(
+                [
+                    tuple(row)
+                    for row in conn.execute(
+                        """
+                        SELECT submission_attempt_id,
+                               current_feedback_revision_id,
+                               calculated_total_mark,
+                               final_total_mark,
+                               marker_confirmed_by_user_id,
+                               admin_confirmed_by_user_id
+                        FROM assessment_results
+                        ORDER BY submission_attempt_id
+                        """
+                    )
+                ],
+                before["results"],
+            )
+
     def test_unit_scoping_materials_include_legacy_and_uploaded_types(
         self,
     ) -> None:
@@ -199,6 +407,25 @@ class WebFeatureServiceTests(unittest.TestCase):
                     ),
                 ),
             )
+            conn.execute(
+                """
+                INSERT INTO processing_jobs
+                    (job_type, unit_offering_id, created_by_user_id,
+                     source_file_path, payload_json, status)
+                VALUES
+                    ('scoping_note_ingest', ?, 1, ?, ?, 'succeeded')
+                """,
+                (
+                    offering_id,
+                    "/srv/feedback/uploads/scope.pdf",
+                    json.dumps(
+                        {
+                            "original_file_name":
+                                "Additional context from Moodle.pdf"
+                        }
+                    ),
+                ),
+            )
             conn.commit()
 
             details = get_unit_detail(conn, 1, offering_id)
@@ -208,6 +435,15 @@ class WebFeatureServiceTests(unittest.TestCase):
                     for material in details["scoping_notes"]
                 },
                 {"lecture_transcript", "scoping_note"},
+            )
+            uploaded = next(
+                material
+                for material in details["scoping_notes"]
+                if material["material_type"] == "scoping_note"
+            )
+            self.assertEqual(
+                uploaded["display_file_name"],
+                "Additional context from Moodle.pdf",
             )
 
             lecture = next(
@@ -228,6 +464,177 @@ class WebFeatureServiceTests(unittest.TestCase):
                 if material["material_id"] == lecture["material_id"]
             )
             self.assertEqual(inactive_lecture["is_active"], 0)
+
+    def test_scoping_material_restore_and_delete_lifecycle(self) -> None:
+        previous_upload_root = os.environ.get("FEEDBACK_LENS_UPLOAD_ROOT")
+        with (
+            self._migrated_connection() as conn,
+            tempfile.TemporaryDirectory(dir=Path.cwd()) as tmp,
+        ):
+            upload_root = Path(tmp) / "uploads"
+            source_dir = upload_root / "scoping-notes" / "test-material"
+            source_dir.mkdir(parents=True)
+            source = source_dir / "source.txt"
+            source.write_text("Restorable teaching context.", encoding="utf-8")
+            os.environ["FEEDBACK_LENS_UPLOAD_ROOT"] = str(upload_root)
+            try:
+                offering_id = conn.execute(
+                    "SELECT unit_offering_id FROM unit_offerings"
+                ).fetchone()[0]
+                material_id = int(
+                    conn.execute(
+                        """
+                        INSERT INTO unit_materials
+                            (unit_id, material_type, title,
+                             source_file_path, source_content_hash,
+                             raw_text, cleaned_text)
+                        VALUES (
+                            1, 'scoping_note', 'Restorable note',
+                            ?, ?, ?, ?
+                        )
+                        """,
+                        (
+                            str(source),
+                            _file_hash(source),
+                            "Restorable teaching context.",
+                            "Restorable teaching context.",
+                        ),
+                    ).lastrowid
+                )
+                conn.execute(
+                    """
+                    INSERT INTO material_chunks
+                        (material_id, chunk_index, chunk_text,
+                         page_number_start, page_number_end,
+                         token_count, chunking_strategy)
+                    VALUES (?, 0, ?, 1, 1, 3, 'test')
+                    """,
+                    (material_id, "Restorable teaching context."),
+                )
+                conn.execute(
+                    """
+                    INSERT INTO processing_jobs
+                        (job_type, unit_offering_id, created_by_user_id,
+                         source_file_path, source_content_hash,
+                         payload_json, status)
+                    VALUES (
+                        'scoping_note_ingest', ?, 1, ?, ?, ?,
+                        'succeeded'
+                    )
+                    """,
+                    (
+                        offering_id,
+                        str(source),
+                        _file_hash(source),
+                        json.dumps(
+                            {"original_file_name": "teaching-context.txt"}
+                        ),
+                    ),
+                )
+                conn.commit()
+
+                deactivate_scoping_note(
+                    conn,
+                    1,
+                    material_id,
+                    "Temporarily removed.",
+                )
+                job_id = enqueue_scoping_note_restore(conn, 1, material_id)
+                job = conn.execute(
+                    """
+                    SELECT *
+                    FROM processing_jobs
+                    WHERE processing_job_id = ?
+                    """,
+                    (job_id,),
+                ).fetchone()
+                with mock.patch(
+                    "feedback_lens.web.upload_service.embed_and_store",
+                    side_effect=lambda chunks, collection: [
+                        str(chunk["chunk_id"]) for chunk in chunks
+                    ],
+                ):
+                    restored = handle_processing_job(conn, job)
+                restored_id = restored["material_id"]
+                details = get_unit_detail(conn, 1, offering_id)
+                visible_ids = {
+                    item["material_id"]
+                    for item in details["scoping_notes"]
+                }
+                self.assertNotIn(material_id, visible_ids)
+                self.assertIn(restored_id, visible_ids)
+                restored_item = next(
+                    item
+                    for item in details["scoping_notes"]
+                    if item["material_id"] == restored_id
+                )
+                self.assertEqual(
+                    restored_item["display_file_name"],
+                    "teaching-context.txt",
+                )
+
+                fake_client = mock.Mock()
+                fake_client.list_collections.return_value = []
+                with mock.patch(
+                    "feedback_lens.web.upload_service.get_chroma_client",
+                    return_value=fake_client,
+                ):
+                    deactivate_scoping_note(
+                        conn,
+                        1,
+                        restored_id,
+                        "No longer required.",
+                    )
+                    delete_scoping_note(conn, 1, restored_id)
+
+                deleted = conn.execute(
+                    """
+                    SELECT material_type, source_file_path,
+                           raw_text, cleaned_text
+                    FROM unit_materials
+                    WHERE material_id = ?
+                    """,
+                    (restored_id,),
+                ).fetchone()
+                self.assertEqual(deleted["material_type"], "deleted_scoping_note")
+                self.assertIsNone(deleted["source_file_path"])
+                self.assertIsNone(deleted["raw_text"])
+                self.assertEqual(deleted["cleaned_text"], "")
+                self.assertFalse(source.exists())
+                deleted_details = get_unit_detail(conn, 1, offering_id)
+                deleted_item = next(
+                    item
+                    for item in deleted_details["scoping_notes"]
+                    if item["material_id"] == restored_id
+                )
+                self.assertEqual(
+                    deleted_item["lifecycle_status"],
+                    "deleted",
+                )
+                self.assertEqual(
+                    deleted_item["display_file_name"],
+                    "teaching-context.txt",
+                )
+                self.assertIsNone(deleted_item["download_url"])
+                self.assertEqual(
+                    conn.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM data_lifecycle_events
+                        WHERE action = 'permanent_delete'
+                          AND entity_identifier = ?
+                        """,
+                        (str(restored_id),),
+                    ).fetchone()[0],
+                    1,
+                )
+            finally:
+                if previous_upload_root is None:
+                    os.environ.pop("FEEDBACK_LENS_UPLOAD_ROOT", None)
+                else:
+                    os.environ["FEEDBACK_LENS_UPLOAD_ROOT"] = (
+                        previous_upload_root
+                    )
 
     def test_roster_preview_requires_withdrawal_decision(self) -> None:
         with (
@@ -769,6 +1176,220 @@ class WebFeatureRouteTests(unittest.TestCase):
         )
         self.assertEqual(forbidden.status_code, 403)
 
+    def test_admin_edit_routes_respect_scope_and_preserve_marks(self) -> None:
+        self._authenticate(1)
+        renamed = self.client.patch(
+            "/api/admin/unit-offerings/1",
+            json={
+                "course_code": "COMP2001",
+                "course_name": "Updated Database Systems",
+            },
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+        self.assertEqual(renamed.status_code, 200)
+        self.assertEqual(
+            renamed.get_json()["unit"]["course_name"],
+            "Updated Database Systems",
+        )
+
+        with open_database(self.database_path) as conn:
+            marks_before = [
+                tuple(row)
+                for row in conn.execute(
+                    """
+                    SELECT submission_attempt_id,
+                           calculated_total_mark,
+                           final_total_mark
+                    FROM assessment_results
+                    ORDER BY submission_attempt_id
+                    """
+                )
+            ]
+        edited = self.client.patch(
+            "/api/admin/assessments/1",
+            json={
+                "assessment_code": "A1-NEW",
+                "title": "Revised assignment label",
+                "due_date": "2026-10-01",
+                "weight": 55,
+            },
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+        self.assertEqual(edited.status_code, 200)
+        self.assertEqual(
+            edited.get_json()["assessment"]["title"],
+            "Revised assignment label",
+        )
+        with open_database(self.database_path) as conn:
+            marks_after = [
+                tuple(row)
+                for row in conn.execute(
+                    """
+                    SELECT submission_attempt_id,
+                           calculated_total_mark,
+                           final_total_mark
+                    FROM assessment_results
+                    ORDER BY submission_attempt_id
+                    """
+                )
+            ]
+        self.assertEqual(marks_after, marks_before)
+
+        self.client.get("/logout")
+        self._authenticate(2)
+        forbidden = self.client.patch(
+            "/api/admin/unit-offerings/1",
+            json={
+                "course_code": "COMP2001",
+                "course_name": "Unit Admin Rename Attempt",
+            },
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+        self.assertEqual(forbidden.status_code, 403)
+
+    def test_admin_can_download_uploaded_source_documents(self) -> None:
+        upload_root = Path(os.environ["FEEDBACK_LENS_UPLOAD_ROOT"])
+        files = {
+            "scoping": (
+                upload_root / "scoping-notes" / "one" / "source.txt"
+            ),
+            "specification": (
+                upload_root / "assignment-specs" / "one" / "source.txt"
+            ),
+            "rubric": upload_root / "rubrics" / "one" / "source.pdf",
+        }
+        for kind, path in files.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(f"{kind} content".encode("utf-8"))
+
+        with open_database(self.database_path) as conn:
+            material_id = int(
+                conn.execute(
+                    """
+                    INSERT INTO unit_materials
+                        (unit_id, material_type, title,
+                         source_file_path, source_content_hash,
+                         cleaned_text)
+                    VALUES (
+                        1, 'scoping_note', 'Teaching notes',
+                        ?, ?, 'scoping content'
+                    )
+                    """,
+                    (
+                        str(files["scoping"]),
+                        _file_hash(files["scoping"]),
+                    ),
+                ).lastrowid
+            )
+            spec_row = conn.execute(
+                """
+                SELECT spec_id
+                FROM assignment_specs
+                LIMIT 1
+                """
+            ).fetchone()
+            rubric_row = conn.execute(
+                "SELECT rubric_id FROM rubrics LIMIT 1"
+            ).fetchone()
+            self.assertIsNotNone(spec_row)
+            self.assertIsNotNone(rubric_row)
+            spec_id = spec_row[0]
+            rubric_id = rubric_row[0]
+            conn.execute(
+                """
+                UPDATE assignment_specs
+                SET source_file_path = ?, source_content_hash = ?
+                WHERE spec_id = ?
+                """,
+                (
+                    str(files["specification"]),
+                    _file_hash(files["specification"]),
+                    spec_id,
+                ),
+            )
+            conn.execute(
+                """
+                UPDATE rubrics
+                SET source_file_path = ?, source_content_hash = ?
+                WHERE rubric_id = ?
+                """,
+                (
+                    str(files["rubric"]),
+                    _file_hash(files["rubric"]),
+                    rubric_id,
+                ),
+            )
+            conn.executemany(
+                """
+                INSERT INTO processing_jobs
+                    (job_type, unit_offering_id, assessment_plan_id,
+                     created_by_user_id, source_file_path,
+                     source_content_hash, payload_json, status)
+                VALUES (?, ?, ?, 1, ?, ?, ?, 'succeeded')
+                """,
+                (
+                    (
+                        "scoping_note_ingest",
+                        1,
+                        None,
+                        str(files["scoping"]),
+                        _file_hash(files["scoping"]),
+                        json.dumps(
+                            {"original_file_name": "teaching-notes.txt"}
+                        ),
+                    ),
+                    (
+                        "assignment_spec_ingest",
+                        None,
+                        1,
+                        str(files["specification"]),
+                        _file_hash(files["specification"]),
+                        json.dumps(
+                            {"original_file_name": "assignment-spec.txt"}
+                        ),
+                    ),
+                    (
+                        "rubric_ingest",
+                        None,
+                        1,
+                        str(files["rubric"]),
+                        _file_hash(files["rubric"]),
+                        json.dumps(
+                            {"original_file_name": "marking-rubric.pdf"}
+                        ),
+                    ),
+                ),
+            )
+            conn.commit()
+
+        self._authenticate(1)
+        downloads = (
+            (
+                f"/api/admin/scoping-notes/{material_id}/download",
+                b"scoping content",
+                "teaching-notes.txt",
+            ),
+            (
+                f"/api/admin/specifications/{spec_id}/download",
+                b"specification content",
+                "assignment-spec.txt",
+            ),
+            (
+                f"/api/admin/rubrics/{rubric_id}/download",
+                b"rubric content",
+                "marking-rubric.pdf",
+            ),
+        )
+        for url, expected_content, expected_name in downloads:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data, expected_content)
+            self.assertIn(
+                expected_name,
+                response.headers["Content-Disposition"],
+            )
+            response.close()
+
     def test_roster_upload_preview_and_commit_routes(self) -> None:
         self._authenticate(1)
         offering_id = 1
@@ -832,6 +1453,64 @@ class WebFeatureRouteTests(unittest.TestCase):
         self.assertEqual(
             committed.get_json()["roster_import"]["status"],
             "imported",
+        )
+
+    def test_scoping_material_upload_accepts_multiple_files(self) -> None:
+        self._authenticate(1)
+        response = self.client.post(
+            "/api/admin/unit-offerings/1/scoping-notes",
+            data={
+                "files": [
+                    (io.BytesIO(b"Lecture transcript"), "lecture.txt"),
+                    (io.BytesIO(b"Tutorial answers"), "tutorial.txt"),
+                    (io.BytesIO(b"Not supported"), "notes.docx"),
+                ]
+            },
+            content_type="multipart/form-data",
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+        self.assertEqual(response.status_code, 202)
+        payload = response.get_json()
+        self.assertEqual(payload["accepted_count"], 2)
+        self.assertEqual(payload["rejected_count"], 1)
+        self.assertEqual(len(payload["processing_job_ids"]), 2)
+        self.assertEqual(
+            [item["status"] for item in payload["uploads"]],
+            ["queued", "queued", "rejected"],
+        )
+
+        with open_database(self.database_path) as conn:
+            queued = conn.execute(
+                """
+                SELECT COUNT(*)
+                FROM processing_jobs
+                WHERE job_type = 'scoping_note_ingest'
+                  AND unit_offering_id = 1
+                """
+            ).fetchone()[0]
+        self.assertEqual(queued, 2)
+
+    def test_scoping_material_upload_rejects_batch_with_no_valid_files(
+        self,
+    ) -> None:
+        self._authenticate(1)
+        response = self.client.post(
+            "/api/admin/unit-offerings/1/scoping-notes",
+            data={
+                "files": [
+                    (io.BytesIO(b"Not supported"), "notes.docx"),
+                    (io.BytesIO(b"Also unsupported"), "slides.pptx"),
+                ]
+            },
+            content_type="multipart/form-data",
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+        self.assertEqual(response.status_code, 422)
+        payload = response.get_json()
+        self.assertEqual(payload["error"]["code"], "upload_invalid")
+        self.assertEqual(
+            len(payload["error"]["details"]["uploads"]),
+            2,
         )
 
 

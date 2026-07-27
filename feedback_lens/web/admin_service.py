@@ -2,14 +2,182 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import sqlite3
 from collections import Counter
+from datetime import date
 from pathlib import Path
 
+from feedback_lens.paths import PROJECT_ROOT
 from feedback_lens.web.common import record_audit_event
+from feedback_lens.web.config import get_web_settings
 from feedback_lens.web.errors import ApiError
 from feedback_lens.web.security import can_administer_unit, is_chief_admin
 from feedback_lens.web.storage import StoredUpload, remove_stored_upload
+
+
+def _file_name(value: str | None) -> str:
+    return Path(str(value or "").replace("\\", "/")).name
+
+
+def _normalized_path(value: str | None) -> str:
+    return str(value or "").replace("\\", "/").rstrip("/").casefold()
+
+
+def _scoping_materials_with_display_names(
+    notes: list[sqlite3.Row],
+    upload_jobs: list[sqlite3.Row],
+) -> list[dict]:
+    uploaded_names = []
+    for job in upload_jobs:
+        try:
+            payload = json.loads(job["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            continue
+        original_name = _file_name(payload.get("original_file_name"))
+        job_path = _normalized_path(job["source_file_path"])
+        if original_name:
+            uploaded_names.append(
+                (
+                    job_path,
+                    str(job["source_content_hash"] or "").casefold(),
+                    original_name,
+                )
+            )
+
+    materials = []
+    for row in notes:
+        material = dict(row)
+        material_path = _normalized_path(material["source_file_path"])
+        material_hash = str(
+            material.get("source_content_hash") or ""
+        ).casefold()
+        original_name = next(
+            (
+                name
+                for job_path, job_hash, name in uploaded_names
+                if (
+                    material_path
+                    and job_path
+                    and job_path.endswith(material_path)
+                )
+                or (
+                    material_hash
+                    and job_hash
+                    and material_hash == job_hash
+                )
+            ),
+            None,
+        )
+        material["original_file_name"] = original_name
+        material["display_file_name"] = (
+            original_name
+            or _file_name(material["source_file_path"])
+            or material["title"]
+            or "Untitled material"
+        )
+        if material["material_type"] == "deleted_scoping_note":
+            material["lifecycle_status"] = "deleted"
+            material["download_url"] = None
+        elif material["is_active"]:
+            material["lifecycle_status"] = "active"
+            material["download_url"] = (
+                f"/api/admin/scoping-notes/{material['material_id']}/download"
+            )
+        else:
+            material["lifecycle_status"] = "deactivated"
+            material["download_url"] = (
+                f"/api/admin/scoping-notes/{material['material_id']}/download"
+            )
+        materials.append(material)
+    return materials
+
+
+def _documents_with_display_names(
+    rows: list[sqlite3.Row],
+    upload_jobs: list[sqlite3.Row],
+    document_kind: str,
+) -> list[dict]:
+    uploaded_names = []
+    for job in upload_jobs:
+        try:
+            payload = json.loads(job["payload_json"] or "{}")
+        except json.JSONDecodeError:
+            continue
+        name = _file_name(payload.get("original_file_name"))
+        if name:
+            uploaded_names.append(
+                (
+                    _normalized_path(job["source_file_path"]),
+                    str(job["source_content_hash"] or "").casefold(),
+                    name,
+                )
+            )
+    id_key = "spec_id" if document_kind == "specification" else "rubric_id"
+    documents = []
+    for row in rows:
+        document = dict(row)
+        source_path = _normalized_path(document["source_file_path"])
+        source_hash = str(
+            document.get("source_content_hash") or ""
+        ).casefold()
+        original_name = next(
+            (
+                name
+                for job_path, job_hash, name in uploaded_names
+                if (
+                    source_path
+                    and job_path
+                    and job_path.endswith(source_path)
+                )
+                or (
+                    source_hash
+                    and job_hash
+                    and source_hash == job_hash
+                )
+            ),
+            None,
+        )
+        document["display_file_name"] = (
+            original_name
+            or _file_name(document["source_file_path"])
+            or f"{document_kind.title()} version {document['version']}"
+        )
+        document["download_url"] = (
+            f"/api/admin/{document_kind}s/{document[id_key]}/download"
+        )
+        documents.append(document)
+    return documents
+
+
+def _downloadable_upload_path(value: str | None) -> Path:
+    if not value:
+        raise ApiError(
+            "download_unavailable",
+            "The original uploaded file is no longer available.",
+            410,
+        )
+    stored = Path(value)
+    candidate = stored if stored.is_absolute() else PROJECT_ROOT / stored
+    try:
+        resolved = candidate.resolve(strict=True)
+    except (OSError, RuntimeError) as exc:
+        raise ApiError(
+            "download_unavailable",
+            "The original uploaded file is no longer available.",
+            410,
+        ) from exc
+    upload_root = get_web_settings().upload_root.resolve()
+    if (
+        not resolved.is_file()
+        or (resolved != upload_root and upload_root not in resolved.parents)
+    ):
+        raise ApiError(
+            "download_unavailable",
+            "The original uploaded file is no longer available.",
+            410,
+        )
+    return resolved
 
 
 def _organization_for_chief(
@@ -31,7 +199,7 @@ def _organization_for_chief(
     if row is None:
         raise ApiError(
             "chief_admin_required",
-            "Only a Chief Admin can create a Unit.",
+            "Only a Chief Admin can manage Units.",
             403,
         )
     return int(row["organization_id"])
@@ -116,7 +284,7 @@ def create_unit(
     data: dict,
 ) -> dict:
     organization_id = _organization_for_chief(conn, actor_user_id)
-    course_code = str(data.get("course_code") or "").strip()
+    course_code = str(data.get("course_code") or "").strip().upper()
     course_name = str(data.get("course_name") or "").strip()
     teaching_period = str(data.get("teaching_period") or "").strip()
     unit_admin_user_id = data.get("unit_admin_user_id")
@@ -149,44 +317,60 @@ def create_unit(
             422,
         )
 
+    existing_course = conn.execute(
+        """
+        SELECT course_id, course_name
+        FROM courses
+        WHERE organization_id = ?
+          AND course_code = ?
+        """,
+        (organization_id, course_code),
+    ).fetchone()
+    if (
+        existing_course is not None
+        and str(existing_course["course_name"]).strip().casefold()
+        != course_name.casefold()
+    ):
+        raise ApiError(
+            "unit_code_conflict",
+            (
+                f"Unit code {course_code} already belongs to "
+                f"{existing_course['course_name']}."
+            ),
+            409,
+        )
+
     try:
         conn.execute("BEGIN")
-        conn.execute(
-            """
-            INSERT INTO courses
-                (organization_id, course_code, course_name,
-                 faculty, academic_level)
-            VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT(organization_id, course_code)
-            DO UPDATE SET
-                course_name = excluded.course_name,
-                faculty = COALESCE(excluded.faculty, courses.faculty),
-                academic_level = COALESCE(
-                    excluded.academic_level,
-                    courses.academic_level
-                )
-            """,
-            (
-                organization_id,
-                course_code,
-                course_name,
-                (str(data.get("faculty")).strip()
-                 if data.get("faculty") else None),
-                (str(data.get("academic_level")).strip()
-                 if data.get("academic_level") else None),
-            ),
-        )
-        course_id = int(
-            conn.execute(
-                """
-                SELECT course_id
-                FROM courses
-                WHERE organization_id = ?
-                  AND course_code = ?
-                """,
-                (organization_id, course_code),
-            ).fetchone()["course_id"]
-        )
+        if existing_course is None:
+            course_id = int(
+                conn.execute(
+                    """
+                    INSERT INTO courses
+                        (organization_id, course_code, course_name,
+                         faculty, academic_level)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        organization_id,
+                        course_code,
+                        course_name,
+                        (
+                            str(data.get("faculty")).strip()
+                            if data.get("faculty")
+                            else None
+                        ),
+                        (
+                            str(data.get("academic_level")).strip()
+                            if data.get("academic_level")
+                            else None
+                        ),
+                    ),
+                ).lastrowid
+            )
+        else:
+            course_id = int(existing_course["course_id"])
+            course_name = str(existing_course["course_name"])
         legacy_unit_id = int(
             conn.execute(
                 """
@@ -258,6 +442,171 @@ def create_unit(
             409,
         ) from exc
     return get_unit_detail(conn, actor_user_id, offering_id)
+
+
+def update_unit(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    unit_offering_id: int,
+    data: dict,
+) -> dict:
+    organization_id = _organization_for_chief(conn, actor_user_id)
+    row = conn.execute(
+        """
+        SELECT
+            offering.course_id,
+            offering.legacy_unit_id,
+            course.course_code,
+            course.course_name
+        FROM unit_offerings AS offering
+        JOIN courses AS course ON course.course_id = offering.course_id
+        WHERE offering.unit_offering_id = ?
+          AND course.organization_id = ?
+        """,
+        (unit_offering_id, organization_id),
+    ).fetchone()
+    if row is None:
+        raise ApiError("unit_not_found", "Unit not found.", 404)
+
+    course_code = str(data.get("course_code") or "").strip().upper()
+    course_name = str(data.get("course_name") or "").strip()
+    if not course_code or not course_name:
+        raise ApiError(
+            "invalid_unit",
+            "Unit code and name are required.",
+            422,
+        )
+    old_code = str(row["course_code"])
+    old_name = str(row["course_name"])
+    code_changed = course_code.casefold() != old_code.casefold()
+    if code_changed:
+        material = conn.execute(
+            """
+            SELECT material.material_id
+            FROM unit_offerings AS offering
+            JOIN unit_materials AS material
+              ON material.unit_id = offering.legacy_unit_id
+            WHERE offering.course_id = ?
+              AND material.assignment_id IS NULL
+              AND material.material_type != 'deleted_scoping_note'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM audit_events AS audit
+                  WHERE audit.event_type = 'scoping_note.restored'
+                    AND audit.entity_type = 'unit_material'
+                    AND audit.entity_id = CAST(
+                        material.material_id AS TEXT
+                    )
+              )
+            LIMIT 1
+            """,
+            (row["course_id"],),
+        ).fetchone()
+        if material is not None:
+            raise ApiError(
+                "unit_code_locked",
+                (
+                    "The Unit code cannot be changed after scoping "
+                    "materials have been processed."
+                ),
+                409,
+            )
+        conflict = conn.execute(
+            """
+            SELECT course_id, course_name
+            FROM courses
+            WHERE organization_id = ?
+              AND course_code = ?
+              AND course_id != ?
+            """,
+            (organization_id, course_code, row["course_id"]),
+        ).fetchone()
+        if conflict is not None:
+            raise ApiError(
+                "unit_code_conflict",
+                (
+                    f"Unit code {course_code} already belongs to "
+                    f"{conflict['course_name']}."
+                ),
+                409,
+            )
+
+    try:
+        conn.execute("BEGIN")
+        conn.execute(
+            """
+            UPDATE courses
+            SET course_code = ?,
+                course_name = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE course_id = ?
+            """,
+            (course_code, course_name, row["course_id"]),
+        )
+        conn.execute(
+            """
+            UPDATE units
+            SET unit_code = ?,
+                unit_name = ?
+            WHERE unit_id IN (
+                SELECT legacy_unit_id
+                FROM unit_offerings
+                WHERE course_id = ?
+                  AND legacy_unit_id IS NOT NULL
+            )
+            """,
+            (course_code, course_name, row["course_id"]),
+        )
+        offerings = conn.execute(
+            """
+            SELECT unit_offering_id, academic_year, teaching_period
+            FROM unit_offerings
+            WHERE course_id = ?
+            """,
+            (row["course_id"],),
+        ).fetchall()
+        for offering in offerings:
+            conn.execute(
+                """
+                UPDATE unit_offerings
+                SET offering_name = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE unit_offering_id = ?
+                """,
+                (
+                    (
+                        f"{course_code} {offering['academic_year']} "
+                        f"{offering['teaching_period']}"
+                    ),
+                    offering["unit_offering_id"],
+                ),
+            )
+        record_audit_event(
+            conn,
+            "unit.updated",
+            "unit_offering",
+            unit_offering_id,
+            actor_user_id=actor_user_id,
+            metadata={
+                "old": {"course_code": old_code, "course_name": old_name},
+                "new": {
+                    "course_code": course_code,
+                    "course_name": course_name,
+                },
+            },
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as exc:
+        conn.rollback()
+        raise ApiError(
+            "unit_code_conflict",
+            f"Unit code {course_code} already exists.",
+            409,
+        ) from exc
+    except Exception:
+        conn.rollback()
+        raise
+    return get_unit_detail(conn, actor_user_id, unit_offering_id)
 
 
 def _sync_legacy_unit_admin(
@@ -439,23 +788,57 @@ def get_unit_detail(
             material.title,
             material.material_type,
             material.source_file_path,
+            material.source_content_hash,
             material.created_at,
             material.is_active,
-            material.deactivated_at
+            material.deactivated_at,
+            (
+                SELECT audit.created_at
+                FROM audit_events AS audit
+                WHERE audit.event_type = 'scoping_note.deleted'
+                  AND audit.entity_type = 'unit_material'
+                  AND audit.entity_id = CAST(material.material_id AS TEXT)
+                ORDER BY audit.audit_event_id DESC
+                LIMIT 1
+            ) AS deleted_at
         FROM unit_materials AS material
         WHERE material.unit_id = ?
           AND material.assignment_id IS NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM audit_events AS audit
+              WHERE audit.event_type = 'scoping_note.restored'
+                AND audit.entity_type = 'unit_material'
+                AND audit.entity_id = CAST(material.material_id AS TEXT)
+          )
         ORDER BY material.material_id DESC
         """,
         (unit["legacy_unit_id"],),
+    ).fetchall()
+    upload_jobs = conn.execute(
+        """
+        SELECT source_file_path, source_content_hash, payload_json
+        FROM processing_jobs
+        WHERE unit_offering_id = ?
+          AND job_type = 'scoping_note_ingest'
+        ORDER BY processing_job_id DESC
+        """,
+        (unit_offering_id,),
     ).fetchall()
     return {
         "unit": dict(unit),
         "assessments": [dict(row) for row in assessments],
         "unit_admins": [dict(row) for row in admins],
         "roster_imports": [dict(row) for row in rosters],
-        "scoping_notes": [dict(row) for row in notes],
+        "scoping_notes": _scoping_materials_with_display_names(
+            notes,
+            upload_jobs,
+        ),
         "is_chief_admin": is_chief_admin(conn, user_id),
+        "unit_code_editable": not any(
+            material["material_type"] != "deleted_scoping_note"
+            for material in notes
+        ),
     }
 
 
@@ -560,11 +943,15 @@ def get_assessment_detail(
             course.course_code,
             course.course_name,
             offering.academic_year,
-            offering.teaching_period
+            offering.teaching_period,
+            assignment.due_date,
+            assignment.weight
         FROM assessment_plans AS plan
         JOIN unit_offerings AS offering
           ON offering.unit_offering_id = plan.unit_offering_id
         JOIN courses AS course ON course.course_id = offering.course_id
+        LEFT JOIN assignments AS assignment
+          ON assignment.assignment_id = plan.legacy_assignment_id
         WHERE plan.assessment_plan_id = ?
         """,
         (assessment_plan_id,),
@@ -600,6 +987,23 @@ def get_assessment_detail(
         ORDER BY version DESC
         """,
         (plan["legacy_assignment_id"],),
+    ).fetchall()
+    document_jobs = conn.execute(
+        """
+        SELECT
+            job_type,
+            source_file_path,
+            source_content_hash,
+            payload_json
+        FROM processing_jobs
+        WHERE assessment_plan_id = ?
+          AND job_type IN (
+              'assignment_spec_ingest',
+              'rubric_ingest'
+          )
+        ORDER BY processing_job_id DESC
+        """,
+        (assessment_plan_id,),
     ).fetchall()
     versions = conn.execute(
         """
@@ -655,8 +1059,24 @@ def get_assessment_detail(
     )
     return {
         "assessment": dict(plan),
-        "specifications": [dict(row) for row in specs],
-        "rubrics": [dict(row) for row in rubrics],
+        "specifications": _documents_with_display_names(
+            specs,
+            [
+                row
+                for row in document_jobs
+                if row["job_type"] == "assignment_spec_ingest"
+            ],
+            "specification",
+        ),
+        "rubrics": _documents_with_display_names(
+            rubrics,
+            [
+                row
+                for row in document_jobs
+                if row["job_type"] == "rubric_ingest"
+            ],
+            "rubric",
+        ),
         "versions": [dict(row) for row in versions],
         "active_version": active_version,
         "jobs": [dict(row) for row in jobs],
@@ -669,6 +1089,274 @@ def get_assessment_detail(
             and active_version.get("rubric_id")
         ),
     }
+
+
+def update_assessment(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    assessment_plan_id: int,
+    data: dict,
+) -> dict:
+    row = conn.execute(
+        """
+        SELECT
+            plan.unit_offering_id,
+            plan.legacy_assignment_id,
+            plan.assessment_code,
+            plan.title,
+            assignment.due_date,
+            assignment.weight
+        FROM assessment_plans AS plan
+        LEFT JOIN assignments AS assignment
+          ON assignment.assignment_id = plan.legacy_assignment_id
+        WHERE plan.assessment_plan_id = ?
+        """,
+        (assessment_plan_id,),
+    ).fetchone()
+    if row is None:
+        raise ApiError("assessment_not_found", "Assessment not found.", 404)
+    if not can_administer_unit(
+        conn,
+        actor_user_id,
+        int(row["unit_offering_id"]),
+    ):
+        raise ApiError(
+            "assessment_forbidden",
+            "You are not authorised to manage this assessment.",
+            403,
+        )
+    if row["legacy_assignment_id"] is None:
+        raise ApiError(
+            "assessment_not_editable",
+            "This assessment is missing its linked assignment record.",
+            409,
+        )
+
+    title = str(data.get("title") or "").strip()
+    code = str(data.get("assessment_code") or "").strip() or None
+    due_value = data.get("due_date")
+    due_date = str(due_value).strip() if due_value else None
+    if not title:
+        raise ApiError(
+            "invalid_assessment",
+            "Assessment title is required.",
+            422,
+        )
+    if due_date:
+        try:
+            date.fromisoformat(due_date)
+        except ValueError as exc:
+            raise ApiError(
+                "invalid_assessment_due_date",
+                "Due date must be a valid calendar date.",
+                422,
+            ) from exc
+    weight_value = data.get("weight")
+    if weight_value is None or weight_value == "":
+        weight = None
+    else:
+        try:
+            weight = float(weight_value)
+        except (TypeError, ValueError) as exc:
+            raise ApiError(
+                "invalid_assessment_weight",
+                "Weight must be a number between 0 and 100.",
+                422,
+            ) from exc
+        if not math.isfinite(weight) or weight < 0 or weight > 100:
+            raise ApiError(
+                "invalid_assessment_weight",
+                "Weight must be a number between 0 and 100.",
+                422,
+            )
+
+    old_values = {
+        "assessment_code": row["assessment_code"],
+        "title": row["title"],
+        "due_date": row["due_date"],
+        "weight": row["weight"],
+    }
+    new_values = {
+        "assessment_code": code,
+        "title": title,
+        "due_date": due_date,
+        "weight": weight,
+    }
+    try:
+        conn.execute("BEGIN")
+        conn.execute(
+            """
+            UPDATE assessment_plans
+            SET assessment_code = ?,
+                title = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE assessment_plan_id = ?
+            """,
+            (code, title, assessment_plan_id),
+        )
+        conn.execute(
+            """
+            UPDATE assignments
+            SET assignment_code = ?,
+                assignment_name = ?,
+                due_date = ?,
+                weight = ?
+            WHERE assignment_id = ?
+            """,
+            (
+                code,
+                title,
+                due_date,
+                weight,
+                row["legacy_assignment_id"],
+            ),
+        )
+        record_audit_event(
+            conn,
+            "assessment.metadata_updated",
+            "assessment_plan",
+            assessment_plan_id,
+            actor_user_id=actor_user_id,
+            metadata={"old": old_values, "new": new_values},
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as exc:
+        conn.rollback()
+        raise ApiError(
+            "assessment_conflict",
+            "An assessment with this code already exists.",
+            409,
+        ) from exc
+    except Exception:
+        conn.rollback()
+        raise
+    return get_assessment_detail(
+        conn,
+        actor_user_id,
+        assessment_plan_id,
+    )
+
+
+def get_scoping_note_download(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    material_id: int,
+) -> tuple[Path, str]:
+    row = conn.execute(
+        """
+        SELECT
+            material.material_id,
+            material.source_file_path,
+            material.source_content_hash,
+            material.title,
+            material.material_type,
+            material.is_active,
+            offering.unit_offering_id
+        FROM unit_materials AS material
+        JOIN unit_offerings AS offering
+          ON offering.legacy_unit_id = material.unit_id
+        WHERE material.material_id = ?
+          AND material.assignment_id IS NULL
+        """,
+        (material_id,),
+    ).fetchone()
+    if row is None:
+        raise ApiError(
+            "scoping_material_not_found",
+            "Scoping material not found.",
+            404,
+        )
+    if not can_administer_unit(
+        conn,
+        actor_user_id,
+        int(row["unit_offering_id"]),
+    ):
+        raise ApiError("unit_forbidden", "Not authorised.", 403)
+    if row["material_type"] == "deleted_scoping_note":
+        raise ApiError(
+            "download_unavailable",
+            "Deleted materials cannot be downloaded.",
+            410,
+        )
+    path = _downloadable_upload_path(row["source_file_path"])
+    jobs = conn.execute(
+        """
+        SELECT source_file_path, source_content_hash, payload_json
+        FROM processing_jobs
+        WHERE unit_offering_id = ?
+          AND job_type = 'scoping_note_ingest'
+        ORDER BY processing_job_id DESC
+        """,
+        (row["unit_offering_id"],),
+    ).fetchall()
+    display = _scoping_materials_with_display_names([row], jobs)[0]
+    return path, str(display["display_file_name"])
+
+
+def get_assessment_document_download(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    document_kind: str,
+    document_id: int,
+) -> tuple[Path, str]:
+    definitions = {
+        "specification": (
+            "assignment_specs",
+            "spec_id",
+            "assignment_spec_ingest",
+        ),
+        "rubric": ("rubrics", "rubric_id", "rubric_ingest"),
+    }
+    if document_kind not in definitions:
+        raise ValueError("Unsupported assessment document kind.")
+    table, id_column, job_type = definitions[document_kind]
+    row = conn.execute(
+        f"""
+        SELECT
+            document.{id_column},
+            document.version,
+            document.source_file_path,
+            document.source_content_hash,
+            plan.assessment_plan_id,
+            plan.unit_offering_id
+        FROM {table} AS document
+        JOIN assignments AS assignment
+          ON assignment.assignment_id = document.assignment_id
+        JOIN assessment_plans AS plan
+          ON plan.legacy_assignment_id = assignment.assignment_id
+        WHERE document.{id_column} = ?
+        """,
+        (document_id,),
+    ).fetchone()
+    if row is None:
+        raise ApiError(
+            "assessment_document_not_found",
+            "Assessment document not found.",
+            404,
+        )
+    if not can_administer_unit(
+        conn,
+        actor_user_id,
+        int(row["unit_offering_id"]),
+    ):
+        raise ApiError("assessment_forbidden", "Not authorised.", 403)
+    path = _downloadable_upload_path(row["source_file_path"])
+    jobs = conn.execute(
+        """
+        SELECT source_file_path, source_content_hash, payload_json
+        FROM processing_jobs
+        WHERE assessment_plan_id = ?
+          AND job_type = ?
+        ORDER BY processing_job_id DESC
+        """,
+        (row["assessment_plan_id"], job_type),
+    ).fetchall()
+    display = _documents_with_display_names(
+        [row],
+        jobs,
+        document_kind,
+    )[0]
+    return path, str(display["display_file_name"])
 
 
 def create_roster_import(

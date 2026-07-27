@@ -1,7 +1,11 @@
 {% extends "admin_base.html" %}
 {% block title %}Assessment · Feedback Lens{% endblock %}
 {% block content %}
-<p id="back"></p><h1 id="title">Assessment</h1><p class="sub" id="unit">Loading…</p>
+<p id="back"></p>
+<div class="toolbar">
+  <div><h1 id="title">Assessment</h1><p class="sub" id="unit">Loading…</p></div>
+  <button class="secondary" onclick="openAssessmentEditor()">Edit Assessment</button>
+</div>
 <div id="message" class="hidden"></div>
 <div class="grid">
   <div class="card"><h2>Specification</h2><div id="spec"></div><input id="spec-file" type="file" accept=".pdf,.txt"><button style="margin-top:10px" onclick="uploadDocument('specifications','spec-file')">Upload new version</button></div>
@@ -17,12 +21,29 @@
 <div class="card"><h2>Submission batches</h2><div id="batches"></div></div>
 <dialog id="batch-dialog"><div class="dialog-body"><h2>Batch review</h2><div id="batch-summary"></div><div style="max-height:55vh;overflow:auto"><table><thead><tr><th>Folder</th><th>Student</th><th>Status</th><th>Resolution</th></tr></thead><tbody id="batch-items"></tbody></table></div><div class="dialog-actions"><button onclick="document.getElementById('batch-dialog').close()">Close</button></div></div></dialog>
 <dialog id="resolution-dialog"><div class="dialog-body"><h2>Resolve submission</h2><label>Roster student<select id="resolution-student"></select></label><label>Corrected PDF (only if the original file is invalid)<input id="resolution-file" type="file" accept=".pdf"></label><p class="muted">A valid PDF from the Moodle ZIP is kept even when the student name could not be matched.</p><div class="dialog-actions"><button class="secondary" onclick="document.getElementById('resolution-dialog').close()">Cancel</button><button onclick="submitResolution()">Import submission</button></div></div></dialog>
+<dialog id="assessment-dialog"><form class="dialog-body" onsubmit="saveAssessment(event)">
+  <h2>Edit Assessment</h2>
+  <p class="muted">These metadata changes do not alter assessment versions, submissions, feedback or marks.</p>
+  <div class="grid">
+    <div><label>Code</label><input id="edit-code"></div>
+    <div><label>Name</label><input id="edit-title" required></div>
+    <div><label>Weight (%)</label><input id="edit-weight" type="number" min="0" max="100" step="0.01"></div>
+    <div><label>Due date</label><input id="edit-due" type="date"></div>
+  </div>
+  <div class="dialog-actions"><button type="button" class="secondary" onclick="document.getElementById('assessment-dialog').close()">Cancel</button><button>Save changes</button></div>
+</form></dialog>
 {% endblock %}
 {% block scripts %}
 <script>
 const PLAN_ID={{ assessment_plan_id }};let data=null;let batchData=null;let resolutionItemId=null;let resolutionBatchId=null;
+function documentVersions(items,emptyText){
+  if(!items.length)return `<p class="muted">${escapeHtml(emptyText)}</p>`;
+  return items.map(item=>`<div class="toolbar"><div><span class="pill">Version ${item.version}</span> ${escapeHtml(item.display_file_name)}</div><a class="button secondary" href="${item.download_url}">Download</a></div>`).join('');
+}
 async function load(){
-  try{data=await api('/api/admin/assessments/'+PLAN_ID);const a=data.assessment;document.getElementById('title').textContent=a.title;document.getElementById('unit').textContent=a.course_code+' · '+a.academic_year+' · '+a.teaching_period;document.getElementById('back').innerHTML=`<a href="/admin/unit/${a.unit_offering_id}">← Back to Unit</a>`;const s=data.specifications[0],r=data.rubrics[0];document.getElementById('spec').innerHTML=s?`<p><span class="pill">Version ${s.version}</span> ${escapeHtml((s.source_file_path||'').split(/[\\\\/]/).pop())}</p>`:'<p class="muted">Required before summative upload.</p>';document.getElementById('rubric').innerHTML=r?`<p><span class="pill">Version ${r.version}</span> ${escapeHtml((r.source_file_path||'').split(/[\\\\/]/).pop())}</p>`:'<p class="muted">Required before summative upload.</p>';document.getElementById('version').textContent=data.active_version?'Active version '+data.active_version.version:'No active version';document.getElementById('activate-btn').disabled=!(s&&r);document.getElementById('prerequisite').textContent=data.summative_upload_ready?'Ready: roster, specification and rubric are valid.':'Blocked until the Unit roster, specification and rubric are ready.';document.getElementById('zip-btn').disabled=!data.summative_upload_ready;document.getElementById('batches').innerHTML=data.batches.length?data.batches.map(b=>`<div class="toolbar"><div><strong>${escapeHtml(b.source_file_name)}</strong><br><span class="pill ${b.status==='partially_imported'?'warn':''}">${escapeHtml(b.status)}</span> ${b.imported_submission_count||0}/${b.detected_submission_count||0} imported</div><button class="secondary" onclick="openBatch(${b.submission_batch_id})">Review</button></div>`).join(''):'<p class="muted">No Moodle batches uploaded.</p>';}catch(e){showMessage('message',e.message,true);}}
+  try{data=await api('/api/admin/assessments/'+PLAN_ID);const a=data.assessment;document.getElementById('title').textContent=a.title;document.getElementById('unit').textContent=a.course_code+' · '+a.academic_year+' · '+a.teaching_period;document.getElementById('back').innerHTML=`<a href="/admin/unit/${a.unit_offering_id}">← Back to Unit</a>`;const s=data.specifications[0],r=data.rubrics[0];document.getElementById('spec').innerHTML=documentVersions(data.specifications,'Required before summative upload.');document.getElementById('rubric').innerHTML=documentVersions(data.rubrics,'Required before summative upload.');document.getElementById('version').textContent=data.active_version?'Active version '+data.active_version.version:'No active version';document.getElementById('activate-btn').disabled=!(s&&r);document.getElementById('prerequisite').textContent=data.summative_upload_ready?'Ready: roster, specification and rubric are valid.':'Blocked until the Unit roster, specification and rubric are ready.';document.getElementById('zip-btn').disabled=!data.summative_upload_ready;document.getElementById('batches').innerHTML=data.batches.length?data.batches.map(b=>`<div class="toolbar"><div><strong>${escapeHtml(b.source_file_name)}</strong><br><span class="pill ${b.status==='partially_imported'?'warn':''}">${escapeHtml(b.status)}</span> ${b.imported_submission_count||0}/${b.detected_submission_count||0} imported</div><button class="secondary" onclick="openBatch(${b.submission_batch_id})">Review</button></div>`).join(''):'<p class="muted">No Moodle batches uploaded.</p>';}catch(e){showMessage('message',e.message,true);}}
+function openAssessmentEditor(){const a=data.assessment;document.getElementById('edit-code').value=a.assessment_code||'';document.getElementById('edit-title').value=a.title||'';document.getElementById('edit-weight').value=a.weight==null?'':a.weight;document.getElementById('edit-due').value=a.due_date||'';document.getElementById('assessment-dialog').showModal();}
+async function saveAssessment(event){event.preventDefault();try{await api(`/api/admin/assessments/${PLAN_ID}`,{method:'PATCH',body:JSON.stringify({assessment_code:document.getElementById('edit-code').value,title:document.getElementById('edit-title').value,weight:document.getElementById('edit-weight').value||null,due_date:document.getElementById('edit-due').value||null})});document.getElementById('assessment-dialog').close();showMessage('message','Assessment information updated. Existing marks and feedback were not changed.');load();}catch(e){showMessage('message',e.message,true);}}
 async function uploadDocument(kind,input){const file=document.getElementById(input).files[0];if(!file)return alert('Choose a file.');const form=new FormData();form.append('file',file);try{const d=await api(`/api/admin/assessments/${PLAN_ID}/${kind}`,{method:'POST',body:form});showMessage('message','File accepted. Processing job '+d.processing_job_id+' is running.');pollJob(d.processing_job_id);}catch(e){showMessage('message',e.message,true);}}
 async function pollJob(id){const d=await api('/api/jobs/'+id);if(['queued','running'].includes(d.job.status)){setTimeout(()=>pollJob(id),1200);}else{showMessage('message',d.job.status==='succeeded'?'Processing complete.':d.job.last_error,d.job.status!=='succeeded');load();}}
 async function activateVersion(){if(!confirm('Activating new documents invalidates existing AI results and confirmations. Continue?'))return;try{await api(`/api/admin/assessments/${PLAN_ID}/versions/activate`,{method:'POST',body:'{}'});load();}catch(e){alert(e.message);}}

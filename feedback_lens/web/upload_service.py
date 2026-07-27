@@ -20,9 +20,12 @@ from feedback_lens.file_management.importers import (
 )
 from feedback_lens.file_management.ingestion import ingest_material
 from feedback_lens.file_management.indexing.embedding import (
+    MODEL_NAME,
     build_collection_name,
+    embed_and_store,
     get_chroma_client,
 )
+from feedback_lens.paths import PROJECT_ROOT
 from feedback_lens.web.admin_service import get_assessment_detail
 from feedback_lens.web.common import record_audit_event
 from feedback_lens.web.config import get_web_settings
@@ -43,6 +46,46 @@ def _job_payload(job: sqlite3.Row) -> dict:
         return json.loads(job["payload_json"] or "{}")
     except json.JSONDecodeError as exc:
         raise RuntimeError("Processing job payload is invalid.") from exc
+
+
+def _original_upload_name(
+    conn: sqlite3.Connection,
+    unit_offering_id: int,
+    source_file_path: str | None,
+    source_content_hash: str | None,
+    fallback: str,
+) -> str:
+    row = conn.execute(
+        """
+        SELECT payload_json
+        FROM processing_jobs
+        WHERE unit_offering_id = ?
+          AND job_type = 'scoping_note_ingest'
+          AND (
+              source_file_path = ?
+              OR (
+                  source_content_hash IS NOT NULL
+                  AND source_content_hash = ?
+              )
+          )
+        ORDER BY processing_job_id
+        LIMIT 1
+        """,
+        (
+            unit_offering_id,
+            source_file_path,
+            source_content_hash,
+        ),
+    ).fetchone()
+    if row is None:
+        return Path(fallback).name
+    try:
+        payload = json.loads(row["payload_json"] or "{}")
+    except json.JSONDecodeError:
+        return Path(fallback).name
+    return Path(
+        str(payload.get("original_file_name") or fallback)
+    ).name
 
 
 def _plan_row(
@@ -143,6 +186,14 @@ def _handle_scoping_note(
     conn: sqlite3.Connection,
     job: sqlite3.Row,
 ) -> dict:
+    payload = _job_payload(job)
+    restore_material_id = payload.get("restore_material_id")
+    if restore_material_id is not None:
+        return _handle_scoping_note_restore(
+            conn,
+            job,
+            int(restore_material_id),
+        )
     path = str(job["source_file_path"])
     _require_text_document(path)
     offering = conn.execute(
@@ -160,7 +211,6 @@ def _handle_scoping_note(
     ).fetchone()
     if offering is None or offering["legacy_unit_id"] is None:
         raise ValueError("The Unit no longer exists.")
-    payload = _job_payload(job)
     material_id = ingest_material(
         conn,
         path,
@@ -177,6 +227,170 @@ def _handle_scoping_note(
     )
     conn.commit()
     return {"material_id": material_id}
+
+
+def _handle_scoping_note_restore(
+    conn: sqlite3.Connection,
+    job: sqlite3.Row,
+    material_id: int,
+) -> dict:
+    row = conn.execute(
+        """
+        SELECT
+            material.*,
+            unit.unit_code,
+            unit.year,
+            unit.semester
+        FROM unit_materials AS material
+        JOIN units AS unit ON unit.unit_id = material.unit_id
+        WHERE material.material_id = ?
+          AND material.assignment_id IS NULL
+        """,
+        (material_id,),
+    ).fetchone()
+    if row is None:
+        raise RuntimeError("The scoping material no longer exists.")
+    if row["is_active"]:
+        raise RuntimeError("The scoping material is already active.")
+    if row["material_type"] == "deleted_scoping_note":
+        raise RuntimeError("Deleted scoping materials cannot be restored.")
+    already_restored = conn.execute(
+        """
+        SELECT 1
+        FROM audit_events
+        WHERE event_type = 'scoping_note.restored'
+          AND entity_type = 'unit_material'
+          AND entity_id = ?
+        LIMIT 1
+        """,
+        (str(material_id),),
+    ).fetchone()
+    if already_restored is not None:
+        raise RuntimeError("The scoping material has already been restored.")
+
+    source = Path(str(row["source_file_path"] or ""))
+    if not source.is_absolute():
+        source = PROJECT_ROOT / source
+    if not source.is_file():
+        raise RuntimeError(
+            "The original uploaded file is no longer available."
+        )
+    old_chunks = conn.execute(
+        """
+        SELECT *
+        FROM material_chunks
+        WHERE material_id = ?
+        ORDER BY chunk_index
+        """,
+        (material_id,),
+    ).fetchall()
+    if not old_chunks:
+        raise RuntimeError("The material has no stored chunks to restore.")
+
+    collection_name = build_collection_name(
+        row["unit_code"],
+        row["year"],
+        row["semester"],
+    )
+    new_chunks = []
+    vector_ids = []
+    try:
+        conn.execute("BEGIN")
+        new_material_id = int(
+            conn.execute(
+                """
+                INSERT INTO unit_materials
+                    (unit_id, assignment_id, material_type, title,
+                     week_number, source_file_path, source_content_hash,
+                     raw_text, cleaned_text, version)
+                VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["unit_id"],
+                    row["material_type"],
+                    row["title"],
+                    row["week_number"],
+                    row["source_file_path"],
+                    row["source_content_hash"],
+                    row["raw_text"],
+                    row["cleaned_text"],
+                    int(row["version"] or 1) + 1,
+                ),
+            ).lastrowid
+        )
+        for old_chunk in old_chunks:
+            chunk_id = int(
+                conn.execute(
+                    """
+                    INSERT INTO material_chunks
+                        (material_id, chunk_index, chunk_text,
+                         section_title, page_number_start,
+                         page_number_end, token_count,
+                         chunking_strategy)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        new_material_id,
+                        old_chunk["chunk_index"],
+                        old_chunk["chunk_text"],
+                        old_chunk["section_title"],
+                        old_chunk["page_number_start"],
+                        old_chunk["page_number_end"],
+                        old_chunk["token_count"],
+                        old_chunk["chunking_strategy"],
+                    ),
+                ).lastrowid
+            )
+            new_chunks.append(
+                {
+                    "chunk_id": chunk_id,
+                    "text": old_chunk["chunk_text"],
+                    "page_start": old_chunk["page_number_start"],
+                    "page_end": old_chunk["page_number_end"],
+                }
+            )
+        vector_ids = embed_and_store(new_chunks, collection_name)
+        for chunk, vector_id in zip(new_chunks, vector_ids):
+            conn.execute(
+                """
+                INSERT INTO chunk_embedding_map
+                    (chunk_id, embedding_model, vector_store_name,
+                     vector_id)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    chunk["chunk_id"],
+                    MODEL_NAME,
+                    collection_name,
+                    vector_id,
+                ),
+            )
+        record_audit_event(
+            conn,
+            "scoping_note.restored",
+            "unit_material",
+            material_id,
+            actor_user_id=job["created_by_user_id"],
+            metadata={"restored_material_id": new_material_id},
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        if vector_ids:
+            client = get_chroma_client()
+            existing = [
+                collection.name
+                for collection in client.list_collections()
+            ]
+            if collection_name in existing:
+                client.get_collection(collection_name).delete(
+                    ids=vector_ids
+                )
+        raise
+    return {
+        "material_id": new_material_id,
+        "restored_from_material_id": material_id,
+    }
 
 
 def _handle_assignment_spec(
@@ -573,6 +787,18 @@ def deactivate_scoping_note(
         int(row["unit_offering_id"]),
     ):
         raise ApiError("unit_forbidden", "Not authorised.", 403)
+    if row["material_type"] == "deleted_scoping_note":
+        raise ApiError(
+            "scoping_material_deleted",
+            "Deleted scoping materials cannot be changed.",
+            409,
+        )
+    if not row["is_active"]:
+        raise ApiError(
+            "scoping_material_already_deactivated",
+            "The scoping material is already deactivated.",
+            409,
+        )
     reason = reason.strip()
     if not reason:
         raise ApiError(
@@ -626,6 +852,306 @@ def deactivate_scoping_note(
         existing = [collection.name for collection in client.list_collections()]
         if collection_name in existing:
             client.get_collection(collection_name).delete(ids=vector_ids)
+
+
+def enqueue_scoping_note_restore(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    material_id: int,
+) -> int:
+    row = conn.execute(
+        """
+        SELECT
+            material.*,
+            offering.unit_offering_id
+        FROM unit_materials AS material
+        JOIN unit_offerings AS offering
+          ON offering.legacy_unit_id = material.unit_id
+        WHERE material.material_id = ?
+          AND material.assignment_id IS NULL
+        """,
+        (material_id,),
+    ).fetchone()
+    if row is None:
+        raise ApiError(
+            "scoping_material_not_found",
+            "Scoping material not found.",
+            404,
+        )
+    if not can_administer_unit(
+        conn,
+        actor_user_id,
+        int(row["unit_offering_id"]),
+    ):
+        raise ApiError("unit_forbidden", "Not authorised.", 403)
+    if row["material_type"] == "deleted_scoping_note":
+        raise ApiError(
+            "scoping_material_deleted",
+            "Deleted scoping materials cannot be restored.",
+            409,
+        )
+    if row["is_active"]:
+        raise ApiError(
+            "scoping_material_active",
+            "The scoping material is already active.",
+            409,
+        )
+    restored = conn.execute(
+        """
+        SELECT 1
+        FROM audit_events
+        WHERE event_type = 'scoping_note.restored'
+          AND entity_type = 'unit_material'
+          AND entity_id = ?
+        LIMIT 1
+        """,
+        (str(material_id),),
+    ).fetchone()
+    if restored is not None:
+        raise ApiError(
+            "scoping_material_already_restored",
+            "The scoping material has already been restored.",
+            409,
+        )
+    pending = conn.execute(
+        """
+        SELECT processing_job_id
+        FROM processing_jobs
+        WHERE job_type = 'scoping_note_ingest'
+          AND status IN ('queued', 'running')
+          AND CAST(
+              json_extract(payload_json, '$.restore_material_id')
+              AS INTEGER
+          ) = ?
+        LIMIT 1
+        """,
+        (material_id,),
+    ).fetchone()
+    if pending is not None:
+        return int(pending["processing_job_id"])
+
+    source = Path(str(row["source_file_path"] or ""))
+    if not source.is_absolute():
+        source = PROJECT_ROOT / source
+    if not source.is_file():
+        raise ApiError(
+            "restore_unavailable",
+            "The original uploaded file is no longer available.",
+            410,
+        )
+    original_file_name = _original_upload_name(
+        conn,
+        int(row["unit_offering_id"]),
+        row["source_file_path"],
+        row["source_content_hash"],
+        source.name,
+    )
+    job_id = enqueue_job(
+        conn,
+        "scoping_note_ingest",
+        unit_offering_id=int(row["unit_offering_id"]),
+        created_by_user_id=actor_user_id,
+        source_file_path=str(source),
+        source_content_hash=row["source_content_hash"],
+        payload={
+            "original_file_name": original_file_name,
+            "title": row["title"],
+            "restore_material_id": material_id,
+        },
+    )
+    record_audit_event(
+        conn,
+        "scoping_note.restore_queued",
+        "unit_material",
+        material_id,
+        actor_user_id=actor_user_id,
+        metadata={"processing_job_id": job_id},
+    )
+    conn.commit()
+    return job_id
+
+
+def delete_scoping_note(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    material_id: int,
+) -> None:
+    row = conn.execute(
+        """
+        SELECT
+            material.*,
+            offering.unit_offering_id,
+            unit.unit_code,
+            unit.year,
+            unit.semester
+        FROM unit_materials AS material
+        JOIN units AS unit ON unit.unit_id = material.unit_id
+        JOIN unit_offerings AS offering
+          ON offering.legacy_unit_id = unit.unit_id
+        WHERE material.material_id = ?
+          AND material.assignment_id IS NULL
+        """,
+        (material_id,),
+    ).fetchone()
+    if row is None:
+        raise ApiError(
+            "scoping_material_not_found",
+            "Scoping material not found.",
+            404,
+        )
+    if not can_administer_unit(
+        conn,
+        actor_user_id,
+        int(row["unit_offering_id"]),
+    ):
+        raise ApiError("unit_forbidden", "Not authorised.", 403)
+    if row["material_type"] == "deleted_scoping_note":
+        raise ApiError(
+            "scoping_material_deleted",
+            "The scoping material has already been deleted.",
+            409,
+        )
+    if row["is_active"]:
+        raise ApiError(
+            "scoping_material_must_be_deactivated",
+            "Deactivate the scoping material before deleting it.",
+            409,
+        )
+    restored = conn.execute(
+        """
+        SELECT 1
+        FROM audit_events
+        WHERE event_type = 'scoping_note.restored'
+          AND entity_type = 'unit_material'
+          AND entity_id = ?
+        LIMIT 1
+        """,
+        (str(material_id),),
+    ).fetchone()
+    if restored is not None:
+        raise ApiError(
+            "scoping_material_already_restored",
+            "The restored historical record cannot be deleted.",
+            409,
+        )
+
+    vector_ids = [
+        str(vector["vector_id"])
+        for vector in conn.execute(
+            """
+            SELECT map.vector_id
+            FROM chunk_embedding_map AS map
+            JOIN material_chunks AS chunk
+              ON chunk.chunk_id = map.chunk_id
+            WHERE chunk.material_id = ?
+            """,
+            (material_id,),
+        )
+    ]
+    collection_name = build_collection_name(
+        row["unit_code"],
+        row["year"],
+        row["semester"],
+    )
+    if vector_ids:
+        client = get_chroma_client()
+        existing = [
+            collection.name for collection in client.list_collections()
+        ]
+        if collection_name in existing:
+            client.get_collection(collection_name).delete(ids=vector_ids)
+
+    source_path = row["source_file_path"]
+    if source_path:
+        try:
+            remove_stored_upload(source_path)
+        except UploadValidationError as exc:
+            raise ApiError(
+                "delete_unavailable",
+                (
+                    "This file is outside managed upload storage and "
+                    "cannot be permanently deleted here."
+                ),
+                409,
+            ) from exc
+    display_name = _original_upload_name(
+        conn,
+        int(row["unit_offering_id"]),
+        source_path,
+        row["source_content_hash"],
+        str(source_path or row["title"]),
+    )
+    details = {
+        "material_id": material_id,
+        "title": row["title"],
+        "file_name": display_name,
+        "source_content_hash": row["source_content_hash"],
+        "deactivated_at": row["deactivated_at"],
+        "deactivation_reason": row["deactivation_reason"],
+    }
+    try:
+        conn.execute("BEGIN")
+        conn.execute(
+            """
+            DELETE FROM chunk_embedding_map
+            WHERE chunk_id IN (
+                SELECT chunk_id
+                FROM material_chunks
+                WHERE material_id = ?
+            )
+            """,
+            (material_id,),
+        )
+        conn.execute(
+            """
+            UPDATE material_chunks
+            SET chunk_text = '',
+                section_title = NULL,
+                page_number_start = NULL,
+                page_number_end = NULL,
+                token_count = 0,
+                chunking_strategy = 'deleted'
+            WHERE material_id = ?
+            """,
+            (material_id,),
+        )
+        conn.execute(
+            """
+            UPDATE unit_materials
+            SET material_type = 'deleted_scoping_note',
+                source_file_path = NULL,
+                raw_text = NULL,
+                cleaned_text = '',
+                week_number = NULL
+            WHERE material_id = ?
+            """,
+            (material_id,),
+        )
+        record_audit_event(
+            conn,
+            "scoping_note.deleted",
+            "unit_material",
+            material_id,
+            actor_user_id=actor_user_id,
+            metadata=details,
+        )
+        conn.execute(
+            """
+            INSERT INTO data_lifecycle_events
+                (actor_user_id, action, entity_type,
+                 entity_identifier, details_json)
+            VALUES (?, 'permanent_delete', 'unit_material', ?, ?)
+            """,
+            (
+                actor_user_id,
+                str(material_id),
+                json.dumps(details, ensure_ascii=False),
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 def create_submission_batch(
