@@ -1,0 +1,347 @@
+{% extends "admin_base.html" %}
+{% block title %}Unit | FeedbackLens{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="/admin/units">Units</a> &rsaquo; <span id="breadcrumb-unit">Unit</span></div>
+<div class="toolbar">
+  <div>
+    <h1 id="title">Unit</h1>
+    <p class="sub" id="period">Loading...</p>
+  </div>
+  <button id="edit-unit-btn" class="secondary hidden" onclick="openUnitEditor()">Edit Unit</button>
+</div>
+<div id="message" class="hidden"></div>
+
+<div class="card">
+  <div class="toolbar">
+    <h2>Student roster</h2>
+    <button onclick="document.getElementById('roster-file').click()">Upload CSV</button>
+  </div>
+  <input class="hidden" id="roster-file" type="file" accept=".csv" onchange="uploadRoster(this.files[0])">
+  <div id="roster-workflow" class="muted">Import a Moodle roster before uploading summative work.</div>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <h2>Scoping materials</h2>
+    <button id="scope-upload-btn" onclick="document.getElementById('scope-file').click()">Upload materials (PDF/TXT)</button>
+  </div>
+  <p class="muted">Unit-level teaching context used for feedback generation, including lecture transcripts and uploaded notes.</p>
+  <input class="hidden" id="scope-file" type="file" accept=".pdf,.txt" multiple onchange="uploadScopes(this)">
+  <p><strong>Active materials (<span id="active-count">0</span>)</strong></p>
+  <div id="active-notes"></div>
+  <details>
+    <summary><strong>Deactivated materials (<span id="deactivated-count">0</span>)</strong></summary>
+    <div id="deactivated-notes"></div>
+  </details>
+  <details>
+    <summary><strong>Deleted materials (<span id="deleted-count">0</span>)</strong></summary>
+    <p class="muted">Deleted content cannot be downloaded or restored. Minimal audit information is retained.</p>
+    <div id="deleted-notes"></div>
+  </details>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <h2>Assessments</h2>
+    <button onclick="document.getElementById('assessment-dialog').showModal()">Create Assessment</button>
+  </div>
+  <table>
+    <thead><tr><th>Assessment</th><th>Status</th><th>Batches</th><th>Action</th></tr></thead>
+    <tbody id="assessments"></tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Student account activation</h2>
+  <p class="muted">Publish one shared entry in Moodle. Students verify their own roster details before receiving email.</p>
+  <div id="activation"></div>
+</div>
+
+<dialog id="mapping-dialog">
+  <div class="dialog-body">
+    <h2>Map roster columns</h2>
+    <div class="grid">
+      <div><label>Student ID</label><select id="map-id"></select></div>
+      <div><label>Full name (if available)</label><select id="map-name"></select></div>
+      <div><label>First name</label><select id="map-first-name"></select></div>
+      <div><label>Surname</label><select id="map-last-name"></select></div>
+      <div><label>Institutional email</label><select id="map-email"></select></div>
+    </div>
+    <p class="muted">Map either one full-name column or both first name and surname.</p>
+    <div id="preview-summary" class="message hidden"></div>
+    <div class="dialog-actions">
+      <button class="secondary" onclick="document.getElementById('mapping-dialog').close()">Cancel</button>
+      <button id="preview-btn" onclick="previewRoster()">Preview</button>
+      <button id="commit-btn" class="hidden" onclick="commitRoster()">Confirm import</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="assessment-dialog">
+  <form class="dialog-body" onsubmit="createAssessment(event)">
+    <h2>Create Assessment</h2>
+    <div class="grid">
+      <div><label>Code</label><input id="assessment-code" placeholder="A1"></div>
+      <div><label>Title</label><input id="assessment-title" required></div>
+      <div><label>Weight (%)</label><input id="assessment-weight" type="number"></div>
+      <div><label>Due date</label><input id="assessment-due" type="date"></div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" onclick="document.getElementById('assessment-dialog').close()">Cancel</button>
+      <button>Create</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="unit-dialog">
+  <form class="dialog-body" onsubmit="saveUnit(event)">
+    <h2>Edit Unit</h2>
+    <div class="grid">
+      <div>
+        <label>Unit code</label>
+        <input id="edit-unit-code" required>
+        <p id="unit-code-note" class="muted"></p>
+      </div>
+      <div><label>Unit name</label><input id="edit-unit-name" required></div>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" onclick="document.getElementById('unit-dialog').close()">Cancel</button>
+      <button>Save changes</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+{% block scripts %}
+<script>
+const UNIT_ID = {{ unit_offering_id }};
+let unitData = null;
+let rosterId = null;
+let withdrawalCount = 0;
+
+function materialTypeLabel(type){
+  return {
+    lecture_transcript:'Lecture transcript',
+    scoping_note:'Uploaded note'
+  }[type] || (type || 'Unit material').replaceAll('_', ' ');
+}
+
+function materialRow(material, status){
+  const download = material.download_url ?
+    `<a class="button secondary" href="${material.download_url}">Download</a>` : '';
+  let actions = download;
+  if(status === 'active'){
+    actions += ` <button class="danger" onclick="deactivateNote(${material.material_id})">Deactivate</button>`;
+  }else if(status === 'deactivated'){
+    actions += ` <button class="secondary" onclick="restoreNote(${material.material_id})">Restore</button> <button class="danger" onclick="deleteNote(${material.material_id})">Delete</button>`;
+  }
+  const deletedAt = status === 'deleted' && material.deleted_at ?
+    `<br><span class="muted">Deleted ${escapeHtml(material.deleted_at)}</span>` : '';
+  return `<div class="toolbar">
+    <div><strong>${escapeHtml(material.display_file_name || material.title)}</strong>
+      <span class="pill ${status === 'active' ? '' : 'warn'}">${escapeHtml(status[0].toUpperCase() + status.slice(1))}</span>
+      ${status === 'deleted' ? '' : `<span class="pill">${escapeHtml(materialTypeLabel(material.material_type))}</span>`}
+      ${deletedAt}
+    </div>
+    <div class="row-actions">${actions}</div>
+  </div>`;
+}
+
+function renderMaterials(materials){
+  const lifecycleStatus = material => material.lifecycle_status ||
+    (material.material_type === 'deleted_scoping_note' ? 'deleted' : (material.is_active ? 'active' : 'deactivated'));
+  const active = materials.filter(material => lifecycleStatus(material) === 'active');
+  const deactivated = materials.filter(material => lifecycleStatus(material) === 'deactivated');
+  const deleted = materials.filter(material => lifecycleStatus(material) === 'deleted');
+  document.getElementById('active-notes').innerHTML = active.length ? active.map(material => materialRow(material, 'active')).join('') : '<p class="muted">No active scoping materials available.</p>';
+  document.getElementById('deactivated-notes').innerHTML = deactivated.length ? deactivated.map(material => materialRow(material, 'deactivated')).join('') : '<p class="muted">No deactivated materials.</p>';
+  document.getElementById('deleted-notes').innerHTML = deleted.length ? deleted.map(material => materialRow(material, 'deleted')).join('') : '<p class="muted">No deleted materials.</p>';
+  document.getElementById('active-count').textContent = active.length;
+  document.getElementById('deactivated-count').textContent = deactivated.length;
+  document.getElementById('deleted-count').textContent = deleted.length;
+}
+
+async function load(){
+  try{
+    unitData = await api('/api/admin/unit-offerings/' + UNIT_ID);
+    const unit = unitData.unit;
+    setAdminRole(unitData.is_chief_admin ? 'Chief Admin' : 'Unit Admin');
+    document.getElementById('breadcrumb-unit').textContent = unit.course_code;
+    document.getElementById('title').textContent = unit.course_code + ' \u2014 ' + unit.course_name;
+    document.getElementById('period').textContent = unit.academic_year + ' \u00b7 ' + unit.teaching_period;
+    document.getElementById('edit-unit-btn').classList.toggle('hidden', !unitData.is_chief_admin);
+    document.getElementById('assessments').innerHTML = unitData.assessments.length ? unitData.assessments.map(assessment => `
+      <tr>
+        <td><strong>${escapeHtml(assessment.title)}</strong><br><span class="muted">${escapeHtml(assessment.assessment_code || '')}</span></td>
+        <td><span class="pill">${escapeHtml(assessment.status)}</span></td>
+        <td>${assessment.batch_count}</td>
+        <td><a class="button secondary" href="/admin/assessment/${assessment.assessment_plan_id}">Manage</a></td>
+      </tr>`).join('') : '<tr><td colspan="4" class="empty">No assessments yet.</td></tr>';
+    renderMaterials(unitData.scoping_notes);
+    const recent = unitData.roster_imports[0];
+    document.getElementById('roster-workflow').innerHTML = recent ?
+      `Latest import: <strong>${escapeHtml(recent.source_file_name)}</strong> &middot; <span class="pill">${escapeHtml(recent.status)}</span> &middot; ${recent.valid_row_count} valid / ${recent.invalid_row_count} invalid` :
+      'Import a Moodle roster before uploading summative work.';
+    const activation = unitData.activation;
+    document.getElementById('activation').innerHTML = !activation.mail_configured ?
+      '<div class="message error">Account activation is unavailable because outbound email is not configured.</div>' :
+      activation.activation_url ?
+        `<label>Shared Moodle entry</label><div class="row-actions"><input id="activation-url" readonly value="${escapeHtml(activation.activation_url)}"><button onclick="navigator.clipboard.writeText(document.getElementById('activation-url').value)">Copy</button><button class="secondary" onclick="rotateActivation()">Rotate</button></div>` :
+        '<button onclick="rotateActivation()">Enable student activation</button>';
+  }catch(error){
+    showMessage('message', error.message, true);
+  }
+}
+
+async function uploadRoster(file){
+  if(!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try{
+    const data = await api(`/api/admin/unit-offerings/${UNIT_ID}/rosters`, {method:'POST', body:form});
+    rosterId = data.roster_import.roster_import_id;
+    const options = '<option value="">Not mapped</option>' + data.headers.map(header => `<option>${escapeHtml(header)}</option>`).join('');
+    ['map-id','map-name','map-first-name','map-last-name','map-email'].forEach(id => document.getElementById(id).innerHTML = options);
+    autoMap('map-id', ['id number','student id','student number','student identifier']);
+    autoMap('map-name', ['full name','student name','name']);
+    autoMap('map-first-name', ['first name','firstname','given name']);
+    autoMap('map-last-name', ['surname','last name','family name']);
+    autoMap('map-email', ['email address','institutional email','email']);
+    document.getElementById('mapping-dialog').showModal();
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+function autoMap(id, aliases){
+  const select = document.getElementById(id);
+  const option = [...select.options].find(item => aliases.includes(item.text.trim().toLowerCase()));
+  if(option) select.value = option.value;
+}
+
+async function previewRoster(){
+  try{
+    const data = await api(`/api/admin/rosters/${rosterId}/preview`, {
+      method:'POST',
+      body:JSON.stringify({mapping:{
+        student_id:document.getElementById('map-id').value,
+        name:document.getElementById('map-name').value,
+        first_name:document.getElementById('map-first-name').value,
+        last_name:document.getElementById('map-last-name').value,
+        email:document.getElementById('map-email').value
+      }})
+    });
+    const roster = data.roster_import;
+    withdrawalCount = roster.withdrawal_candidate_count;
+    const invalid = data.rows.filter(row => row.action === 'invalid').slice(0, 5);
+    document.getElementById('preview-summary').classList.remove('hidden');
+    document.getElementById('preview-summary').innerHTML = `${roster.valid_row_count} valid, ${roster.invalid_row_count} invalid, ${roster.withdrawal_candidate_count} missing from the new roster.` +
+      (invalid.length ? '<br>' + invalid.map(row => escapeHtml(row.validation_error)).join('<br>') : '');
+    document.getElementById('preview-btn').classList.add('hidden');
+    document.getElementById('commit-btn').classList.remove('hidden');
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function commitRoster(){
+  let choice = false;
+  if(withdrawalCount) choice = confirm(`${withdrawalCount} existing students are missing. Mark them withdrawn?`);
+  try{
+    await api(`/api/admin/rosters/${rosterId}/commit`, {method:'POST', body:JSON.stringify({withdraw_missing:choice})});
+    document.getElementById('mapping-dialog').close();
+    load();
+  }catch(error){
+    alert(error.message);
+  }
+}
+
+async function uploadScopes(input){
+  const files = [...(input.files || [])];
+  if(!files.length) return;
+  input.value = '';
+  const button = document.getElementById('scope-upload-btn');
+  button.disabled = true;
+  const form = new FormData();
+  files.forEach(file => form.append('files', file, file.name));
+  try{
+    const data = await api(`/api/admin/unit-offerings/${UNIT_ID}/scoping-notes`, {method:'POST', body:form});
+    const rejected = (data.uploads || []).filter(item => item.status === 'rejected');
+    const rejectedText = rejected.length ? ' ' + rejected.length + ' rejected: ' + rejected.map(item => item.file_name).join(', ') + '.' : '';
+    showMessage('message', data.accepted_count + ' file(s) accepted and queued.' + rejectedText, rejected.length > 0);
+    pollScopeJobs(data.processing_job_ids || []);
+  }catch(error){
+    const rejected = ((error.details || {}).uploads || []).map(item => item.file_name).filter(Boolean);
+    showMessage('message', error.message + (rejected.length ? ' Rejected: ' + rejected.join(', ') + '.' : ''), true);
+  }finally{
+    button.disabled = false;
+  }
+}
+
+async function pollScopeJobs(ids){
+  if(!ids.length){ load(); return; }
+  const responses = await Promise.all(ids.map(id => api('/api/jobs/' + id)));
+  const jobs = responses.map(response => response.job);
+  const pending = jobs.filter(job => job.status === 'queued' || job.status === 'running');
+  if(pending.length){
+    showMessage('message', (jobs.length - pending.length) + ' of ' + jobs.length + ' file(s) processed. ' + pending.length + ' still running.');
+    setTimeout(() => pollScopeJobs(ids), 1200);
+    return;
+  }
+  const failed = jobs.filter(job => job.status !== 'succeeded');
+  showMessage('message', failed.length ? `${jobs.length - failed.length} of ${jobs.length} file(s) processed successfully. ${failed.length} failed.` : `All ${jobs.length} file(s) processed successfully.`, failed.length > 0);
+  load();
+}
+
+async function deactivateNote(id){
+  const reason = prompt('Reason for deactivation:');
+  if(!reason) return;
+  try{ await api('/api/admin/scoping-notes/' + id + '/deactivate', {method:'POST', body:JSON.stringify({reason})}); load(); }
+  catch(error){ alert(error.message); }
+}
+async function restoreNote(id){
+  if(!confirm('Restore this material and rebuild its retrieval index?')) return;
+  try{ const data = await api('/api/admin/scoping-notes/' + id + '/restore', {method:'POST', body:'{}'}); showMessage('message', 'Restore queued. The retrieval index is being rebuilt.'); pollScopeJobs([data.processing_job_id]); }
+  catch(error){ showMessage('message', error.message, true); }
+}
+async function deleteNote(id){
+  if(!confirm('Permanently delete this material? Its original file and retrieval content cannot be recovered.')) return;
+  try{ await api('/api/admin/scoping-notes/' + id, {method:'DELETE'}); showMessage('message', 'Material permanently deleted.'); load(); }
+  catch(error){ showMessage('message', error.message, true); }
+}
+function openUnitEditor(){
+  const unit = unitData.unit;
+  const code = document.getElementById('edit-unit-code');
+  code.value = unit.course_code;
+  code.disabled = !unitData.unit_code_editable;
+  document.getElementById('edit-unit-name').value = unit.course_name;
+  document.getElementById('unit-code-note').textContent = unitData.unit_code_editable ? 'The code can be corrected until scoping materials are processed.' : 'The code is locked because scoping materials have been processed. The Unit name can still be changed.';
+  document.getElementById('unit-dialog').showModal();
+}
+async function saveUnit(event){
+  event.preventDefault();
+  try{
+    await api(`/api/admin/unit-offerings/${UNIT_ID}`, {method:'PATCH', body:JSON.stringify({course_code:document.getElementById('edit-unit-code').value, course_name:document.getElementById('edit-unit-name').value})});
+    document.getElementById('unit-dialog').close();
+    showMessage('message', 'Unit details updated.');
+    load();
+  }catch(error){
+    showMessage('message', error.message, true);
+  }
+}
+async function createAssessment(event){
+  event.preventDefault();
+  try{
+    const data = await api(`/api/admin/unit-offerings/${UNIT_ID}/assessments`, {method:'POST', body:JSON.stringify({assessment_code:document.getElementById('assessment-code').value, title:document.getElementById('assessment-title').value, weight:document.getElementById('assessment-weight').value || null, due_date:document.getElementById('assessment-due').value || null})});
+    location.href = '/admin/assessment/' + data.assessment.assessment_plan_id;
+  }catch(error){
+    alert(error.message);
+  }
+}
+async function rotateActivation(){
+  if(!confirm('Create a new shared activation entry? Any previous entry will stop working.')) return;
+  try{ await api(`/api/admin/unit-offerings/${UNIT_ID}/activation-entry`, {method:'POST', body:'{}'}); load(); }
+  catch(error){ alert(error.message); }
+}
+load();
+</script>
+{% endblock %}

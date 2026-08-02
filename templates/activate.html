@@ -1,0 +1,47 @@
+{% extends "account_base.html" %}
+{% block title %}Activate | FeedbackLens{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>Activate your account</h1>
+  {% if entry_valid %}<p>Enter the institutional details shown in your Unit roster.</p>{% endif %}
+</div>
+{% if entry_valid %}
+  <form id="form">
+    <input type="hidden" id="entry" value="{{ entry_token }}">
+    <div class="form-group">
+      <label for="student-id">Student ID</label>
+      <input id="student-id" type="text" required>
+    </div>
+    <div class="form-group">
+      <label for="email">Institutional email</label>
+      <input id="email" type="email" required>
+    </div>
+    <div id="message" class="message" aria-live="polite"></div>
+    <button class="btn-primary">Send activation email</button>
+  </form>
+{% else %}
+  <div class="message error">This activation entry is no longer valid. Return to Moodle for the latest link.</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if entry_valid %}
+<script>
+document.getElementById('form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const response = await fetch('/api/account/activation/request', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      entry_token:document.getElementById('entry').value,
+      student_identifier:document.getElementById('student-id').value,
+      email:document.getElementById('email').value
+    })
+  });
+  const data = await response.json();
+  const message = document.getElementById('message');
+  message.textContent = data.message;
+  message.classList.toggle('error', !response.ok);
+});
+</script>
+{% endif %}
+{% endblock %}

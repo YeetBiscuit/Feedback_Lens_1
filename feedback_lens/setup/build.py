@@ -2,13 +2,18 @@ import shutil
 import sqlite3
 from pathlib import Path
 
-from feedback_lens.db.connection import ensure_schema_updates
+from feedback_lens.db.connection import (
+    is_default_db_path,
+    seed_local_demo_accounts,
+)
+from feedback_lens.db.migrations import migrate_database
 from feedback_lens.paths import CHROMA_DIR, DB_PATH, SCHEMA_PATH
 
 
 def initialise_database(
     db_path: str | Path = DB_PATH,
     schema_path: str | Path = SCHEMA_PATH,
+    seed_demo_accounts: bool | None = None,
 ) -> None:
     db_path = Path(db_path)
     schema_path = Path(schema_path)
@@ -32,7 +37,11 @@ def initialise_database(
         ).fetchone()
         if existing_table is None:
             conn.executescript(sql_script)
-        ensure_schema_updates(conn)
+        if seed_demo_accounts is None:
+            seed_demo_accounts = is_default_db_path(db_path)
+        if seed_demo_accounts:
+            seed_local_demo_accounts(conn)
+        migrate_database(conn)
         conn.commit()
     finally:
         conn.close()

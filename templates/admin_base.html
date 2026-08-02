@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}FeedbackLens Admin{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+</head>
+<body>
+<div class="navbar">
+  <a class="nav-logo" href="/admin/units">
+    <span class="nav-logo-icon">FL</span>
+    FeedbackLens
+  </a>
+  <div class="nav-center">
+    <a class="nav-link" data-admin-nav="dashboard" href="/admin">Dashboard</a>
+    <a class="nav-link" data-admin-nav="units" href="/admin/units">Units</a>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button type="button" class="font-btn" data-size="14">A-</button>
+      <button type="button" class="font-btn active" data-size="16">A</button>
+      <button type="button" class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">{{ user.display_name or user.email }}</div>
+      <div class="nav-user-role" id="nav-role"></div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" tabindex="0" role="button" aria-label="Open user menu">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">{{ user.email }}</div>
+      <a class="user-menu-item danger" href="/logout">Log out</a>
+    </div>
+  </div>
+</div>
+<main class="wrap">{% block content %}{% endblock %}</main>
+<script>
+const CSRF_TOKEN = {{ csrf_token|tojson }};
+const ADMIN_DISPLAY_NAME = {{ (user.display_name or user.email)|tojson }};
+
+function initials(name){
+  if(!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+const savedFontSize = localStorage.getItem('fl-font-size');
+if(savedFontSize){
+  document.documentElement.style.fontSize = savedFontSize + 'px';
+  document.querySelectorAll('.font-btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.size === savedFontSize);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(button => {
+  button.addEventListener('click', () => {
+    const size = button.dataset.size;
+    document.documentElement.style.fontSize = size + 'px';
+    localStorage.setItem('fl-font-size', size);
+    document.querySelectorAll('.font-btn').forEach(item => item.classList.remove('active'));
+    button.classList.add('active');
+  });
+});
+
+const userMenu = document.getElementById('user-menu');
+const avatar = document.getElementById('nav-avatar');
+avatar.textContent = initials(ADMIN_DISPLAY_NAME);
+function toggleUserMenu(event){
+  event.stopPropagation();
+  userMenu.classList.toggle('show');
+}
+avatar.addEventListener('click', toggleUserMenu);
+avatar.addEventListener('keydown', event => {
+  if(event.key === 'Enter' || event.key === ' '){
+    event.preventDefault();
+    toggleUserMenu(event);
+  }
+});
+document.addEventListener('click', () => userMenu.classList.remove('show'));
+userMenu.addEventListener('click', event => event.stopPropagation());
+
+const unitsRoute = location.pathname.startsWith('/admin/unit') ||
+  location.pathname.startsWith('/admin/assessment') ||
+  location.pathname === '/admin/units';
+document.querySelector('[data-admin-nav="' + (unitsRoute ? 'units' : 'dashboard') + '"]').classList.add('active');
+
+function setAdminRole(role){
+  document.getElementById('nav-role').textContent = role || '';
+}
+
+async function api(url, options){
+  options = options || {};
+  options.headers = options.headers || {};
+  if(options.method && options.method !== 'GET'){
+    options.headers['X-CSRF-Token'] = CSRF_TOKEN;
+  }
+  if(options.body && !(options.body instanceof FormData) && !options.headers['Content-Type']){
+    options.headers['Content-Type'] = 'application/json';
+  }
+  const response = await fetch(url, options);
+  let data = {};
+  try{ data = await response.json(); }catch(e){}
+  if(!response.ok){
+    const error = data.error || {};
+    const ex = new Error(error.message || 'Request failed.');
+    ex.code = error.code; ex.details = error.details || {};
+    throw ex;
+  }
+  return data;
+}
+function escapeHtml(value){
+  return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[character]);
+}
+function showMessage(target, text, isError){
+  const box = document.getElementById(target);
+  box.textContent = text;
+  box.className = 'message' + (isError ? ' error' : '');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

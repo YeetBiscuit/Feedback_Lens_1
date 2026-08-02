@@ -3,7 +3,7 @@ import re
 import sqlite3
 from dataclasses import dataclass
 
-from feedback_lens.db.connection import ensure_schema_updates, fetch_latest_version_row
+from feedback_lens.db.connection import fetch_latest_version_row
 from feedback_lens.feedback.llm.providers import generate_text, resolve_model_name
 from feedback_lens.feedback.prompt import (
     CUSTOM_FEEDBACK_MODIFIER_MODE,
@@ -564,7 +564,6 @@ def generate_feedback_for_submission(
     feedback_tone: str | None = None,
     planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
 ) -> FeedbackGenerationResult:
-    ensure_schema_updates(conn)
     generation_id = None
     planning_record_id = None
     resolved_context_mode = _normalise_context_mode(context_mode)
@@ -863,7 +862,6 @@ def regenerate_feedback_for_criterion(
     feedback_length: str | None = None,
     feedback_tone: str | None = None,
 ) -> dict:
-    ensure_schema_updates(conn)
     (
         resolved_feedback_modifier_mode,
         resolved_feedback_length,

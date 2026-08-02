@@ -1,0 +1,9 @@
+{% extends "account_base.html" %}
+{% block title %}{{ title }} | FeedbackLens{% endblock %}
+{% block content %}
+<div class="card-header">
+  <h1>{{ title }}</h1>
+</div>
+<div class="message {% if success %}success{% else %}error{% endif %}">{{ message }}</div>
+<a class="text-link" href="/login">Go to login</a>
+{% endblock %}

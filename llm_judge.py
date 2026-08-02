@@ -924,7 +924,7 @@ def main(argv=None):
         reference_file = args.reference_file or (input_files[0] if input_files else DEFAULT_INPUT_FILES[0])
         ref_data = load_json_file(reference_file)
         submission_text, assignment_spec, rubric_text, retrieved_context = extract_context(ref_data)
-        
+
         synthetic_feedback = SYNTHETIC_BASELINES
 
         for label in synthetic_labels:

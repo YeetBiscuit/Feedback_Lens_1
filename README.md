@@ -79,21 +79,48 @@ $env:NVIDIA_API_KEY="your_key_here"
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).
 
+## Admin Upload Workflow
+
+The web Admin console replaces the per-file `ingest_unit.py` workflow for new
+teaching data:
+
+1. Run `python app.py` and log in as a Chief Admin or Unit Admin.
+2. Open `/admin/units`.
+3. Create the Unit and assessment, import the Moodle roster CSV, and upload
+   scoping notes, the assignment specification, and the rubric.
+4. Upload Moodle's original **Download submissions in folders** ZIP on the
+   assessment page.
+5. Review unmatched or invalid records while valid matched submissions
+   continue into the system.
+
+`python app.py` starts a local background worker automatically. In a deployed
+environment, run `python worker.py` as a separate long-running service and set
+`FEEDBACK_LENS_START_WORKER=0` for the web process.
+
+Student accounts are activated from a shared Unit link published in Moodle.
+The link only sends an activation email when the submitted student ID and
+institutional email match an active roster record. See
+[docs/configuration.md](docs/configuration.md) for upload, email, URL, and
+security settings.
+
 ## Demo Educator Account
 
-Local database connections seed a demo educator account for frontend testing:
+`python build.py` seeds a demo educator account when it initialises the
+repository's default local database:
 
 - Email: `educator@test.com`
 - Password: `123456`
 - Role: `educator`
 - Display name: `Demo Educator`
 
-The account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to all units currently present in the local database.
+The account is linked to tutor identifier `DEV-TUTOR-001` and is assigned to
+all units currently present in the local database. Opening an ordinary database
+connection never creates accounts or changes the schema.
 
 ## Code Layout
 
-- `feedback_lens/setup/` - setup and schema logic
-- `feedback_lens/db/` - database connection and schema-update helpers
+- `feedback_lens/setup/` - baseline schema and versioned migration SQL
+- `feedback_lens/db/` - database connections, schema validation, and migration runner
 - `feedback_lens/file_management/` - document readers, importers, parsing, ingestion, chunking, and embedding
 - `feedback_lens/feedback/` - retrieval, prompting, LLM providers, and feedback pipeline
 - `feedback_lens/cli/` - internal CLI implementations
