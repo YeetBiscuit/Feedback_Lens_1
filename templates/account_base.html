@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FeedbackLens{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='account.css') }}">
+</head>
+<body>
+  <nav>
+    <a class="nav-logo" href="/">
+      <span class="logo-dot"></span>
+      FeedbackLens
+    </a>
+    <ul class="nav-center">
+      <li><a href="/">Home</a></li>
+      <li><a href="#">About Us</a></li>
+      <li><a href="#">Contact Us</a></li>
+    </ul>
+    <a class="btn-login" href="/login">Log In</a>
+  </nav>
+  <main>
+    <section class="account-card">
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+  <footer>
+    <div class="footer-logo"><span class="logo-dot"></span>FeedbackLens</div>
+    <p>&copy; 2025 FeedbackLens. All rights reserved.</p>
+  </footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

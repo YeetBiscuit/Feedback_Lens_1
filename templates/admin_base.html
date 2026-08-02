@@ -3,44 +3,90 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>{% block title %}Feedback Lens Admin{% endblock %}</title>
-  <style>
-    :root{font-family:Inter,system-ui,sans-serif;color:#172033;background:#f4f7fb}
-    *{box-sizing:border-box}body{margin:0}
-    header{height:64px;background:#172033;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
-    header a{color:#fff;text-decoration:none}.brand{font-weight:800;font-size:1.1rem}
-    main{max-width:1180px;margin:28px auto;padding:0 20px 60px}
-    h1{margin:0 0 6px}.sub{color:#667085;margin:0 0 24px}
-    .toolbar{display:flex;gap:10px;justify-content:space-between;align-items:center;margin:18px 0}
-    .card{background:#fff;border:1px solid #e5eaf1;border-radius:14px;padding:20px;margin:16px 0;box-shadow:0 3px 12px rgba(20,30,50,.04)}
-    .card h2{margin:0 0 14px;font-size:1.1rem}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
-    label{display:block;font-size:.82rem;font-weight:700;margin-bottom:5px;color:#344054}
-    input,select,textarea{width:100%;padding:10px 11px;border:1px solid #cfd6e1;border-radius:8px;background:#fff}
-    button,.button{display:inline-block;border:0;border-radius:8px;padding:10px 14px;background:#2457d6;color:#fff;font-weight:700;cursor:pointer;text-decoration:none}
-    button.secondary,.button.secondary{background:#e9eef8;color:#26344d}
-    button.danger{background:#b42318}button:disabled{opacity:.45;cursor:not-allowed}
-    table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #edf0f5;font-size:.9rem}
-    th{font-size:.78rem;text-transform:uppercase;color:#667085}
-    .pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#e8f7ee;color:#177245;font-size:.75rem;font-weight:700}
-    .pill.warn{background:#fff2d8;color:#8a5700}.pill.bad{background:#fee4e2;color:#b42318}
-    .message{padding:11px 13px;border-radius:8px;margin:10px 0;background:#eaf2ff;color:#1849a9}
-    .message.error{background:#fee4e2;color:#b42318}.hidden{display:none}
-    .row-actions{display:flex;gap:8px;flex-wrap:wrap}.muted{color:#667085;font-size:.84rem}
-    details{border-top:1px solid #edf0f5;margin-top:14px;padding-top:12px}summary{cursor:pointer;color:#344054}
-    dialog{border:0;border-radius:14px;padding:0;max-width:640px;width:calc(100% - 30px);box-shadow:0 20px 60px rgba(0,0,0,.25)}
-    dialog::backdrop{background:rgba(20,30,50,.5)}.dialog-body{padding:22px}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-    @media(max-width:700px){header{padding:0 16px}main{margin-top:18px}table{display:block;overflow:auto}}
-  </style>
+  <title>{% block title %}FeedbackLens Admin{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
 </head>
 <body>
-<header>
-  <a class="brand" href="/admin/units">Feedback Lens</a>
-  <div>{{ user.display_name or user.email }} &nbsp; <a href="/logout">Log out</a></div>
-</header>
-<main>{% block content %}{% endblock %}</main>
+<div class="navbar">
+  <a class="nav-logo" href="/admin/units">
+    <span class="nav-logo-icon">FL</span>
+    FeedbackLens
+  </a>
+  <div class="nav-center">
+    <a class="nav-link" data-admin-nav="dashboard" href="/admin">Dashboard</a>
+    <a class="nav-link" data-admin-nav="units" href="/admin/units">Units</a>
+  </div>
+  <div class="nav-right">
+    <div class="font-toggle">
+      <button type="button" class="font-btn" data-size="14">A-</button>
+      <button type="button" class="font-btn active" data-size="16">A</button>
+      <button type="button" class="font-btn" data-size="18">A+</button>
+    </div>
+    <div class="nav-user">
+      <div class="nav-user-name" id="nav-name">{{ user.display_name or user.email }}</div>
+      <div class="nav-user-role" id="nav-role"></div>
+    </div>
+    <div class="nav-avatar" id="nav-avatar" tabindex="0" role="button" aria-label="Open user menu">-</div>
+    <div class="dropdown user-menu" id="user-menu">
+      <div class="user-menu-email" id="user-menu-email">{{ user.email }}</div>
+      <a class="user-menu-item danger" href="/logout">Log out</a>
+    </div>
+  </div>
+</div>
+<main class="wrap">{% block content %}{% endblock %}</main>
 <script>
 const CSRF_TOKEN = {{ csrf_token|tojson }};
+const ADMIN_DISPLAY_NAME = {{ (user.display_name or user.email)|tojson }};
+
+function initials(name){
+  if(!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+const savedFontSize = localStorage.getItem('fl-font-size');
+if(savedFontSize){
+  document.documentElement.style.fontSize = savedFontSize + 'px';
+  document.querySelectorAll('.font-btn').forEach(button => {
+    button.classList.toggle('active', button.dataset.size === savedFontSize);
+  });
+}
+document.querySelectorAll('.font-btn').forEach(button => {
+  button.addEventListener('click', () => {
+    const size = button.dataset.size;
+    document.documentElement.style.fontSize = size + 'px';
+    localStorage.setItem('fl-font-size', size);
+    document.querySelectorAll('.font-btn').forEach(item => item.classList.remove('active'));
+    button.classList.add('active');
+  });
+});
+
+const userMenu = document.getElementById('user-menu');
+const avatar = document.getElementById('nav-avatar');
+avatar.textContent = initials(ADMIN_DISPLAY_NAME);
+function toggleUserMenu(event){
+  event.stopPropagation();
+  userMenu.classList.toggle('show');
+}
+avatar.addEventListener('click', toggleUserMenu);
+avatar.addEventListener('keydown', event => {
+  if(event.key === 'Enter' || event.key === ' '){
+    event.preventDefault();
+    toggleUserMenu(event);
+  }
+});
+document.addEventListener('click', () => userMenu.classList.remove('show'));
+userMenu.addEventListener('click', event => event.stopPropagation());
+
+const unitsRoute = location.pathname.startsWith('/admin/unit') ||
+  location.pathname.startsWith('/admin/assessment') ||
+  location.pathname === '/admin/units';
+document.querySelector('[data-admin-nav="' + (unitsRoute ? 'units' : 'dashboard') + '"]').classList.add('active');
+
+function setAdminRole(role){
+  document.getElementById('nav-role').textContent = role || '';
+}
+
 async function api(url, options){
   options = options || {};
   options.headers = options.headers || {};
@@ -62,13 +108,14 @@ async function api(url, options){
   return data;
 }
 function escapeHtml(value){
-  return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({
+  return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  })[c]);
+  })[character]);
 }
 function showMessage(target, text, isError){
   const box = document.getElementById(target);
-  box.textContent = text; box.className = 'message' + (isError ? ' error' : '');
+  box.textContent = text;
+  box.className = 'message' + (isError ? ' error' : '');
 }
 </script>
 {% block scripts %}{% endblock %}

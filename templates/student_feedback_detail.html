@@ -84,8 +84,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .consent-row{display:flex;align-items:flex-start;gap:.55rem;font-size:.8125rem;line-height:1.45;color:#374151;margin-top:.75rem}
 .consent-row input{margin-top:.18rem}
 .rating-actions{display:flex;justify-content:flex-end;align-items:center;gap:.5rem;margin-top:.85rem}
-.btn-submit-rating{padding:.5rem 1.25rem;background:#1f2937;color:#fff;border:none;border-radius:8px;font-size:.875rem;cursor:pointer;font-family:inherit}
-.btn-submit-rating:hover{background:#111827}
+.btn-submit-rating{padding:.5rem 1.25rem;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:.875rem;font-weight:500;cursor:pointer;font-family:inherit}
+.btn-submit-rating:hover{background:#1d4ed8}
 .btn-remove-rating{padding:.5rem .85rem;background:#fff;color:#b91c1c;border:1px solid #fecaca;border-radius:8px;font-size:.8125rem;cursor:pointer;font-family:inherit}
 .btn-remove-rating:hover{background:#fef2f2}
 .rating-hint{font-size:.75rem;color:#6b7280}
@@ -279,7 +279,7 @@ function render(){
     +   '<textarea class="rating-textarea" id="rating-comment" maxlength="1000" placeholder="Optional comment"></textarea>'
     +   '<label class="consent-row">'
     +     '<input type="checkbox" id="evaluation-consent">'
-    +     '<span>I agree that this rating and optional comment may be used for the approved Feedback Lens research study.</span>'
+    +     '<span>I agree that this rating and optional comment may be used for the approved FeedbackLens research study.</span>'
     +   '</label>'
     +   '<div class="rating-actions">'
     +     '<button type="button" class="btn-remove-rating" id="remove-rating" onclick="removeRating()" style="display:none">Remove my response</button>'

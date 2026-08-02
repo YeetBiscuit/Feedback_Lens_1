@@ -97,7 +97,7 @@ input[type=number]{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;bord
 .loading{text-align:center;padding:3rem;color:#888}
 .evaluation-modal-backdrop{position:fixed;inset:0;background:rgba(17,24,39,.55);display:none;align-items:center;justify-content:center;padding:1.25rem;z-index:100}
 .evaluation-modal-backdrop.show{display:flex}
-.evaluation-modal{width:min(36rem,100%);background:#fff;border-radius:14px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:1.5rem}
+.evaluation-modal{width:min(36rem,100%);background:#fff;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:1.5rem}
 .evaluation-kicker{font-size:.75rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#2563eb;margin-bottom:.4rem}
 .evaluation-title{font-size:1.15rem;font-weight:700;margin-bottom:.5rem}
 .evaluation-question{font-size:.9375rem;font-weight:600;line-height:1.5;margin-bottom:.65rem}
@@ -110,6 +110,8 @@ input[type=number]{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;bord
 .evaluation-consent{display:flex;align-items:flex-start;gap:.55rem;font-size:.8125rem;line-height:1.45;color:#374151;margin-top:.75rem}
 .evaluation-consent input{margin-top:.18rem}
 .evaluation-actions{display:flex;justify-content:flex-end;align-items:center;gap:.5rem;margin-top:1rem;flex-wrap:wrap}
+.evaluation-actions .btn-save{background:#2563eb}
+.evaluation-actions .btn-save:hover{background:#1d4ed8}
 .evaluation-status{min-height:1.25rem;font-size:.8125rem;color:#166534;margin-top:.65rem}
 .btn-remove-evaluation{color:#b91c1c;border-color:#fecaca}
 </style>
@@ -188,7 +190,7 @@ input[type=number]{width:100%;padding:.55rem .7rem;border:1px solid #d1d5db;bord
     <textarea id="evaluation-comment" maxlength="1000" placeholder="Optional comment"></textarea>
     <label class="evaluation-consent">
       <input type="checkbox" id="evaluation-consent">
-      <span>I agree that this rating and optional comment may be used for the approved Feedback Lens research study.</span>
+      <span>I agree that this rating and optional comment may be used for the approved FeedbackLens research study.</span>
     </label>
     <div class="evaluation-actions">
       <button type="button" class="btn btn-secondary btn-remove-evaluation" id="remove-evaluation" style="display:none" onclick="removeEmbeddedEvaluation()">Remove saved response</button>
