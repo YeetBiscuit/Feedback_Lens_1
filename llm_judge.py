@@ -210,12 +210,24 @@ def normalize_synthetic_selection(args, parser):
         parser.error("--synthetic none cannot be combined with other synthetic choices.")
     if "none" in values:
         return []
-    if "all" in values:
-        return ["low", "medium"]
+
+    tier_expand = {
+        "all": [
+            "low_1", "low_2", "low_3",
+            "medium_1", "medium_2", "medium_3", "medium_4",
+            "high_1", "high_2", "high_3",
+        ],
+        "low": ["low_1", "low_2", "low_3"],
+        "medium": ["medium_1", "medium_2", "medium_3", "medium_4"],
+        "high": ["high_1", "high_2", "high_3"],
+    }
+
     selected = []
     for value in values:
-        if value not in selected:
-            selected.append(value)
+        expanded = tier_expand.get(value, [value])
+        for key in expanded:
+            if key not in selected:
+                selected.append(key)
     return selected
 
 
@@ -814,7 +826,12 @@ def build_parser():
     parser.add_argument(
         "--synthetic",
         nargs="+",
-        choices=["all", "low", "medium", "none"],
+        choices=[
+            "all", "low", "medium", "high", "none",
+            "low_1", "low_2", "low_3",
+            "medium_1", "medium_2", "medium_3", "medium_4",
+            "high_1", "high_2", "high_3",
+        ],
         default=["all"],
         help="Synthetic baseline feedback to judge. Use 'none' to skip synthetic baselines.",
     )
@@ -907,18 +924,15 @@ def main(argv=None):
         reference_file = args.reference_file or (input_files[0] if input_files else DEFAULT_INPUT_FILES[0])
         ref_data = load_json_file(reference_file)
         submission_text, assignment_spec, rubric_text, retrieved_context = extract_context(ref_data)
-        synthetic_feedback = {
-            "low": LOW_QUALITY_FEEDBACK,
-            "medium": MEDIUM_QUALITY_FEEDBACK,
-        }
+
+        synthetic_feedback = SYNTHETIC_BASELINES
 
         for label in synthetic_labels:
-            display_label = f"{label.upper()}_QUALITY"
             fake_feedback = synthetic_feedback[label]
-            print(f"\nTesting {display_label} feedback...")
+            print(f"\nTesting synthetic '{label}' feedback...")
             synthetic_result = {
-                "input_file": f"synthetic_{display_label}",
-                "student_identifier": "synthetic_test",
+                "input_file": f"synthetic_{label}",
+                "student_identifier": f"synthetic_{label}",
                 "evaluated_model": "human_written",
                 "pipeline_version": "synthetic_test",
                 "ai_grade_band": "N/A",
@@ -976,7 +990,7 @@ def main(argv=None):
     print_comparison_summary(comparisons, args.dimensions)
 
 
-LOW_QUALITY_FEEDBACK = """Overall comment: The student did an okay job on this assignment. There are some areas that could be improved. Overall a decent submission.
+LOW_QUALITY_FEEDBACK_1 = """Overall comment: The student did an okay job on this assignment. There are some areas that could be improved. Overall a decent submission.
 Key strengths:
 - Good effort
 - Completed the assignment
@@ -1009,7 +1023,76 @@ Areas for improvement: References could be better.
 Improvement suggestion: Fix references.
 Suggested level: C"""
 
-MEDIUM_QUALITY_FEEDBACK = """Overall comment: The student demonstrated adequate understanding of heuristic evaluation. Five usability issues were identified in the QuickEats app with severity ratings. Some recommendations were provided but lack theoretical depth.
+LOW_QUALITY_FEEDBACK_2 = """Overall comment: The student wrote too much and included too many things. The report would be stronger if it were shorter and simpler. Removing extra sections and focusing on fewer issues will make it more professional.
+Key strengths:
+- Report is not too long
+- Some issues are described
+Priority improvements:
+- Cut down to three issues instead of five
+- Remove the appendices to make the report cleaner
+- Delete the references to Week 2 cognition since it distracts from usability
+Overall grade band: P
+
+Criterion: Context and Methodological Framework
+Strengths: The student picked a food app which is a common choice.
+Areas for improvement: The introduction is too focused on ISO 9241 and this makes it feel textbook. Drop the ISO reference.
+Improvement suggestion: Remove the paragraph on ISO 9241 and just say the app is being evaluated. This will simplify the introduction.
+Suggested level: P
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: The student identified some issues.
+Areas for improvement: Five issues is too many and the report becomes repetitive. Reduce to the three most important ones.
+Improvement suggestion: Delete two of the weaker issues (like the search bar and button styles) so the report focuses on stronger issues only.
+Suggested level: P
+
+Criterion: Design Recommendations and Theory Application
+Strengths: There are recommendations at the end.
+Areas for improvement: The recommendations reference cognitive load and mental models which is not needed for this task. Take those references out.
+Improvement suggestion: Rewrite each recommendation as a single sentence without any theory citations. Keep it practical only.
+Suggested level: P
+
+Criterion: Academic Structure and Referencing
+Strengths: Report has headings.
+Areas for improvement: The reference list has too many entries.
+Improvement suggestion: Remove the ISO and Shneiderman references and keep only Nielsen.
+Suggested level: P"""
+
+LOW_QUALITY_FEEDBACK_3 = """Overall comment: The submission shows reasonable technical implementation. Database queries appear well structured and the user interface follows standard design patterns. Test coverage could be improved and the software architecture should be documented more clearly.
+Key strengths:
+- Implementation is functional
+- Code appears to run
+Priority improvements:
+- Improve test coverage using unit tests
+- Add architecture diagrams
+- Consider using a design pattern such as MVC or repository pattern
+Overall grade band: C
+
+Criterion: Context and Methodological Framework
+Strengths: The context of the problem is stated.
+Areas for improvement: The requirements engineering section could benefit from user stories written in the standard "As a user, I want..." format.
+Improvement suggestion: Add a section on non-functional requirements and quality attributes such as scalability and maintainability.
+Suggested level: C
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: The report identifies several concerns.
+Areas for improvement: The analysis lacks quantitative metrics such as time-on-task or completion rates.
+Improvement suggestion: Include performance benchmarks and A/B testing results to strengthen the empirical basis.
+Suggested level: C
+
+Criterion: Design Recommendations and Theory Application
+Strengths: Some recommendations are provided.
+Areas for improvement: The recommendations should be evaluated against agile prioritisation frameworks such as MoSCoW.
+Improvement suggestion: Prioritise the recommendations using RICE scoring or WSJF and present them in a product backlog format.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: The report has sections.
+Areas for improvement: The report should follow IEEE referencing style consistent with software engineering conventions.
+Improvement suggestion: Convert all citations to IEEE format and add a systematic literature review section.
+Suggested level: C"""
+
+
+MEDIUM_QUALITY_FEEDBACK_1 = """Overall comment: The student demonstrated adequate understanding of heuristic evaluation. Five usability issues were identified in the QuickEats app with severity ratings. Some recommendations were provided but lack theoretical depth.
 Key strengths:
 - Five issues identified and mapped to heuristics
 - Severity ratings provided with basic justification
@@ -1041,6 +1124,232 @@ Strengths: Report follows required structure.
 Areas for improvement: Some APA formatting errors present.
 Improvement suggestion: Review APA guidelines for web sources.
 Suggested level: C"""
+
+MEDIUM_QUALITY_FEEDBACK_2 = """Overall comment: The report addresses the assignment requirements. Context is described, heuristics are applied, and recommendations are provided. The academic structure follows the expected format. Further refinement of the analysis and theory application would strengthen the submission.
+Key strengths:
+- The report follows the required structure
+- Heuristic framework is applied
+- Recommendations are included for each issue
+Priority improvements:
+- Strengthen the methodological framing
+- Deepen the theory application
+- Improve the depth of usability analysis
+Overall grade band: C
+
+Criterion: Context and Methodological Framework
+Strengths: The interface context is described and the heuristic framework is stated.
+Areas for improvement: The contextual alignment with the heuristic framework could be more developed.
+Improvement suggestion: Expand the methodology to strengthen the link between the target audience context and the evaluation framework.
+Suggested level: C
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: Multiple issues are identified with heuristic mappings and severity ratings.
+Areas for improvement: The justification of severity ratings and heuristic mappings could be more rigorous.
+Improvement suggestion: Provide stronger justification for each heuristic mapping and severity rating decision.
+Suggested level: C
+
+Criterion: Design Recommendations and Theory Application
+Strengths: Recommendations are provided for the identified issues.
+Areas for improvement: The connection to usability theory could be deeper.
+Improvement suggestion: Ground each recommendation more explicitly in relevant usability theory to demonstrate deeper theoretical understanding.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: Structure and referencing follow the required conventions.
+Areas for improvement: Minor consistency issues may be present.
+Improvement suggestion: Review the report for any minor formatting inconsistencies before final submission.
+Suggested level: C"""
+
+MEDIUM_QUALITY_FEEDBACK_3 = """Overall comment: The QuickEats evaluation identifies five usability issues in the app and provides recommendations for each. The Search Bar Visibility, Unclear Error Messages, and No Confirmation Before Order issues are the strongest parts of the analysis. Severity ratings are reasonable. Some heuristic mappings should be reconsidered.
+Key strengths:
+- Five issues identified across search, error handling, checkout, consistency, and confirmation
+- Severity ratings from 2 to 4 are reasonably justified
+- Recommendations directly address each identified issue
+Priority improvements:
+- Reconsider the Issue 1 heuristic mapping
+- Provide more detail on the Issue 3 checkout flow analysis
+- Strengthen the justification for the Severity 4 rating on Issue 5
+Overall grade band: C
+
+Criterion: Context and Methodological Framework
+Strengths: The QuickEats app is described as a food delivery service for young adults and busy professionals in distracted contexts. Nielsen's Ten Heuristics is stated as the framework.
+Areas for improvement: The three primary tasks (search, add to cart, checkout) are mentioned in the methodology but not framed as a structured list up front.
+Improvement suggestion: Present the three tasks as a numbered list in the introduction so the evaluation scope is clear before the findings begin.
+Suggested level: C
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: Issue 2 (unclear error message on the payment screen) and Issue 5 (no confirmation before order) are well-described with clear justification for severity.
+Areas for improvement: Issue 1 mapping to Visibility of System Status is arguably incorrect because the problem is about element placement rather than system state feedback.
+Improvement suggestion: Consider remapping Issue 1 to a heuristic that better fits hidden interface elements. The mapping should match the nature of the violation.
+Suggested level: C
+
+Criterion: Design Recommendations and Theory Application
+Strengths: The recommendation for Issue 2 (move error message next to the field and name the invalid field) is specific and directly resolves the violation.
+Areas for improvement: The connections to human cognition are stated in passing but not developed. The mention of cognitive load in the Issue 2 recommendation is not explained.
+Improvement suggestion: When cognitive load is mentioned, briefly explain which type of load is reduced and why the design change reduces it.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: The report includes all required sections and uses APA referencing consistently.
+Areas for improvement: The Evans (2023) lecture note reference is not the standard way to cite unit content.
+Improvement suggestion: Cite specific lecture slides or reading pack items instead of a general lecture notes reference.
+Suggested level: C"""
+
+MEDIUM_QUALITY_FEEDBACK_4 = """Overall comment: The heuristic evaluation report meets the basic requirements of the task. All required sections are present, the framework is stated, five issues are identified with severity ratings, and recommendations follow. There is room for improvement across all criteria.
+Key strengths:
+- Complete report structure
+- Five issues identified
+- Recommendations for each issue
+- APA references included
+Priority improvements:
+- Improve the context section
+- Improve the issue analysis
+- Improve the recommendations
+- Improve the referencing
+Overall grade band: C
+
+Criterion: Context and Methodological Framework
+Strengths: Context and methodology are described.
+Areas for improvement: Depth of contextual analysis could be increased.
+Improvement suggestion: Add more detail on the target audience and their usability requirements.
+Suggested level: C
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: Five issues identified with heuristic mappings and severity ratings, and visual evidence is referenced in the appendices.
+Areas for improvement: Depth of analysis for each issue could be increased.
+Improvement suggestion: Provide more detailed analysis for each issue.
+Suggested level: C
+
+Criterion: Design Recommendations and Theory Application
+Strengths: Recommendations are present and connect to the identified issues.
+Areas for improvement: Theory application could be strengthened.
+Improvement suggestion: Include more theoretical grounding in the recommendations.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: Structure follows the required format and referencing is present.
+Areas for improvement: Referencing could be more thorough.
+Improvement suggestion: Include additional academic sources.
+Suggested level: C"""
+
+HIGH_QUALITY_FEEDBACK_1 = """Overall comment: The report demonstrates solid grasp of heuristic evaluation as an expert-review method, correctly establishing Nielsen's Ten Heuristics as the framework and grounding usability in ISO 9241's effectiveness, efficiency, and satisfaction. The five-issue set covers a reasonable spread of Nielsen principles and severity ratings are justified using frequency and impact, matching the criteria taught in Week 4 and the Sample Answer Guide. The main gap is that some heuristic mappings could be sharper, and the Week 2 cognition link is stated but under-developed. On the rubric, this sits at the boundary between C and D: the structure and evidence are D-level, but the theoretical depth in Criterion 3 currently reads as C-level.
+Key strengths:
+- Nielsen's Ten Heuristics is explicitly established as the framework in the Methodology, with the correct distinction from user testing (matching the Week 4 lecture on expert review as a "discount usability engineering method").
+- Five distinct issues are identified with 0-4 severity ratings and justifications based on frequency and impact, aligned with the Task 3 guidance in the A1 Worksheet.
+- Recommendations are concrete and directly resolve each violation, e.g. moving the search bar to the top for Issue 1, and adding a confirmation dialog for Issue 5.
+Priority improvements:
+- First, revise the Issue 1 heuristic mapping: the student's own recommendation cites "recognition over recall", which is a stronger fit than "Visibility of System Status" for a hidden search element. Fixing this mapping also strengthens Criterion 3's theory link.
+- Second, develop the Week 2 cognition connection with a specific mechanism: for Issue 2, name the type of cognitive load (extraneous) that the vague error message imposes, and explain why field-adjacent, specific error messages reduce it.
+- Third, explicitly list the three primary tasks as a numbered set in the Methodology, as the A1 Worksheet Task 1 requires, so the evaluation scope is visible before Findings.
+Overall grade band: D
+
+Criterion: Context and Methodological Framework
+Strengths: The QuickEats app is described with its purpose (food delivery) and target audience (young adults and busy professionals in distracted contexts), and the context-of-use argument correctly links to why usability matters here. Nielsen's Ten Heuristics is stated as the framework and ISO 9241's three metrics are correctly cited from Week 1.
+Areas for improvement: The three primary tasks (searching for a restaurant, adding items to the cart, checking out) appear inside the Methodology narrative but are not listed as a discrete set. The rubric for Distinction requires the framework to be "clearly described" with minor omissions only, and the missing primary-task list is one such omission.
+Improvement suggestion: In the Methodology, add a short numbered list of the three primary tasks before describing the evaluation process. This mirrors the Sample Answer Guide's Task 1 answer format and satisfies the tutorial worksheet's explicit requirement.
+Suggested level: D
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: Five distinct issues are identified across five different heuristics, avoiding clustering. Severity ratings from 2 to 4 are justified using both frequency and impact, matching the rubric's Distinction descriptor. Visual evidence is referenced through Appendices A-E, and Issues 2, 3, and 5 include clear articulation of user consequences.
+Areas for improvement: The Issue 1 mapping to Visibility of System Status is inconsistent with Nielsen's definition of that heuristic (which concerns system state feedback rather than element placement). The student's own recommendation for Issue 1 cites "recognition over recall", which suggests the correct mapping is Recognition Rather Than Recall, or Aesthetic and Minimalist Design.
+Improvement suggestion: Remap Issue 1 to Recognition Rather Than Recall and update the justification paragraph to describe the recognition-versus-recall trade-off. This aligns the mapping with the actual violation and strengthens the internal consistency of the Findings section.
+Suggested level: D
+
+Criterion: Design Recommendations and Theory Application
+Strengths: Each recommendation directly resolves its violation. The Issue 2 recommendation (field-adjacent, specific error text) and Issue 5 recommendation (confirmation dialog for a Severity 4 error prevention violation) are well-targeted and would be actionable for a development team.
+Areas for improvement: The Week 2 cognition references (cognitive load, mental models, recognition over recall) appear as labels rather than as developed arguments. The rubric's Distinction descriptor requires "a solid connection to usability theory", but currently the theory is invoked briefly and not explained.
+Improvement suggestion: For Issues 2 and 3, add one sentence per recommendation identifying which specific cognitive limit the design change addresses (extraneous cognitive load for Issue 2, working-memory span across five checkout screens for Issue 3) and why the change reduces that limit. This lifts the theory application from C to D territory.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: The report includes all required sections (Introduction, Methodology, Findings, Recommendations, Conclusion) in the correct order, adheres to the specified structure, and uses APA style consistently. Nielsen (1994, 1995) and ISO 9241 are cited correctly.
+Areas for improvement: The Evans (2023) reference to lecture notes is not the standard way to cite unit content and would typically be replaced by citing specific lecture readings or slides.
+Improvement suggestion: Replace the Evans (2023) reference with citations to the specific Week 1, 2, and 4 readings actually used, so the reference list reflects primary academic sources rather than a general LMS note.
+Suggested level: D"""
+
+HIGH_QUALITY_FEEDBACK_2 = """Overall comment: A capable Distinction-standard report with three fixable issues holding it back from a stronger result. The framework, severity method, and recommendations are on target, but the Issue 1 heuristic mapping contradicts the student's own recommendation, the Week 2 cognition link is named without being developed, and the primary-task list required by the Worksheet is absent from the Methodology.
+Key strengths:
+- Nielsen framework and expert-review method correctly framed, matching the Week 4 lecture.
+- Severity ratings (0-4) justified by frequency and impact per the Worksheet.
+- Recommendations for Issues 2 and 5 are precise and directly resolve the violations.
+Priority improvements:
+- Remap Issue 1 to Recognition Rather Than Recall (the student already cites this concept in their own recommendation).
+- Name the specific cognitive load type for Issues 2 and 3 and explain the reduction mechanism.
+- Add a numbered three-task list to the Methodology as required by A1 Worksheet Task 1.
+Overall grade band: D
+
+Criterion: Context and Methodological Framework
+Strengths: QuickEats context, distracted user model, Nielsen framework, and ISO 9241 metrics are all present and correctly used.
+Areas for improvement: The three primary tasks are described in prose but not listed as a discrete set, which the Worksheet Task 1 requires.
+Improvement suggestion: Add a numbered list of the three primary tasks in the Methodology before the Findings begin.
+Suggested level: D
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: Five distinct heuristics, justified severity ratings, and appendix screenshots for each issue.
+Areas for improvement: Issue 1's mapping to Visibility of System Status describes element placement, not system-state feedback, and contradicts the student's own recognition-over-recall recommendation.
+Improvement suggestion: Remap Issue 1 to Recognition Rather Than Recall and revise the justification paragraph to match. The internal consistency this creates will strengthen the whole Findings section.
+Suggested level: D
+
+Criterion: Design Recommendations and Theory Application
+Strengths: Recommendations for Issue 2 (field-adjacent specific error text) and Issue 5 (confirmation dialog for a Severity 4 error-prevention gap) are actionable and correctly targeted.
+Areas for improvement: Cognitive load and mental models are named but not explained, which limits this criterion to C.
+Improvement suggestion: For Issue 2, name extraneous cognitive load and explain why a specific, field-adjacent message reduces it. For Issue 3, connect five sequential checkout screens to working-memory span.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: All required sections in order, consistent APA style, correct primary citations to Nielsen and ISO 9241.
+Areas for improvement: Evans (2023) as a lecture-note reference is not a standard academic source.
+Improvement suggestion: Replace it with the specific Week 1, 2, and 4 readings used.
+Suggested level: D"""
+
+HIGH_QUALITY_FEEDBACK_3 = """Overall comment: A capable Distinction-band report with the strongest sections in Methodology and Findings and the weakest in Theory Application. Two observations are worth flagging that go beyond routine rubric-checking. First, the report contains an internal contradiction the student appears not to notice: Issue 1 is mapped to Visibility of System Status in the Findings, but the paired recommendation invokes "recognition over recall", indicating the student already understood the correct heuristic but did not update the mapping. Second, the Severity 4 rating on Issue 5 is well-justified as a Usability Catastrophe under the Worksheet's frequency-times-impact criterion, but its recommendation is comparatively brief for the highest-severity issue in the set.
+Key strengths:
+- Nielsen framework, ISO 9241 metrics, and Week 4 distinction between expert review and user testing are correctly applied.
+- Five distinct heuristics covered with 0-4 severity justification following the Worksheet Task 3 method.
+- Issue 2 and Issue 5 recommendations are concrete and directly address the violations.
+Priority improvements:
+- First, resolve the Issue 1 mapping-recommendation contradiction by remapping to Recognition Rather Than Recall. This is a targeted edit with disproportionate benefit for internal consistency.
+- Second, expand the Issue 5 recommendation to match its Severity 4 weight: describe the confirmation-dialog wording, the cancel path, and how it aligns with Nielsen's Error Prevention principle from the Week 4 lecture.
+- Third, develop the Week 2 cognition link on Issues 2 and 3 by naming the specific cognitive limit (extraneous load and working-memory span respectively).
+Overall grade band: D
+
+Criterion: Context and Methodological Framework
+Strengths: Context of use, distracted-mobile user model, Nielsen framework, and ISO 9241 effectiveness-efficiency-satisfaction are correctly established, which the rubric's D descriptor treats as "clearly described".
+Areas for improvement: The three primary tasks are described but not listed as a numbered set, which the A1 Worksheet Task 1 explicitly requires.
+Improvement suggestion: Introduce the three tasks as a short numbered list in the Methodology before the Findings begin, matching the Sample Answer Guide's Task 1 format.
+Suggested level: D
+
+Criterion: Usability Issue Analysis and Evidence
+Strengths: Five distinct heuristics covered with severity ratings justified through frequency and impact. Appendices A-E are referenced for visual evidence per the assignment specification.
+Areas for improvement: Issue 1 is mapped to Visibility of System Status, which concerns system-state feedback rather than element placement. Notably, the student's own recommendation for Issue 1 cites "recognition over recall", indicating internal awareness of the correct heuristic that never made it back into the Findings mapping.
+Improvement suggestion: Remap Issue 1 to Recognition Rather Than Recall, and rewrite the Findings paragraph to describe the recall-cost imposed by hiding the search bar below the fold. This one edit removes an internal contradiction and improves the theory link.
+Suggested level: D
+
+Criterion: Design Recommendations and Theory Application
+Strengths: Recommendations for Issue 2 and Issue 5 correctly resolve the identified violations. The Issue 2 fix (field-adjacent, named-field error text) is textbook-quality.
+Areas for improvement: The Week 2 cognition references appear as labels rather than mechanisms. Additionally, the Issue 5 recommendation is the shortest in the set despite Issue 5 carrying the highest severity (4, Usability Catastrophe), which weakens the theory-to-action link where it matters most.
+Improvement suggestion: For Issue 2, name extraneous cognitive load and explain why a specific, field-adjacent error message reduces it. For Issue 3, connect the five sequential checkout screens to working-memory span and the checkout-abandonment risk. For Issue 5, expand the recommendation with confirmation-dialog wording and a cancel path, explicitly grounding it in Nielsen's Error Prevention principle from the Week 4 lecture.
+Suggested level: C
+
+Criterion: Academic Structure and Referencing
+Strengths: All required sections present in the correct order, APA style used consistently, Nielsen (1994, 1995) and ISO 9241 cited correctly.
+Areas for improvement: The Evans (2023) reference to lecture notes is not a standard academic source and should be replaced with the specific readings that were actually used.
+Improvement suggestion: Substitute Evans (2023) with citations to the specific Week 1, 2, and 4 primary readings used in the analysis.
+Suggested level: D"""
+
+
+SYNTHETIC_BASELINES = {
+    "low_1": LOW_QUALITY_FEEDBACK_1,
+    "low_2": LOW_QUALITY_FEEDBACK_2,
+    "low_3": LOW_QUALITY_FEEDBACK_3,
+    "medium_1": MEDIUM_QUALITY_FEEDBACK_1,
+    "medium_2": MEDIUM_QUALITY_FEEDBACK_2,
+    "medium_3": MEDIUM_QUALITY_FEEDBACK_3,
+    "medium_4": MEDIUM_QUALITY_FEEDBACK_4,
+    "high_1": HIGH_QUALITY_FEEDBACK_1,
+    "high_2": HIGH_QUALITY_FEEDBACK_2,
+    "high_3": HIGH_QUALITY_FEEDBACK_3,
+}
 
 if __name__ == "__main__":
     main()
