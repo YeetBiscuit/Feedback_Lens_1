@@ -153,6 +153,7 @@ class DatabaseV2Tests(unittest.TestCase):
                     (1, "legacy_stabilization"),
                     (2, "database_v2"),
                     (3, "feature_completion"),
+                    (4, "embedded_feedback_evaluations"),
                 ],
             )
 

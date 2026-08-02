@@ -182,6 +182,7 @@ summative generation input.
 ### Human review
 
 - `human_reviews` - manual review and adjudication layer for generated outputs
+- `embedded_feedback_evaluations` - optional student and educator usefulness ratings, comments, research-use consent, response lifecycle timestamps, and a keyed pseudonymous rater value used to keep authorised users' responses separate; direct user IDs, names, and email addresses are not stored in this table
 
 ## Versioning Rules
 

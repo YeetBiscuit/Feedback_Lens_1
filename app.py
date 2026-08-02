@@ -16,6 +16,18 @@ from feedback_lens.feedback.review import fetch_generation_review, parse_json_te
 from feedback_lens.web import feature_blueprint
 from feedback_lens.web.config import get_secret_key, get_web_settings
 from feedback_lens.web.jobs import run_worker_forever
+from feedback_lens.web.embedded_evaluation import (
+    EVALUATION_QUESTIONS,
+    MAX_COMMENT_LENGTH,
+    OPTIONAL_COMMENT_PROMPT,
+    RATING_ANCHORS,
+    VOLUNTARY_NOTICES,
+    delete_embedded_evaluation,
+    fetch_embedded_evaluation,
+    pseudonymous_rater_key,
+    save_embedded_evaluation,
+    validate_evaluation_payload,
+)
 
 app = Flask(__name__)
 app.secret_key = get_secret_key()
@@ -340,6 +352,127 @@ def _student_identifier_or_error():
         return None, None, (jsonify({'error': 'Student account is not linked to a student record'}), 403)
     user['student_identifier'] = sid
     return user, sid, None
+
+
+def _can_evaluate_feedback(conn, user, generation_id):
+    if user["role"] == "student":
+        student = conn.execute(
+            """
+            SELECT student_identifier
+            FROM users
+            WHERE user_id = ?
+            """,
+            (user["user_id"],),
+        ).fetchone()
+        if student is None or not student["student_identifier"]:
+            return False
+        return (
+            conn.execute(
+                """
+                SELECT 1
+                FROM generation_runs AS gr
+                JOIN student_submissions AS ss
+                  ON ss.submission_id = gr.submission_id
+                WHERE gr.generation_id = ?
+                  AND ss.student_identifier = ?
+                  AND EXISTS (
+                      SELECT 1
+                      FROM human_reviews AS hr
+                      WHERE hr.generation_id = gr.generation_id
+                        AND hr.approved = 1
+                  )
+                """,
+                (generation_id, student["student_identifier"]),
+            ).fetchone()
+            is not None
+        )
+
+    if user["role"] == "educator" and user.get("tutor_id") is not None:
+        return (
+            conn.execute(
+                """
+                SELECT 1
+                FROM generation_runs AS gr
+                JOIN assignments AS a
+                  ON a.assignment_id = gr.assignment_id
+                JOIN unit_tutors AS ut
+                  ON ut.unit_id = a.unit_id
+                WHERE gr.generation_id = ?
+                  AND ut.tutor_id = ?
+                """,
+                (generation_id, user["tutor_id"]),
+            ).fetchone()
+            is not None
+        )
+
+    return False
+
+
+@app.route(
+    "/api/feedback/<int:generation_id>/embedded-evaluation",
+    methods=["GET", "POST", "DELETE"],
+)
+def embedded_feedback_evaluation(generation_id):
+    user, error = api_session_user()
+    if error:
+        return error
+    participant_role = user.get("role")
+    if participant_role not in EVALUATION_QUESTIONS:
+        return jsonify({"error": "Forbidden"}), 403
+    rater_key_hash = pseudonymous_rater_key(
+        user["user_id"],
+        app.secret_key,
+    )
+
+    with connect_db() as conn:
+        if not _can_evaluate_feedback(conn, user, generation_id):
+            return jsonify({"error": "Feedback not found"}), 404
+
+        if request.method == "POST":
+            data = request.get_json(silent=True) or {}
+            try:
+                rating, comment = validate_evaluation_payload(data)
+            except ValueError as err:
+                return jsonify({"error": str(err)}), 400
+            evaluation = save_embedded_evaluation(
+                conn,
+                generation_id,
+                participant_role,
+                rater_key_hash,
+                rating_usefulness=rating,
+                comment=comment,
+            )
+            conn.commit()
+        elif request.method == "DELETE":
+            deleted = delete_embedded_evaluation(
+                conn,
+                generation_id,
+                participant_role,
+                rater_key_hash,
+            )
+            conn.commit()
+            return jsonify({"status": "ok", "deleted": deleted})
+        else:
+            evaluation = fetch_embedded_evaluation(
+                conn,
+                generation_id,
+                participant_role,
+                rater_key_hash,
+            )
+
+    return jsonify(
+        {
+            "status": "ok",
+            "participant_role": participant_role,
+            "question": EVALUATION_QUESTIONS[participant_role],
+            "rating_anchors": RATING_ANCHORS,
+            "optional_comment_prompt": OPTIONAL_COMMENT_PROMPT,
+            "voluntary_notice": VOLUNTARY_NOTICES[participant_role],
+            "estimated_time_seconds": 60,
+            "max_comment_length": MAX_COMMENT_LENGTH,
+            "evaluation": evaluation,
+        }
+    )
 
 
 @app.route('/api/student/home')
