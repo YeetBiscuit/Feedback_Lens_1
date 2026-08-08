@@ -492,7 +492,7 @@ def judge_feedback(
         scores[dimension] = result
         
         print(f"    {dimension}: {result['score']}/5")
-        return scores
+    return scores
 
 
 def comparison_candidate_id(index):
