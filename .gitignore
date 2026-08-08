@@ -30,3 +30,7 @@ documents/**
 !documents/rubrics/.gitkeep
 !documents/submissions/.gitkeep
 !documents/units/.gitkeep
+.env.local
+feedback_system.db.backup-*
+test_gate.py
+test_models.py

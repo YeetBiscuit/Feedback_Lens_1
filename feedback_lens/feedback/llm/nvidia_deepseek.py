@@ -7,7 +7,7 @@ from feedback_lens.feedback.llm.base import LLMProvider
 NVIDIA_DEEPSEEK_PROVIDER = "nvidia_deepseek"
 NVIDIA_API_KEY_ENV = "NVIDIA_API_KEY"
 NVIDIA_DEEPSEEK_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_DEEPSEEK_MODEL = "deepseek-ai/deepseek-v4-pro"
+NVIDIA_DEEPSEEK_MODEL = "openai/gpt-oss-120b"
 
 
 class NvidiaDeepSeekProvider(LLMProvider):

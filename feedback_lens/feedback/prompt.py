@@ -149,6 +149,7 @@ def build_feedback_prompt(
     feedback_modifier_mode: str | None = None,
     feedback_length: str | None = None,
     feedback_tone: str | None = None,
+    revision_notes: str | None = None,
 ) -> str:
     context_mode = "retrieval" if include_retrieved_context else "direct"
     resolved_prompt_template_version = validate_feedback_prompt_template_version(
@@ -285,6 +286,20 @@ Feedback customisation requirements:
 - These settings affect wording only; do not change the required JSON schema.
 """.strip()
 
+    revision_section = ""
+    if revision_notes:
+        revision_section = f"""
+Revision requirements:
+An earlier draft of this feedback was reviewed and found insufficient on the dimensions below.
+Produce a revised version that directly addresses each point.
+
+{revision_notes}
+
+- Keep the same JSON schema and the same criterion_id values.
+- Do not acknowledge this revision process anywhere in the feedback text.
+""".strip()
+
+
     return f"""
 You are generating personalised, rubric-aligned feedback for a higher-education assignment.
 
@@ -364,4 +379,6 @@ Assignment specification text:
 
 Student submission text:
 {submission_row["cleaned_text"]}
+
+{revision_section}
 """.strip()

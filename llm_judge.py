@@ -1,6 +1,7 @@
 import argparse
 import glob
 import json
+import re
 from pathlib import Path
 import time
 
@@ -117,6 +118,37 @@ def parse_json_response(raw):
         if start >= 0 and end > start:
             return json.loads(clean[start:end + 1])
         raise
+
+def salvage_dimension_fields(raw: str, dimension: str) -> dict:
+    """Last-resort extraction when a judge returns malformed JSON.
+
+    Models occasionally emit unescaped quotes inside string values, which
+    breaks strict parsing. Pull the fields out with regexes rather than
+    discard an otherwise usable judgement.
+    """
+    score_match = re.search(r'"score"\s*:\s*(\d+)', raw)
+    if not score_match:
+        raise ValueError(f"No recoverable score in judge response for {dimension}.")
+
+    result = {"dimension": dimension, "score": int(score_match.group(1))}
+
+    for field in ("reason", "evidence"):
+        match = re.search(
+            rf'"{field}"\s*:\s*"(.*?)"\s*,\s*"(?:score|reason|evidence|defects|missing_evidence)"',
+            raw,
+            re.DOTALL,
+        )
+        result[field] = match.group(1).strip() if match else ""
+
+    for field in ("defects", "missing_evidence"):
+        match = re.search(rf'"{field}"\s*:\s*\[(.*?)\]', raw, re.DOTALL)
+        if match:
+            items = re.findall(r'"(.*?)"', match.group(1), re.DOTALL)
+            result[field] = [i.strip() for i in items if i.strip()]
+        else:
+            result[field] = []
+
+    return result
 
 
 def normalize_dimension_result(result, dimension):
@@ -380,18 +412,34 @@ def run_dimension_judge(
         retrieved_context,
         scoring_mode=scoring_mode,
     )
-    if call_delay > 0:
-        time.sleep(call_delay)
-    raw = generate_chat(
-        [
-            {"role": "system", "content": judge_system_message(scoring_mode)},
-            {"role": "user", "content": prompt},
-        ],
-        provider=provider,
-        model=model,
-        temperature=temperature,
+    last_error = None
+    for attempt in range(3):
+        if call_delay > 0:
+            time.sleep(call_delay)
+        raw = generate_chat(
+            [
+                {"role": "system", "content": judge_system_message(scoring_mode)},
+                {"role": "user", "content": prompt},
+            ],
+            provider=provider,
+            model=model,
+            temperature=temperature,
+        )
+        try:
+            return normalize_dimension_result(parse_json_response(raw), dimension)
+        except (json.JSONDecodeError, ValueError) as err:
+            last_error = err
+        try:
+            return normalize_dimension_result(
+                salvage_dimension_fields(raw, dimension), dimension
+            )
+        except ValueError:
+            pass
+        print(f"    (malformed response, retry {attempt + 1}/3)")
+
+    raise ValueError(
+        f"Judge returned unusable JSON for {dimension} after 3 attempts: {last_error}"
     )
-    return normalize_dimension_result(parse_json_response(raw), dimension)
 
 
 def judge_feedback(
@@ -413,23 +461,38 @@ def judge_feedback(
     for dimension in dimensions:
         criteria = DIMENSIONS[dimension]
         print(f"    Evaluating {dimension}...")
-        result = run_dimension_judge(
-            provider,
-            model,
-            temperature,
-            call_delay,
-            scoring_mode,
-            dimension,
-            criteria,
-            feedback_text,
-            submission_text,
-            assignment_spec,
-            rubric_text,
-            retrieved_context,
-        )
+        try:
+            result = run_dimension_judge(
+                provider,
+                model,
+                temperature,
+                call_delay,
+                scoring_mode,
+                dimension,
+                criteria,
+                feedback_text,
+                submission_text,
+                assignment_spec,
+                rubric_text,
+                retrieved_context,
+            )
+        except Exception as err:
+            # One bad response should not discard a 60-call study.
+            print(f"    {dimension}: FAILED ({err})")
+            scores[dimension] = {
+                "dimension": dimension,
+                "score": None,
+                "reason": f"judge call failed: {err}",
+                "evidence": "",
+                "defects": [],
+                "missing_evidence": [],
+                "failed": True,
+            }
+            continue
         scores[dimension] = result
+        
         print(f"    {dimension}: {result['score']}/5")
-    return scores
+        return scores
 
 
 def comparison_candidate_id(index):
@@ -1350,6 +1413,114 @@ SYNTHETIC_BASELINES = {
     "high_2": HIGH_QUALITY_FEEDBACK_2,
     "high_3": HIGH_QUALITY_FEEDBACK_3,
 }
+
+def judge_single_feedback(
+    student_submission: str,
+    assignment_spec: str,
+    rubric_text: str,
+    course_materials: str,
+    feedback_text: str,
+    ai_grade_band: str = "unknown",
+) -> dict:
+    """
+    Evaluate a single piece of AI-generated feedback and return judge scores.
+    Designed to be called from the web app (app.py) rather than the CLI.
+
+    Returns a dict shaped like:
+    {
+      "judges": {
+        "gemini": {
+          "provider": "gemini",
+          "model": "...",
+          "scores": {
+            "grounding": {"score": 3, "reason": "...", "evidence": "...", "defects": [...], "missing_evidence": [...]},
+            "specificity": {...},
+            "actionability": {...}
+          }
+        },
+        "qwen": {...}
+      }
+    }
+    """
+    context = {
+        "student_submission": student_submission,
+        "assignment_spec": assignment_spec,
+        "rubric": rubric_text,
+        "course_materials": course_materials,
+    }
+
+    result = {"judges": {}}
+    for provider_key in ("gemini", "qwen"):
+        judge_result = {
+            "provider": provider_key,
+            "model": JUDGE_MODELS[provider_key],
+            "scores": {},
+        }
+        for dimension in DIMENSIONS:
+            score_data = run_dimension_judge(
+                provider=provider_key,
+                dimension=dimension,
+                context=context,
+                feedback_text=feedback_text,
+                evaluated_model="ai_generated",
+                ai_grade_band=ai_grade_band,
+            )
+            judge_result["scores"][dimension] = score_data
+        result["judges"][provider_key] = judge_result
+
+    return result
+
+
+def judge_single_feedback(
+    student_submission: str,
+    assignment_spec: str,
+    rubric_text: str,
+    course_materials: str,
+    feedback_text: str,
+    ai_grade_band: str = "unknown",
+) -> dict:
+    """
+    Evaluate a single piece of AI-generated feedback and return judge scores.
+    Designed to be called from the web app (app.py) rather than the CLI.
+
+    Runs the default two-judge setup (Gemini + Qwen) with strict scoring mode
+    across all three dimensions (grounding, specificity, actionability), and
+    returns the results in a structure the frontend can render directly.
+    """
+    dimensions = list(DIMENSIONS.keys())
+    judge_configs = [
+        {"provider": "gemini", "model": None, "display_name": "Gemini", "key": "gemini"},
+        {"provider": "qwen", "model": None, "display_name": "Qwen", "key": "qwen"},
+    ]
+
+    result = {"judges": {}}
+    for judge in judge_configs:
+        provider = judge["provider"]
+        model = judge["model"]
+        resolved_model = resolve_model_name(provider, model)
+        display_name = judge["display_name"]
+        key = judge["key"]
+
+        result["judges"][key] = {
+            "provider": provider,
+            "model": resolved_model,
+            "note": judge_note(provider, resolved_model, ai_grade_band),
+            "scores": judge_feedback(
+                provider,
+                model,
+                temperature=0.0,
+                call_delay=0.0,
+                scoring_mode="strict",
+                dimensions=dimensions,
+                judge_name=display_name,
+                feedback_text=feedback_text,
+                submission_text=student_submission,
+                assignment_spec=assignment_spec,
+                rubric_text=rubric_text,
+                retrieved_context=course_materials,
+            ),
+        }
+    return result
 
 if __name__ == "__main__":
     main()

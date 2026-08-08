@@ -563,6 +563,7 @@ def generate_feedback_for_submission(
     feedback_length: str | None = None,
     feedback_tone: str | None = None,
     planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
+    revision_notes: str | None = None,
 ) -> FeedbackGenerationResult:
     generation_id = None
     planning_record_id = None
@@ -730,6 +731,7 @@ def generate_feedback_for_submission(
             feedback_modifier_mode=resolved_feedback_modifier_mode,
             feedback_length=resolved_feedback_length,
             feedback_tone=resolved_feedback_tone,
+            revision_notes=revision_notes,
         )
         conn.execute(
             """
