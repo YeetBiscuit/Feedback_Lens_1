@@ -53,7 +53,17 @@ If you are using Gemini for generation:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
-If you are using NVIDIA DeepSeek for generation:
+The default feedback provider uses DeepSeek's official API:
+
+```powershell
+$env:DEEPSEEK_API_KEY="your_key_here"
+```
+
+It defaults to `deepseek-v4-pro`. The lower-cost `deepseek-v4-flash` model can
+be selected explicitly with `--model deepseek-v4-flash`.
+
+If you are using NVIDIA's hosted provider (retained as `nvidia_deepseek` for
+backwards compatibility):
 
 ```powershell
 $env:NVIDIA_API_KEY="your_key_here"
@@ -74,7 +84,9 @@ $env:NVIDIA_API_KEY="your_key_here"
 3. Import assignment documents with `python import_documents.py`.
 4. Ingest course materials with `python ingest.py`.
 5. Import a student submission with `python import_documents.py submission ...`.
-6. Generate feedback with `python generate_feedback.py <submission_id> --provider qwen`, `--provider gemini`, or `--provider nvidia_deepseek`.
+6. Generate feedback with `python generate_feedback.py <submission_id>`. The
+   default provider is the official DeepSeek API; `qwen`, `gemini`, and
+   `nvidia_deepseek` remain available through `--provider`.
 7. Review saved prompts, retrievals, and outputs with `python review_generation.py`.
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).

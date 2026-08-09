@@ -7,7 +7,7 @@ class GenerateFeedbackCliTests(unittest.TestCase):
     def test_defaults_use_planned_unit_grounded_deepseek_feedback(self) -> None:
         args = build_parser().parse_args(["1"])
 
-        self.assertEqual(args.provider, "nvidia_deepseek")
+        self.assertEqual(args.provider, "deepseek")
         self.assertEqual(args.retrieval_strategy, "planned")
         self.assertEqual(args.prompt_template_version, "unit-grounded-v2")
         self.assertEqual(args.feedback_modifier_mode, "system_default")

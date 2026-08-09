@@ -76,8 +76,8 @@ def _generation_result(**overrides):
         "criterion_count": 2,
         "retrieval_cue_count": 1,
         "deduplicated_chunk_count": 4,
-        "provider": "nvidia_deepseek",
-        "model": "deepseek-ai/deepseek-v4-pro",
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
         "context_mode": "retrieval",
         "pipeline_version": "planned_retrieval_v1",
         "prompt_template_version": "unit_grounded_feedback_json_v2",
@@ -129,7 +129,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["generation_id"], 123)
-        self.assertEqual(payload["provider"], "nvidia_deepseek")
+        self.assertEqual(payload["provider"], "deepseek")
         self.assertEqual(payload["retrieval_strategy"], "llm_planned_cue_v1")
         self.assertEqual(payload["prompt_template_version"], "unit_grounded_feedback_json_v2")
         self.assertEqual(payload["feedback_modifier_mode"], "system_default")
@@ -138,7 +138,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         mock_generate.assert_called_once()
         _, kwargs = mock_generate.call_args
         self.assertEqual(kwargs["submission_id"], 1)
-        self.assertEqual(kwargs["provider"], "nvidia_deepseek")
+        self.assertEqual(kwargs["provider"], "deepseek")
         self.assertIsNone(kwargs["model"])
         self.assertEqual(kwargs["context_mode"], "retrieval")
         self.assertEqual(kwargs["retrieval_strategy"], "planned")

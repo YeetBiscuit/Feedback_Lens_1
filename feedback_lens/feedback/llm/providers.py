@@ -1,9 +1,11 @@
+from feedback_lens.feedback.llm.deepseek import DeepSeekProvider
 from feedback_lens.feedback.llm.gemini import GeminiProvider
 from feedback_lens.feedback.llm.nvidia_deepseek import NvidiaDeepSeekProvider
 from feedback_lens.feedback.llm.qwen import QwenProvider
 
 
 _PROVIDER_FACTORIES = {
+    "deepseek": DeepSeekProvider,
     "gemini": GeminiProvider,
     "nvidia_deepseek": NvidiaDeepSeekProvider,
     "qwen": QwenProvider,
