@@ -22,7 +22,6 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .nav-user-name{font-size:.875rem;font-weight:600}
 .nav-user-role{font-size:.75rem;opacity:.8}
 .nav-avatar{width:2.25rem;height:2.25rem;border-radius:50%;background:#fff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem;cursor:pointer}
-
 .dropdown{position:absolute;top:calc(100% + .5rem);background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;display:none}
 .dropdown.show{display:block}
 .unit-picker{left:0;width:22rem;padding:.75rem}
@@ -69,7 +68,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .bulk-bar{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;display:none;align-items:center;justify-content:space-between}
 .bulk-bar.show{display:flex}
 .bulk-text{font-size:.875rem;color:#1e40af;font-weight:500}
-.btn-bulk{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;background:#2563eb;color:#fff}
+.btn-bulk{min-width:11rem;text-align:center;padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;background:#2563eb;color:#fff}
 .btn-bulk:hover{background:#1d4ed8}
 .btn-bulk:disabled,.btn-action:disabled{background:#cbd5e1;color:#fff;cursor:not-allowed}
 
@@ -95,10 +94,11 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 .status-select-inline.reviewed{background-color:#dcfce7;color:#15803d}
 
 .action-cell{text-align:right}
+.action-cell{text-align:right;white-space:nowrap;width:9rem}
 .btn-action{padding:.4rem .9rem;border-radius:6px;font-size:.8125rem;font-weight:500;cursor:pointer;border:none;font-family:inherit}
-.btn-generate{background:#2563eb;color:#fff}
+.btn-generate{min-width:7.5rem;text-align:center;background:#2563eb;color:#fff}
 .btn-generate:hover{background:#1d4ed8}
-.btn-view{background:#1f2937;color:#fff}
+.btn-view{min-width:7.5rem;text-align:center;background:#1f2937;color:#fff}
 .btn-view:hover{background:#111827}
 .empty-row td{padding:2rem;text-align:center;color:#888}
 .empty{color:#999;font-size:.875rem;text-align:center;padding:1rem}
@@ -432,6 +432,30 @@ function requestGeneration(id){
   });
 }
 
+
+function startProgressTicker(btn, prefix){
+  var stages = [
+    'Retrieving',
+    'Generating',
+    'Checking',
+  ];
+  var stage = 0;
+  var dots = 0;
+  function tick(){
+    dots = (dots + 1) % 4;
+    btn.textContent = prefix + stages[stage] + '.'.repeat(dots);
+  }
+  tick();
+  var dotTimer = setInterval(tick, 500);
+  var stageTimer = setInterval(function(){
+    if(stage < stages.length - 1) stage++;
+  }, 25000);
+  return function stop(){
+    clearInterval(dotTimer);
+    clearInterval(stageTimer);
+  };
+}
+
 function bulkGenerate(){
   var ids = rows.filter(function(r){
     return selected[r.submission_id] && !r.generation_id;
@@ -442,29 +466,41 @@ function bulkGenerate(){
   }
   var btn = document.getElementById('bulk-generate-btn');
   btn.disabled = true;
-  btn.textContent = 'Generating...';
 
+  var stopTicker = null;
   var chain = Promise.resolve();
-  ids.forEach(function(id){
-    chain = chain.then(function(){ return requestGeneration(id); });
+  ids.forEach(function(id, i){
+    chain = chain.then(function(){
+      if(stopTicker) stopTicker();
+      var prefix = ids.length > 1 ? '(' + (i + 1) + '/' + ids.length + ') ' : '';
+      stopTicker = startProgressTicker(btn, prefix);
+      return requestGeneration(id);
+    });
   });
+
   chain.then(function(){
-    selected = {};
+    if(stopTicker) stopTicker();
+    btn.disabled = false;
+    btn.textContent = 'Generate Selected';
     location.reload();
   }).catch(function(err){
-    alert(err.message || 'Generation failed. Please try again.');
+    if(stopTicker) stopTicker();
     btn.disabled = false;
-    btn.textContent = 'Generate Feedback';
+    btn.textContent = 'Generate Selected';
+    alert(err.message || 'Generation failed. Please try again.');
+    location.reload();
   });
 }
 
 function generateOne(id, btn){
   var original = btn.textContent;
   btn.disabled = true;
-  btn.textContent = 'Generating...';
+  var stopTicker = startProgressTicker(btn, '');
   requestGeneration(id).then(function(data){
+    stopTicker();
     location.href = '/educator/feedback-review?id=' + data.generation_id;
   }).catch(function(err){
+    stopTicker();
     alert(err.message || 'Generation failed. Please try again.');
     btn.disabled = false;
     btn.textContent = original;

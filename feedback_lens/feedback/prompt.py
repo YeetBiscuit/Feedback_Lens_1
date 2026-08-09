@@ -295,6 +295,11 @@ Produce a revised version that directly addresses each point.
 
 {revision_notes}
 
+How to revise:
+- Fix the named gaps by adding concrete evidence: quote or reference specific parts of the student's submission, name the specific rubric criterion, and cite the specific unit material.
+- Replace any vague instruction with a concrete one. "Deepen the analysis" becomes "explain how X in section Y fails to address Z".
+- Do NOT add praise, encouragement, the student's name, or warmer phrasing. Tone is not the problem being fixed.
+- Do NOT lengthen sections that were already judged sufficient.
 - Keep the same JSON schema and the same criterion_id values.
 - Do not acknowledge this revision process anywhere in the feedback text.
 """.strip()

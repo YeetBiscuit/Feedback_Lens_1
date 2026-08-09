@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 from werkzeug.security import check_password_hash
 
 from feedback_lens.db.connection import connect_db
+from feedback_lens.feedback.quality_gate import generate_feedback_with_quality_gate
 from feedback_lens.feedback.pipeline import (
     DEFAULT_FEEDBACK_PROVIDER,
     generate_feedback_for_submission,
@@ -1378,7 +1379,7 @@ def generate_feedback():
             return jsonify({'error': 'Submission not found or not authorised'}), 404
 
         try:
-            result = generate_feedback_for_submission(
+            result, gate_report = generate_feedback_with_quality_gate(
                 conn,
                 submission_id=submission_id,
                 provider=data.get('provider') or DEFAULT_FEEDBACK_PROVIDER,
@@ -1393,6 +1394,8 @@ def generate_feedback():
                 feedback_length=feedback_length,
                 feedback_tone=feedback_tone,
             )
+            # Judge results are for evaluation only and are never returned to the educator; log them so they are visible in the server output.
+            app.logger.info("quality gate: %s", gate_report)
         except ValueError as err:
             return jsonify({'error': str(err)}), 400
         except RuntimeError as err:

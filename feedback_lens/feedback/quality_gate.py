@@ -16,11 +16,8 @@ from feedback_lens.feedback.pipeline import (
 from feedback_lens.feedback.review import fetch_generation_review, parse_json_text_list
 
 
-# Any dimension whose mean score across judges falls below this triggers
-# one regeneration attempt.
 QUALITY_THRESHOLD = 4
 
-# Total generation attempts, including the first one.
 MAX_ATTEMPTS = 1
 
 GATE_JUDGES = [
