@@ -95,7 +95,7 @@ Current registered providers:
 - `deepseek` (default)
 - `qwen`
 - `gemini`
-- `nvidia_deepseek`
+- `nvidia`
 
 Feedback generation uses the official DeepSeek API by default:
 
@@ -115,10 +115,10 @@ Gemini can be selected the same way:
 python generate_feedback.py <submission_id> --provider gemini
 ```
 
-NVIDIA DeepSeek can also be selected:
+NVIDIA's hosted provider can also be selected:
 
 ```bash
-python generate_feedback.py <submission_id> --provider nvidia_deepseek
+python generate_feedback.py <submission_id> --provider nvidia
 ```
 
 If you pass an unsupported provider name, generation fails with a clear error listing the available providers.
@@ -222,11 +222,11 @@ python generate_feedback.py 1 --provider deepseek --model deepseek-v4-flash
 
 ## NVIDIA Hosted Provider Configuration
 
-The legacy `nvidia_deepseek` provider name is retained for backwards
-compatibility. It uses NVIDIA's OpenAI-compatible endpoint in
-`feedback_lens/feedback/llm/nvidia_deepseek.py`.
+The `nvidia` provider uses NVIDIA's OpenAI-compatible endpoint in
+`feedback_lens/feedback/llm/nvidia.py`. The former `nvidia_deepseek` provider
+name is no longer registered.
 
-Current NVIDIA DeepSeek settings:
+Current NVIDIA settings:
 
 - environment variable for API key: `NVIDIA_API_KEY`
 - base URL: `https://integrate.api.nvidia.com/v1`
@@ -241,7 +241,7 @@ $env:NVIDIA_API_KEY="your_key_here"
 Run feedback generation with:
 
 ```bash
-python generate_feedback.py 1 --provider nvidia_deepseek
+python generate_feedback.py 1 --provider nvidia
 ```
 
 ## Retrieval Configuration

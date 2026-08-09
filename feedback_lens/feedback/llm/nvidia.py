@@ -4,20 +4,20 @@ from openai import OpenAI
 
 from feedback_lens.feedback.llm.base import LLMProvider
 
-NVIDIA_DEEPSEEK_PROVIDER = "nvidia_deepseek"
+NVIDIA_PROVIDER = "nvidia"
 NVIDIA_API_KEY_ENV = "NVIDIA_API_KEY"
-NVIDIA_DEEPSEEK_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_DEEPSEEK_MODEL = "openai/gpt-oss-120b"
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_MODEL = "openai/gpt-oss-120b"
 
 
-class NvidiaDeepSeekProvider(LLMProvider):
-    name = NVIDIA_DEEPSEEK_PROVIDER
-    default_model = NVIDIA_DEEPSEEK_MODEL
+class NvidiaProvider(LLMProvider):
+    name = NVIDIA_PROVIDER
+    default_model = NVIDIA_MODEL
 
     def __init__(
         self,
         api_key_env: str = NVIDIA_API_KEY_ENV,
-        base_url: str = NVIDIA_DEEPSEEK_BASE_URL,
+        base_url: str = NVIDIA_BASE_URL,
     ) -> None:
         self.api_key_env = api_key_env
         self.base_url = base_url
@@ -45,7 +45,7 @@ class NvidiaDeepSeekProvider(LLMProvider):
         )
         content = completion.choices[0].message.content
         if not content:
-            raise RuntimeError("NVIDIA DeepSeek returned an empty response.")
+            raise RuntimeError("NVIDIA returned an empty response.")
         return content
 
     def generate_chat(
@@ -62,16 +62,16 @@ class NvidiaDeepSeekProvider(LLMProvider):
         )
         content = completion.choices[0].message.content
         if not content:
-            raise RuntimeError("NVIDIA DeepSeek returned an empty response.")
+            raise RuntimeError("NVIDIA returned an empty response.")
         return content
 
 
-def ask_nvidia_deepseek(
+def ask_nvidia(
     prompt,
-    model=NVIDIA_DEEPSEEK_MODEL,
+    model=NVIDIA_MODEL,
     temperature: float = 0.2,
 ):
-    return NvidiaDeepSeekProvider().generate(
+    return NvidiaProvider().generate(
         prompt,
         model=model,
         temperature=temperature,

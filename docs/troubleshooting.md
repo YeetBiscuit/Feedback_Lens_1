@@ -11,7 +11,7 @@ Missing API key. Please set environment variable QWEN_API_KEY.
 ```
 
 For the default official DeepSeek provider, the message names
-`DEEPSEEK_API_KEY`. For Gemini, it names `GEMINI_API_KEY`; for the legacy
+`DEEPSEEK_API_KEY`. For Gemini, it names `GEMINI_API_KEY`; for the
 NVIDIA hosted provider, it names `NVIDIA_API_KEY`.
 
 Fix:
@@ -32,7 +32,7 @@ Or, for the default official DeepSeek provider:
 $env:DEEPSEEK_API_KEY="your_key_here"
 ```
 
-Or, for the legacy NVIDIA hosted provider:
+Or, for the NVIDIA hosted provider:
 
 ```powershell
 $env:NVIDIA_API_KEY="your_key_here"
@@ -51,7 +51,7 @@ Unsupported LLM provider '...'
 Fix:
 
 - use a registered provider name such as `deepseek`, `qwen`, `gemini`, or
-  `nvidia_deepseek`
+  `nvidia`
 - check `feedback_lens/feedback/llm/providers.py` if you added a custom provider
 
 ## No Assignment Or Submission Found

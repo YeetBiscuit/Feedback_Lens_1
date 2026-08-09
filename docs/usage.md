@@ -197,7 +197,7 @@ For Gemini:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
-For the legacy NVIDIA hosted provider:
+For the NVIDIA hosted provider:
 
 ```powershell
 $env:NVIDIA_API_KEY="your_key_here"
@@ -231,10 +231,10 @@ Or with Gemini:
 python generate_feedback.py <submission_id> --provider gemini --per-cue-top-k 5 --max-final-chunks 10
 ```
 
-Or with the legacy NVIDIA hosted provider:
+Or with the NVIDIA hosted provider:
 
 ```powershell
-python generate_feedback.py <submission_id> --provider nvidia_deepseek --per-cue-top-k 5 --max-final-chunks 10
+python generate_feedback.py <submission_id> --provider nvidia --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 Example:
@@ -475,9 +475,9 @@ $env:QWEN_API_KEY="your_qwen_key_here"
 For the default official DeepSeek provider, set
 `$env:DEEPSEEK_API_KEY="your_deepseek_key_here"` and use `--provider deepseek`.
 For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` and use
-`--provider gemini`. For the legacy NVIDIA hosted provider, set
+`--provider gemini`. For the NVIDIA hosted provider, set
 `$env:NVIDIA_API_KEY="your_nvidia_key_here"` and use
-`--provider nvidia_deepseek`.
+`--provider nvidia`.
 
 Create the unit and assignment:
 

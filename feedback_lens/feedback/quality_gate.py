@@ -24,8 +24,8 @@ QUALITY_THRESHOLD = 4
 MAX_ATTEMPTS = 1
 
 GATE_JUDGES = [
-    ("nvidia_deepseek", "meta/llama-3.3-70b-instruct", "llama-3.3-70b"),
-    ("nvidia_deepseek", "nvidia/nemotron-3-super-120b-a12b", "nemotron-3-super"),
+    ("nvidia", "meta/llama-3.3-70b-instruct", "llama-3.3-70b"),
+    ("nvidia", "nvidia/nemotron-3-super-120b-a12b", "nemotron-3-super"),
 ]
 
 DIMENSION_ORDER = ["grounding", "specificity", "actionability"]
