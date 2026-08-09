@@ -870,7 +870,7 @@ def build_parser():
         metavar="PROVIDER[:MODEL]",
         help=(
             "Judge provider to use. Repeat for multiple judges. "
-            "Examples: --judge qwen --judge gemini --judge nvidia_deepseek:deepseek-ai/deepseek-v4-pro"
+            "Examples: --judge qwen --judge gemini --judge nvidia:nvidia/nemotron-3-super-120b-a12b"
         ),
     )
     parser.add_argument(

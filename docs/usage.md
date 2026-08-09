@@ -179,6 +179,12 @@ For generated unit packages, see [unit_generation.md](unit_generation.md).
 
 ## 5. Configure The LLM Provider
 
+The default provider uses the official DeepSeek API:
+
+```powershell
+$env:DEEPSEEK_API_KEY="your_key_here"
+```
+
 For Qwen:
 
 ```powershell
@@ -191,7 +197,7 @@ For Gemini:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
-For NVIDIA DeepSeek:
+For the NVIDIA hosted provider:
 
 ```powershell
 $env:NVIDIA_API_KEY="your_key_here"
@@ -201,7 +207,19 @@ If you need more detail about providers and model selection, see [configuration.
 
 ## 6. Generate Feedback
 
-Run:
+Run with the default official DeepSeek V4-Pro model:
+
+```powershell
+python generate_feedback.py <submission_id> --per-cue-top-k 5 --max-final-chunks 10
+```
+
+To use the available V4-Flash model explicitly:
+
+```powershell
+python generate_feedback.py <submission_id> --provider deepseek --model deepseek-v4-flash --per-cue-top-k 5 --max-final-chunks 10
+```
+
+Or with Qwen:
 
 ```powershell
 python generate_feedback.py <submission_id> --provider qwen --per-cue-top-k 5 --max-final-chunks 10
@@ -213,10 +231,10 @@ Or with Gemini:
 python generate_feedback.py <submission_id> --provider gemini --per-cue-top-k 5 --max-final-chunks 10
 ```
 
-Or with NVIDIA DeepSeek:
+Or with the NVIDIA hosted provider:
 
 ```powershell
-python generate_feedback.py <submission_id> --provider nvidia_deepseek --per-cue-top-k 5 --max-final-chunks 10
+python generate_feedback.py <submission_id> --provider nvidia --per-cue-top-k 5 --max-final-chunks 10
 ```
 
 Example:
@@ -454,7 +472,12 @@ python build.py
 $env:QWEN_API_KEY="your_qwen_key_here"
 ```
 
-For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` instead and use `--provider gemini`. For NVIDIA DeepSeek, set `$env:NVIDIA_API_KEY="your_nvidia_key_here"` and use `--provider nvidia_deepseek`.
+For the default official DeepSeek provider, set
+`$env:DEEPSEEK_API_KEY="your_deepseek_key_here"` and use `--provider deepseek`.
+For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` and use
+`--provider gemini`. For the NVIDIA hosted provider, set
+`$env:NVIDIA_API_KEY="your_nvidia_key_here"` and use
+`--provider nvidia`.
 
 Create the unit and assignment:
 

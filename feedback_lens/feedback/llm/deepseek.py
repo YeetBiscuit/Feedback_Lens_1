@@ -4,20 +4,23 @@ from openai import OpenAI
 
 from feedback_lens.feedback.llm.base import LLMProvider
 
-NVIDIA_DEEPSEEK_PROVIDER = "nvidia_deepseek"
-NVIDIA_API_KEY_ENV = "NVIDIA_API_KEY"
-NVIDIA_DEEPSEEK_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_DEEPSEEK_MODEL = "openai/gpt-oss-120b"
+DEEPSEEK_PROVIDER = "deepseek"
+DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_PRO_MODEL = "deepseek-v4-pro"
+DEEPSEEK_FLASH_MODEL = "deepseek-v4-flash"
+DEEPSEEK_MODELS = (DEEPSEEK_PRO_MODEL, DEEPSEEK_FLASH_MODEL)
+DEEPSEEK_DEFAULT_MODEL = DEEPSEEK_PRO_MODEL
 
 
-class NvidiaDeepSeekProvider(LLMProvider):
-    name = NVIDIA_DEEPSEEK_PROVIDER
-    default_model = NVIDIA_DEEPSEEK_MODEL
+class DeepSeekProvider(LLMProvider):
+    name = DEEPSEEK_PROVIDER
+    default_model = DEEPSEEK_DEFAULT_MODEL
 
     def __init__(
         self,
-        api_key_env: str = NVIDIA_API_KEY_ENV,
-        base_url: str = NVIDIA_DEEPSEEK_BASE_URL,
+        api_key_env: str = DEEPSEEK_API_KEY_ENV,
+        base_url: str = DEEPSEEK_BASE_URL,
     ) -> None:
         self.api_key_env = api_key_env
         self.base_url = base_url
@@ -33,7 +36,7 @@ class NvidiaDeepSeekProvider(LLMProvider):
 
     def generate(
         self,
-        prompt,
+        prompt: str,
         model: str | None = None,
         temperature: float = 0.2,
     ) -> str:
@@ -45,7 +48,7 @@ class NvidiaDeepSeekProvider(LLMProvider):
         )
         content = completion.choices[0].message.content
         if not content:
-            raise RuntimeError("NVIDIA DeepSeek returned an empty response.")
+            raise RuntimeError("DeepSeek returned an empty response.")
         return content
 
     def generate_chat(
@@ -62,16 +65,16 @@ class NvidiaDeepSeekProvider(LLMProvider):
         )
         content = completion.choices[0].message.content
         if not content:
-            raise RuntimeError("NVIDIA DeepSeek returned an empty response.")
+            raise RuntimeError("DeepSeek returned an empty response.")
         return content
 
 
-def ask_nvidia_deepseek(
-    prompt,
-    model=NVIDIA_DEEPSEEK_MODEL,
+def ask_deepseek(
+    prompt: str,
+    model: str = DEEPSEEK_DEFAULT_MODEL,
     temperature: float = 0.2,
-):
-    return NvidiaDeepSeekProvider().generate(
+) -> str:
+    return DeepSeekProvider().generate(
         prompt,
         model=model,
         temperature=temperature,

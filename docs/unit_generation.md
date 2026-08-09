@@ -58,10 +58,22 @@ Gemini is also available:
 python generate_unit.py --description-file course_description.txt --provider gemini --model gemini-2.5-flash --temperature 0.2
 ```
 
-NVIDIA DeepSeek is also available:
+The official DeepSeek API is also available, with Pro as its default model:
 
 ```powershell
-python generate_unit.py --description-file course_description.txt --provider nvidia_deepseek --model deepseek-ai/deepseek-v4-pro --temperature 0.2
+python generate_unit.py --description-file course_description.txt --provider deepseek --model deepseek-v4-pro --temperature 0.2
+```
+
+The lower-cost Flash model can be selected explicitly:
+
+```powershell
+python generate_unit.py --description-file course_description.txt --provider deepseek --model deepseek-v4-flash --temperature 0.2
+```
+
+The NVIDIA hosted provider is also available:
+
+```powershell
+python generate_unit.py --description-file course_description.txt --provider nvidia --model openai/gpt-oss-120b --temperature 0.2
 ```
 
 The CLI prints live progress as it works: run creation, each model-call stage, each generated file path, and the final review/ingestion command. Use `--quiet` only when you want the final summary without the stage-by-stage console output.
@@ -124,7 +136,13 @@ For Gemini:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
-For NVIDIA DeepSeek:
+For the official DeepSeek API:
+
+```powershell
+$env:DEEPSEEK_API_KEY="your_key_here"
+```
+
+For the NVIDIA hosted provider:
 
 ```powershell
 $env:NVIDIA_API_KEY="your_key_here"

@@ -30,7 +30,7 @@ from feedback_lens.feedback.retrieval_planner import (
 
 VALID_GRADE_BANDS = {"N", "P", "C", "D", "HD"}
 VALID_CONTEXT_MODES = {"retrieval", "direct"}
-DEFAULT_FEEDBACK_PROVIDER = "nvidia_deepseek"
+DEFAULT_FEEDBACK_PROVIDER = "deepseek"
 NO_RETRIEVAL_STRATEGY = "none_direct_v1"
 ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY = "assignment_spec_multi_cue_v1"
 VALID_RETRIEVAL_STRATEGIES = {
