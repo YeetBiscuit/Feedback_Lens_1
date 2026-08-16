@@ -9,6 +9,7 @@ from feedback_lens.db.migrations import (
     DatabaseSchemaError,
     MIGRATIONS,
     _ensure_schema_migrations_table,
+    _legacy_windows_migration_checksum,
     _migration_checksum,
     get_schema_version,
     migrate_database,
@@ -161,6 +162,7 @@ class DatabaseV2Tests(unittest.TestCase):
                     (6, "staff_allocation"),
                     (7, "tutorial_group_allocation"),
                     (8, "assignment_feedback_models"),
+                    (9, "organization_memberships"),
                 ],
             )
             self.assertIsNotNone(
@@ -173,6 +175,31 @@ class DatabaseV2Tests(unittest.TestCase):
                     "SELECT 1 FROM sqlite_master WHERE name = 'tutorial_group_staff'"
                 ).fetchone()
             )
+
+    def test_legacy_windows_migration_checksums_are_normalised(self) -> None:
+        with _legacy_connection() as conn:
+            migrate_database(conn)
+            legacy_checksum = _legacy_windows_migration_checksum(2)
+            self.assertIsNotNone(legacy_checksum)
+            self.assertNotEqual(legacy_checksum, _migration_checksum(2))
+            conn.execute(
+                """
+                UPDATE schema_migrations
+                SET checksum = ?
+                WHERE version = 2
+                """,
+                (legacy_checksum,),
+            )
+
+            self.assertEqual(migrate_database(conn), CURRENT_SCHEMA_VERSION)
+            recorded_checksum = conn.execute(
+                """
+                SELECT checksum
+                FROM schema_migrations
+                WHERE version = 2
+                """
+            ).fetchone()["checksum"]
+            self.assertEqual(recorded_checksum, _migration_checksum(2))
 
     def test_pre_release_staff_migration_version_is_normalised(self) -> None:
         with _legacy_connection() as conn:
