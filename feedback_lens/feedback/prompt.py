@@ -289,19 +289,19 @@ Feedback customisation requirements:
     revision_section = ""
     if revision_notes:
         revision_section = f"""
-Revision requirements:
-An earlier draft of this feedback was reviewed and found insufficient on the dimensions below.
-Produce a revised version that directly addresses each point.
+Revision task:
+You previously produced the draft below. Independent reviewers assessed that draft and found specific gaps. Produce a revised version of it.
 
 {revision_notes}
 
 How to revise:
-- Fix the named gaps by adding concrete evidence: quote or reference specific parts of the student's submission, name the specific rubric criterion, and cite the specific unit material.
-- Replace any vague instruction with a concrete one. "Deepen the analysis" becomes "explain how X in section Y fails to address Z".
-- Do NOT add praise, encouragement, the student's name, or warmer phrasing. Tone is not the problem being fixed.
-- Do NOT lengthen sections that were already judged sufficient.
+- Start from the previous draft. Keep the parts the reviewers did not criticise.
+- Fix each named gap with concrete evidence: quote or paraphrase the specific part of the student's submission you are referring to, name the specific rubric criterion, and cite the specific retrieved course material by week number or title.
+- Replace every vague instruction with a concrete one. "Deepen the analysis" must become "explain how <specific element of the submission> fails to meet <specific rubric requirement>".
+- Do NOT add praise, encouragement, the student's name, or warmer phrasing. Tone is not what is being assessed.
+- Do NOT shorten or weaken sections the reviewers did not criticise.
 - Keep the same JSON schema and the same criterion_id values.
-- Do not acknowledge this revision process anywhere in the feedback text.
+- Do not mention this revision process anywhere in the feedback text.
 """.strip()
 
 
