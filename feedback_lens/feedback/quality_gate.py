@@ -6,6 +6,9 @@ below threshold, regenerates once with judge-derived revision notes.
 Judge results are recorded for evaluation but are not surfaced to educators.
 """
 
+REVISION_PROVIDER = "nvidia"
+REVISION_MODEL = "openai/gpt-oss-120b"
+
 import json
 import sqlite3
 
@@ -16,12 +19,9 @@ from feedback_lens.feedback.pipeline import (
 from feedback_lens.feedback.review import fetch_generation_review, parse_json_text_list
 
 
-# Any dimension whose mean score across judges falls below this triggers
-# one regeneration attempt.
 QUALITY_THRESHOLD = 4
 
-# Total generation attempts, including the first one.
-MAX_ATTEMPTS = 1
+MAX_ATTEMPTS = 3
 
 GATE_JUDGES = [
     ("nvidia", "meta/llama-3.3-70b-instruct", "llama-3.3-70b"),
@@ -114,10 +114,12 @@ def _load_judge_context(conn: sqlite3.Connection, generation_id: int, run: dict)
 
 def _run_gate_judges(context: dict, feedback_text: str, generator_model: str) -> list[dict]:
     """Run every configured judge. Imported lazily to keep pipeline import light."""
+    from concurrent.futures import ThreadPoolExecutor
+
     from llm_judge import DIMENSIONS, judge_feedback, judge_note, resolve_model_name
 
-    results = []
-    for provider, model, label in GATE_JUDGES:
+    def run_one(entry):
+        provider, model, label = entry
         resolved_model = resolve_model_name(provider, model)
         scores = judge_feedback(
             provider,
@@ -133,14 +135,16 @@ def _run_gate_judges(context: dict, feedback_text: str, generator_model: str) ->
             context["rubric"],
             context["materials"],
         )
-        results.append({
+        return {
             "provider": provider,
             "model": resolved_model,
             "label": label,
             "note": judge_note(provider, resolved_model, generator_model),
             "scores": scores,
-        })
-    return results
+        }
+
+    with ThreadPoolExecutor(max_workers=len(GATE_JUDGES)) as pool:
+        return list(pool.map(run_one, GATE_JUDGES))
 
 
 def _coerce_judge_text(value) -> str:
@@ -218,8 +222,12 @@ def _passes_threshold(judge_results: list[dict]) -> bool:
     return all(score >= QUALITY_THRESHOLD for score in aggregated.values())
 
 
-def _build_revision_notes(judge_results: list[dict]) -> str:
-    """Merge every judge's diagnosis on the failing dimensions into instructions."""
+def _build_revision_notes(judge_results: list[dict], previous_feedback: str) -> str:
+    """Turn the judges' diagnosis into revision instructions.
+
+    The previous draft is included because regeneration rebuilds the prompt from
+    scratch; without it the model is asked to repair text it cannot see.
+    """
     aggregated = _aggregate_scores(judge_results)
     blocks = []
 
@@ -227,12 +235,15 @@ def _build_revision_notes(judge_results: list[dict]) -> str:
         if aggregated[dimension] >= QUALITY_THRESHOLD:
             continue
 
-        lines = [f"{dimension.capitalize()} (mean {aggregated[dimension]:.1f}/5):"]
+        lines = [
+            f"{dimension.capitalize()} "
+            f"(mean {aggregated[dimension]:.1f}/5, target {QUALITY_THRESHOLD}):"
+        ]
         for judge_result in judge_results:
-            entry = judge_result["scores"].get(dimension)
+            entry = (judge_result.get("scores") or {}).get(dimension) or {}
             if not entry:
                 continue
-            lines.append(f"  {judge_result['label']} scored {entry.get('score')}/5.")
+            lines.append(f"  Reviewer {judge_result['label']} scored {entry.get('score')}/5.")
             if entry.get("reason"):
                 lines.append(f"    Assessment: {_coerce_judge_text(entry['reason'])}")
             for defect in _coerce_judge_list(entry.get("defects")):
@@ -241,7 +252,15 @@ def _build_revision_notes(judge_results: list[dict]) -> str:
                 lines.append(f"    Missing evidence: {missing}")
         blocks.append("\n".join(lines))
 
-    return "\n\n".join(blocks)
+    if not blocks:
+        return ""
+
+    return (
+        "PREVIOUS DRAFT (this is the exact text the reviewers assessed):\n"
+        f"{previous_feedback}\n\n"
+        "REVIEWER FINDINGS ON THAT DRAFT:\n"
+        + "\n\n".join(blocks)
+    )
 
 
 def generate_feedback_with_quality_gate(
@@ -267,11 +286,16 @@ def generate_feedback_with_quality_gate(
     revision_notes = None
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
+        attempt_kwargs = dict(generation_kwargs)
+        if attempt > 1 and REVISION_MODEL:
+            attempt_kwargs["provider"] = REVISION_PROVIDER
+            attempt_kwargs["model"] = REVISION_MODEL
+
         result = generate_feedback_for_submission(
             conn,
             submission_id=submission_id,
             revision_notes=revision_notes,
-            **generation_kwargs,
+            **attempt_kwargs,
         )
 
         try:
@@ -306,7 +330,11 @@ def generate_feedback_with_quality_gate(
             break
 
         if attempt < MAX_ATTEMPTS:
-            revision_notes = _build_revision_notes(judge_results)
+            revision_notes = _build_revision_notes(judge_results, feedback_text)
             gate_report["regenerated"] = True
+        else:
+            # Retries exhausted. The feedback still reaches the educator; it is
+            # surfaced to the lead lecturer for review rather than blocked.
+            gate_report["escalated"] = True
 
     return result, gate_report

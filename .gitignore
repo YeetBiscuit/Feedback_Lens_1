@@ -35,3 +35,5 @@ documents/**
 feedback_system.db.backup-*
 test_gate.py
 test_models.py
+probe_lowq.py
+probe_repeat.py

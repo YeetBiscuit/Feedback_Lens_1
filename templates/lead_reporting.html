@@ -482,6 +482,15 @@ input[type=checkbox] { width: 1rem; height: 1rem; cursor: pointer; }
           <option value="reviewed">Reviewed</option>
         </select>
       </div>
+      <div class="group">
+        <label>AI Quality</label>
+        <select id="f-quality">
+          <option value="">All</option>
+          <option value="needs_review">Needs review</option>
+          <option value="passed_after_revision">Passed after revision</option>
+          <option value="passed">Passed first time</option>
+        </select>
+      </div>
     </div>
   </div>
 
@@ -506,12 +515,13 @@ input[type=checkbox] { width: 1rem; height: 1rem; cursor: pointer; }
           <th>Educator</th>
           <th>Estimate Mark</th>
           <th>Final Mark</th>
+          <th>AI Quality</th>
           <th>Status</th>
           <th class="action-cell">Action</th>
         </tr>
       </thead>
       <tbody id="table-body">
-        <tr class="empty-row"><td colspan="8">Loading...</td></tr>
+        <tr class="empty-row"><td colspan="9">Loading...</td></tr>
       </tbody>
     </table>
   </div>
@@ -559,7 +569,7 @@ input[type=checkbox] { width: 1rem; height: 1rem; cursor: pointer; }
 <script>
 var rows = [];
 var selected = {};
-var filters = { unit: '', assess: '', edu: '', status: '' };
+var filters = { unit: '', assess: '', edu: '', status: '', quality: '' };
 
 function initials(name){
   if(!name) return '?';
@@ -668,6 +678,7 @@ function applyFilter(){
   filters.assess = document.getElementById('f-assess').value;
   filters.edu = document.getElementById('f-edu').value;
   filters.status = document.getElementById('f-status').value;
+  filters.quality = document.getElementById('f-quality').value;
   document.getElementById('filter-panel').classList.remove('show');
   render();
 }
@@ -679,6 +690,7 @@ function getVisible(){
     if(filters.assess && String(r.assignment_id) !== filters.assess) return false;
     if(filters.edu && String(r.educator_id) !== filters.edu) return false;
     if(filters.status && r.status !== filters.status) return false;
+    if(filters.quality && r.quality_flag !== filters.quality) return false;
     if(q){
       var t = ((r.student_identifier || '') + ' ' + (r.unit_code || '') + ' ' + (r.educator_name || '') + ' ' + (r.assignment_name || '')).toLowerCase();
       return t.indexOf(q) !== -1;
@@ -687,11 +699,25 @@ function getVisible(){
   });
 }
 
+function qualityCell(r){
+  if(r.quality_flag == null){
+    return '<span style="color:#9ca3af">-</span>';
+  }
+  var score = r.judge_min_score != null ? Number(r.judge_min_score).toFixed(1) : '-';
+  if(r.quality_flag === 'needs_review'){
+    return '<span class="status-pill" style="background:#fee2e2;color:#991b1b">Needs review ' + score + '</span>';
+  }
+  if(r.quality_flag === 'passed_after_revision'){
+    return '<span class="status-pill" style="background:#fef3c7;color:#92400e">Revised ' + score + '</span>';
+  }
+  return '<span class="status-pill" style="background:#dcfce7;color:#15803d">' + score + '</span>';
+}
+
 function render(){
   var visible = getVisible();
   var body = document.getElementById('table-body');
   if(!visible.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="8">No submissions found.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="9">No submissions found.</td></tr>';
     updateBatch();
     return;
   }
@@ -709,6 +735,7 @@ function render(){
       + '<td>' + (r.educator_name || '-') + '</td>'
       + '<td><span class="' + gradeCls + '">' + grade + '</span></td>'
       + '<td>' + mark + '</td>'
+      + '<td>' + qualityCell(r) + '</td>'
       + '<td><span class="status-pill ' + statusCls + '">' + statusText + '</span></td>'
       + '<td class="action-cell"><button class="btn-view" onclick="openDetail(' + r.generation_id + ')">View Detail</button></td>'
       + '</tr>';

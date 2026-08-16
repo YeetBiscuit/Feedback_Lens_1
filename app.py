@@ -6,8 +6,8 @@ from flask import Flask, render_template, request, redirect, session, jsonify
 from werkzeug.security import check_password_hash
 
 from feedback_lens.db.connection import connect_db
+from feedback_lens.feedback.quality_gate import generate_feedback_with_quality_gate
 from feedback_lens.feedback.pipeline import (
-    generate_feedback_for_submission,
     regenerate_feedback_for_criterion,
 )
 from feedback_lens.feedback.prompt import DEFAULT_FEEDBACK_MODIFIER_MODE
@@ -1001,6 +1001,16 @@ def lead_reporting_data():
                 t.tutor_id AS educator_id,
                 of.overall_grade_band,
                 of.final_mark,
+                (SELECT MIN(dim_avg) FROM (
+                    SELECT AVG(je.score) AS dim_avg
+                    FROM judge_evaluations je
+                    WHERE je.generation_id = gr.generation_id
+                      AND je.accepted = 1
+                      AND je.score IS NOT NULL
+                    GROUP BY je.dimension
+                )) AS judge_min_score,
+                (SELECT MAX(je2.attempt_number) FROM judge_evaluations je2
+                 WHERE je2.generation_id = gr.generation_id) AS judge_attempts,
                 CASE
                     WHEN hr.review_id IS NOT NULL THEN 'reviewed'
                     WHEN gr.status = 'completed' THEN 'ai_generated'
@@ -1021,7 +1031,19 @@ def lead_reporting_data():
             ORDER BY gr.generation_id DESC
         """).fetchall()
 
-    return jsonify({'submissions': [dict(r) for r in rows]})
+    rows = [dict(r) for r in rows]
+    for r in rows:
+        min_score = r.get("judge_min_score")
+        if min_score is None:
+            r["quality_flag"] = None
+        elif min_score >= 4:
+            r["quality_flag"] = (
+                "passed_after_revision" if (r.get("judge_attempts") or 1) > 1 else "passed"
+            )
+        else:
+            r["quality_flag"] = "needs_review"
+
+    return jsonify({'submissions': rows})
 
 
 @app.route('/api/lead/feedback/<int:generation_id>')
@@ -1356,7 +1378,7 @@ def generate_feedback():
         ).fetchone()[0]
 
         try:
-            result = generate_feedback_for_submission(
+            result, gate_report = generate_feedback_with_quality_gate(
                 conn,
                 submission_id=submission_id,
                 provider=provider,
@@ -1371,6 +1393,9 @@ def generate_feedback():
                 feedback_length=feedback_length,
                 feedback_tone=feedback_tone,
             )
+            # Judge results are internal evaluation data and are not returned
+            # to the Staff workspace.
+            app.logger.info("quality gate: %s", gate_report)
         except Exception as err:
             failed = conn.execute(
                 """

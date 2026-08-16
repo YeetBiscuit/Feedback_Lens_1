@@ -115,8 +115,8 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         with (
             patch("app.connect_db", return_value=conn),
             patch(
-                "app.generate_feedback_for_submission",
-                return_value=_generation_result(),
+                "app.generate_feedback_with_quality_gate",
+                return_value=(_generation_result(), {"passed": True}),
             ) as mock_generate,
         ):
             response = client.post(
@@ -154,14 +154,14 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         with (
             patch("app.connect_db", return_value=conn),
             patch(
-                "app.generate_feedback_for_submission",
-                return_value=_generation_result(
+                "app.generate_feedback_with_quality_gate",
+                return_value=(_generation_result(
                     retrieval_strategy="assignment_spec_multi_cue_v1",
                     prompt_template_version="baseline_feedback_json_v1",
                     feedback_modifier_mode="custom",
                     feedback_length="concise",
                     feedback_tone="direct_no_fluff",
-                ),
+                ), {"passed": True}),
             ) as mock_generate,
         ):
             response = client.post(
@@ -200,15 +200,15 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         with (
             patch("app.connect_db", return_value=conn),
             patch(
-                "app.generate_feedback_for_submission",
-                return_value=_generation_result(
+                "app.generate_feedback_with_quality_gate",
+                return_value=(_generation_result(
                     context_mode="direct",
                     pipeline_version="baseline_direct_v1",
                     prompt_template_version="baseline_direct_feedback_json_v1",
                     retrieval_strategy="none_direct_v1",
                     per_cue_top_k=0,
                     max_final_chunks=0,
-                ),
+                ), {"passed": True}),
             ) as mock_generate,
         ):
             response = client.post(
@@ -238,7 +238,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
 
         with (
             patch("app.connect_db", return_value=conn),
-            patch("app.generate_feedback_for_submission") as mock_generate,
+            patch("app.generate_feedback_with_quality_gate") as mock_generate,
         ):
             response = client.post(
                 "/api/feedback/generate",
@@ -259,7 +259,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         with (
             patch("app.connect_db", return_value=conn),
             patch(
-                "app.generate_feedback_for_submission",
+                "app.generate_feedback_with_quality_gate",
                 side_effect=ValueError("Invalid generation settings"),
             ),
         ):
@@ -278,7 +278,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         with (
             patch("app.connect_db", return_value=conn),
             patch(
-                "app.generate_feedback_for_submission",
+                "app.generate_feedback_with_quality_gate",
                 side_effect=RuntimeError("Missing API key. Please set environment variable NVIDIA_API_KEY."),
             ),
         ):
