@@ -141,8 +141,10 @@ class DatabaseV2Tests(unittest.TestCase):
                 require_current_schema(conn)
 
             self.assertEqual(migrate_database(conn), CURRENT_SCHEMA_VERSION)
+            self.assertFalse(conn.in_transaction)
             self.assertEqual(get_schema_version(conn), CURRENT_SCHEMA_VERSION)
             self.assertEqual(migrate_database(conn), CURRENT_SCHEMA_VERSION)
+            self.assertFalse(conn.in_transaction)
 
             migrations = conn.execute(
                 """

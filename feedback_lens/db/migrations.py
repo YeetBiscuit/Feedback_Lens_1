@@ -1994,8 +1994,16 @@ def _normalise_legacy_windows_checksums(conn: sqlite3.Connection) -> None:
 
 
 def migrate_database(conn: sqlite3.Connection) -> int:
-    """Apply pending, immutable database migrations exactly once."""
+    """Apply pending, immutable database migrations exactly once.
 
+    When called with a clean connection, leave it clean.  Some migration
+    metadata normalisation statements start an implicit SQLite transaction
+    even when they match no rows; that transaction must not leak into the
+    first application operation that reuses the connection.  A transaction
+    owned by the caller is still left for the caller to commit or roll back.
+    """
+
+    started_in_transaction = conn.in_transaction
     if conn.row_factory is None:
         conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
@@ -2048,4 +2056,6 @@ def migrate_database(conn: sqlite3.Connection) -> int:
             raise
 
     require_current_schema(conn)
+    if not started_in_transaction and conn.in_transaction:
+        conn.commit()
     return CURRENT_SCHEMA_VERSION
