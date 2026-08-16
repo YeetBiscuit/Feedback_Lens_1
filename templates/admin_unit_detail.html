@@ -13,7 +13,17 @@
 .tutorial-staff-chip button{border:0;background:transparent;color:#b42318;padding:0;min-width:auto}
 .tutorial-group-actions{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:.5rem;align-items:end}
 .tutorial-import-table{max-height:260px;overflow:auto;margin-top:.75rem}
-@media(max-width:800px){.tutorial-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.tutorial-group-actions{grid-template-columns:1fr}.tutorial-group-actions button{width:100%}}
+.tutorial-setup-steps{display:grid;gap:.85rem;margin-top:1rem}
+.tutorial-setup-step{display:grid;grid-template-columns:2.25rem minmax(0,1fr);gap:.8rem;border:1px solid #dbe3ef;border-radius:12px;padding:1rem;background:#f8fafc}
+.tutorial-step-number{display:grid;place-items:center;width:2.25rem;height:2.25rem;border-radius:999px;background:#172033;color:#fff;font-weight:700}
+.tutorial-step-content h3{margin:.15rem 0 .35rem}
+.tutorial-step-content p{margin:.35rem 0 .75rem}
+.tutorial-step-status{margin:.65rem 0 0!important}
+.tutorial-import-help{margin-top:.75rem}
+.tutorial-import-help summary{cursor:pointer;color:#475569}
+.tutor-search-result{padding:.75rem 0;border-bottom:1px solid #e2e8f0}
+.tutor-search-result:last-child{border-bottom:0}
+@media(max-width:800px){.tutorial-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.tutorial-group-actions{grid-template-columns:1fr}.tutorial-group-actions button{width:100%}.tutorial-setup-step{grid-template-columns:1fr}.tutorial-step-content .row-actions{align-items:stretch}.tutorial-step-content .row-actions button{width:100%}}
 </style>
 <div class="breadcrumb"><a href="/admin/units">Units</a> &rsaquo; <span id="breadcrumb-unit">Unit</span></div>
 <div class="toolbar">
@@ -28,44 +38,68 @@
 </div>
 <div id="message" class="hidden"></div>
 
-<div class="card">
-  <h2>Teaching team</h2>
-  <p class="muted">Unit Admins and Chief Admins are automatically available for allocation. Add Staff by searching for an existing FeedbackLens account in this organization.</p>
-  <div id="unit-admin-list" class="muted"></div>
-  <div class="row-actions" style="margin:1rem 0">
-    <input id="staff-search" type="search" placeholder="Search Staff email" autocomplete="off" oninput="queueStaffSearch()">
+<div class="card" id="tutorial-setup-card">
+  <h2>Tutorial group setup</h2>
+  <p class="muted">Complete these steps in order to prepare students, Tutorial Groups and Tutor access.</p>
+  <div class="tutorial-setup-steps">
+    <section class="tutorial-setup-step">
+      <div class="tutorial-step-number" aria-hidden="true">1</div>
+      <div class="tutorial-step-content">
+        <h3>Import students and groups</h3>
+        <p class="muted">Import the students and Tutorial Groups contained in the Applied spreadsheet.</p>
+        <div class="row-actions">
+          <span class="pill">Allocate+ activity: Applied</span>
+          <button type="button" onclick="document.getElementById('tutorial-group-file').click()">Import students from Applied spreadsheet</button>
+          <button class="secondary" type="button" onclick="document.getElementById('tutorial-group-dialog').showModal()">Create a group manually</button>
+        </div>
+        <details class="tutorial-import-help">
+          <summary>Accepted files and import rules</summary>
+          <p class="muted">Only <code>Applied</code> sheets are processed; Workshop, Lab and other activities are ignored. Excel rows containing <code>student_code</code>, <code>last_name</code>, <code>preferred_name</code> and <code>email_address</code> register and enrol students automatically. Existing-student membership CSVs remain available as a fallback.</p>
+        </details>
+      </div>
+    </section>
+    <section class="tutorial-setup-step">
+      <div class="tutorial-step-number" aria-hidden="true">2</div>
+      <div class="tutorial-step-content">
+        <h3>Assign tutors</h3>
+        <p class="muted">Assign several Tutors from a CSV, or search for one Tutor and choose their Groups.</p>
+        <div class="row-actions">
+          <button id="assign-tutors-csv-btn" type="button" disabled onclick="document.getElementById('tutorial-staff-file').click()">Assign tutors from CSV</button>
+          <button id="assign-tutor-btn" class="secondary" type="button" disabled onclick="openTutorAssignment()">Assign a tutor</button>
+        </div>
+        <p class="muted tutorial-step-status" id="tutor-assignment-status">Import and apply the student spreadsheet before assigning Tutors.</p>
+      </div>
+    </section>
   </div>
-  <div id="staff-search-results"></div>
-  <table>
-    <thead><tr><th>Staff</th><th>Incomplete work</th><th>Actions</th></tr></thead>
-    <tbody id="staff-list"></tbody>
-  </table>
+  <input class="hidden" id="tutorial-group-file" type="file" accept=".csv,.xls,.xlsx" onchange="uploadTutorialGroups(this.files[0]);this.value=''">
+  <input class="hidden" id="tutorial-staff-file" type="file" accept=".csv" onchange="uploadTutorialStaffMap(this.files[0]);this.value=''">
+  <div id="tutorial-import-preview" class="message hidden"></div>
 </div>
 
 <div class="card" id="tutorial-groups-card">
   <div class="toolbar">
     <div>
       <h2>Tutorial Groups</h2>
-      <p class="muted">Import Applied Allocate+ worksheets to register students and create their Groups, then attach the active TA accounts allowed to receive feedback work.</p>
-    </div>
-    <div class="row-actions">
-      <span class="pill">Allocate+ activity: Applied</span>
-      <button class="secondary" type="button" onclick="document.getElementById('tutorial-group-file').click()">Upload Allocate+ Excel / existing-student CSV</button>
-      <button class="secondary" type="button" onclick="document.getElementById('tutorial-staff-file').click()">Bulk-add active Educators</button>
-      <button type="button" onclick="document.getElementById('tutorial-group-dialog').showModal()">Create Group</button>
+      <p class="muted">Review the students and Tutors assigned to each Group.</p>
     </div>
   </div>
-  <input class="hidden" id="tutorial-group-file" type="file" accept=".csv,.xls,.xlsx" onchange="uploadTutorialGroups(this.files[0]);this.value=''">
-  <input class="hidden" id="tutorial-staff-file" type="file" accept=".csv" onchange="uploadTutorialStaffMap(this.files[0]);this.value=''">
-  <p class="muted">Only <code>Applied</code> worksheets are processed; Workshop, Lab and other activities are ignored. Excel rows containing <code>student_code</code>, <code>last_name</code>, <code>preferred_name</code> and <code>email_address</code> register and enrol students automatically. Membership CSV files remain available for existing students. Existing students missing from the latest Applied export are reported and left unchanged. A Staff mapping CSV can add any existing active Educator to this Unit and its Applied Groups in one batch.</p>
   <div class="tutorial-summary">
     <div class="tutorial-stat"><strong id="tutorial-group-count">0</strong><span class="muted">Tutorial Groups</span></div>
     <div class="tutorial-stat"><strong id="tutorial-ready-count">0</strong><span class="muted">Ready Groups</span></div>
     <div class="tutorial-stat"><strong id="tutorial-incomplete-count">0</strong><span class="muted">Need TA setup</span></div>
     <div class="tutorial-stat"><strong id="tutorial-ungrouped-count">0</strong><span class="muted">Ungrouped students</span></div>
   </div>
-  <div id="tutorial-import-preview" class="message hidden"></div>
   <div id="tutorial-groups" class="tutorial-groups"><p class="muted">Loading Tutorial Groups…</p></div>
+</div>
+
+<div class="card" id="unit-staff-card">
+  <h2>Unit staff</h2>
+  <p class="muted">Review and maintain the people who have been added to this Unit. Unit Admins and Chief Admins are automatically available for allocation.</p>
+  <div id="unit-admin-list" class="muted"></div>
+  <table>
+    <thead><tr><th>Staff</th><th>Incomplete work</th><th>Actions</th></tr></thead>
+    <tbody id="staff-list"></tbody>
+  </table>
 </div>
 
 <div class="card">
@@ -165,6 +199,19 @@
     </div>
   </form>
 </dialog>
+
+<dialog id="tutor-assignment-dialog">
+  <div class="dialog-body">
+    <h2>Assign a tutor</h2>
+    <p class="muted">Search for an active FeedbackLens account in this organization, then choose the Tutorial Groups they can support.</p>
+    <label for="tutor-search">Tutor email</label>
+    <input id="tutor-search" type="search" placeholder="Search by email" autocomplete="off" oninput="queueTutorSearch()">
+    <div id="tutor-search-results"></div>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" onclick="document.getElementById('tutor-assignment-dialog').close()">Cancel</button>
+    </div>
+  </div>
+</dialog>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -172,7 +219,8 @@ const UNIT_ID = {{ unit_offering_id }};
 let unitData = null;
 let tutorialData = null;
 let tutorialImportId = null;
-let staffSearchTimer = null;
+let tutorSearchTimer = null;
+let tutorSearchCandidates = [];
 
 function materialTypeLabel(type){
   return {
@@ -258,12 +306,18 @@ function renderStaff(staff){
     <tr>
       <td><strong>${escapeHtml(member.display_name || member.email)}</strong> ${member.account_status === 'pending' ? '<span class="pill warn">Pending activation</span>' : ''}<br><span class="muted">${escapeHtml(member.email)}</span></td>
       <td>${member.incomplete_assignment_count}</td>
-      <td><div class="row-actions"><button class="secondary" onclick="openStaffTutorialGroups(${member.user_id})">Tutorial Groups</button><button class="danger" onclick="removeStaff(${member.user_id})">Remove</button></div></td>
+      <td><div class="row-actions"><button class="secondary" onclick="openStaffTutorialGroups(${member.user_id})">Edit Groups</button><button class="danger" onclick="removeStaff(${member.user_id})">Remove</button></div></td>
     </tr>`).join('') : '<tr><td colspan="3" class="empty">No explicit Staff members. Admins remain available for allocation.</td></tr>';
 }
 
 function renderTutorialGroups(){
   const groups = tutorialData?.groups || [];
+  const tutorAssignmentReady = groups.some(group => Number(group.student_count) > 0);
+  document.getElementById('assign-tutors-csv-btn').disabled = !tutorAssignmentReady;
+  document.getElementById('assign-tutor-btn').disabled = !tutorAssignmentReady;
+  document.getElementById('tutor-assignment-status').textContent = tutorAssignmentReady ?
+    'Students and Groups are ready for Tutor assignment.' :
+    'Import and apply the student spreadsheet before assigning Tutors.';
   document.getElementById('tutorial-group-count').textContent = groups.length;
   document.getElementById('tutorial-ready-count').textContent = tutorialData?.ready_group_count || 0;
   document.getElementById('tutorial-incomplete-count').textContent = tutorialData?.incomplete_group_count || 0;
@@ -289,7 +343,7 @@ function renderTutorialGroups(){
         <button class="secondary" type="button" ${available.length ? '' : 'disabled'} onclick="addTutorialStaff(${group.tutorial_group_id})">Add Staff</button>
       </div>
     </section>`;
-  }).join('') : '<p class="empty">No Tutorial Groups yet. Upload a membership CSV or create the first Group manually.</p>';
+  }).join('') : '<p class="empty">No Tutorial Groups yet. Import the Applied student spreadsheet to get started.</p>';
 }
 
 async function refreshTutorialGroups(){
@@ -328,9 +382,10 @@ async function removeTutorialStaff(groupId,userId){
   }catch(error){ showMessage('message', error.message, true); }
 }
 
-function openStaffTutorialGroups(userId){
+function openStaffTutorialGroups(userId, fallbackMember = null){
   const member = (unitData?.staff || []).find(item => Number(item.user_id) === Number(userId)) ||
-    (tutorialData?.unit_staff || []).find(item => Number(item.user_id) === Number(userId));
+    (tutorialData?.unit_staff || []).find(item => Number(item.user_id) === Number(userId)) ||
+    fallbackMember;
   const groups = tutorialData?.groups || [];
   const linked = new Set(groups.filter(group => (group.staff || []).some(person => Number(person.user_id) === Number(userId))).map(group => Number(group.tutorial_group_id)));
   document.getElementById('tutorial-staff-groups-user-id').value = userId;
@@ -391,7 +446,9 @@ async function uploadTutorialStaffMap(file){
   try{
     const result = await api(`/api/admin/unit-offerings/${UNIT_ID}/tutorial-staff-imports`, {method:'POST',body:form});
     tutorialData = result.tutorial_groups;
+    unitData = await api('/api/admin/unit-offerings/' + UNIT_ID);
     renderTutorialGroups();
+    renderStaff(unitData.staff || []);
     const summary = result.staff_import;
     showMessage('message', `Staff mapping imported: ${summary.unit_staff_added_count || 0} added to Unit · ${summary.added_count} Group links added · ${summary.unchanged_count} unchanged.`);
   }catch(error){
@@ -411,34 +468,57 @@ async function applyTutorialGroups(){
   }catch(error){ showMessage('message', error.message, true); }
 }
 
-function queueStaffSearch(){
-  clearTimeout(staffSearchTimer);
-  staffSearchTimer = setTimeout(searchStaff, 250);
+function openTutorAssignment(){
+  const groups = tutorialData?.groups || [];
+  if(!groups.some(group => Number(group.student_count) > 0)){
+    showMessage('message', 'Import and apply the student spreadsheet before assigning Tutors.', true);
+    return;
+  }
+  tutorSearchCandidates = [];
+  document.getElementById('tutor-search').value = '';
+  document.getElementById('tutor-search-results').innerHTML = '';
+  document.getElementById('tutor-assignment-dialog').showModal();
+  setTimeout(() => document.getElementById('tutor-search').focus(), 0);
 }
 
-async function searchStaff(){
-  const query = document.getElementById('staff-search').value.trim();
-  const target = document.getElementById('staff-search-results');
-  if(!query){ target.innerHTML = ''; return; }
+function queueTutorSearch(){
+  clearTimeout(tutorSearchTimer);
+  tutorSearchTimer = setTimeout(searchTutors, 250);
+}
+
+async function searchTutors(){
+  const query = document.getElementById('tutor-search').value.trim();
+  const target = document.getElementById('tutor-search-results');
+  if(!query){ tutorSearchCandidates = []; target.innerHTML = ''; return; }
   try{
     const data = await api(`/api/admin/unit-offerings/${UNIT_ID}/staff-candidates?q=${encodeURIComponent(query)}`);
-    target.innerHTML = data.candidates.length ? data.candidates.map(candidate => `
-      <div class="toolbar">
+    tutorSearchCandidates = data.candidates || [];
+    target.innerHTML = tutorSearchCandidates.length ? tutorSearchCandidates.map(candidate => {
+      const actionLabel = candidate.automatically_available ? 'Available as Admin' :
+        candidate.already_staff ? 'Choose Groups' : 'Add and choose Groups';
+      return `<div class="toolbar tutor-search-result">
         <div><strong>${escapeHtml(candidate.display_name || candidate.email)}</strong><br><span class="muted">${escapeHtml(candidate.email)}</span></div>
-        <button ${candidate.already_staff || candidate.automatically_available ? 'disabled' : ''} onclick="addStaff(${candidate.user_id})">${candidate.already_staff ? 'Already added' : candidate.automatically_available ? 'Already available' : 'Add Staff'}</button>
-      </div>`).join('') : '<p class="muted">No matching Staff accounts in this organization.</p>';
+        <button type="button" ${candidate.automatically_available ? 'disabled' : ''} onclick="chooseTutor(${candidate.user_id})">${actionLabel}</button>
+      </div>`;
+    }).join('') : '<p class="muted">No matching active Staff accounts in this organization.</p>';
   }catch(error){
     target.innerHTML = `<div class="message error">${escapeHtml(error.message)}</div>`;
   }
 }
 
-async function addStaff(userId){
+async function chooseTutor(userId){
+  const candidate = tutorSearchCandidates.find(item => Number(item.user_id) === Number(userId));
+  if(!candidate) return;
   try{
-    await api(`/api/admin/unit-offerings/${UNIT_ID}/staff`, {method:'POST', body:JSON.stringify({staff_user_id:userId})});
-    document.getElementById('staff-search').value = '';
-    document.getElementById('staff-search-results').innerHTML = '';
-    showMessage('message', 'Staff member added.');
-    load();
+    if(!candidate.already_staff && !candidate.automatically_available){
+      await api(`/api/admin/unit-offerings/${UNIT_ID}/staff`, {method:'POST', body:JSON.stringify({staff_user_id:userId})});
+    }
+    unitData = await api('/api/admin/unit-offerings/' + UNIT_ID);
+    tutorialData = await api(`/api/admin/unit-offerings/${UNIT_ID}/tutorial-groups`);
+    renderStaff(unitData.staff || []);
+    renderTutorialGroups();
+    document.getElementById('tutor-assignment-dialog').close();
+    openStaffTutorialGroups(userId, candidate);
   }catch(error){ showMessage('message', error.message, true); }
 }
 

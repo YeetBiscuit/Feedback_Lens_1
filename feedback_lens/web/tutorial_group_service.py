@@ -474,7 +474,7 @@ def invite_tutorial_group_staff(
     unit_offering_id: int,
     payload: dict,
 ) -> dict:
-    _unit_context(conn, actor_user_id, unit_offering_id)
+    context = _unit_context(conn, actor_user_id, unit_offering_id)
     email = str(payload.get("email") or "").strip().casefold()
     display_name = str(payload.get("display_name") or "").strip()
     raw_group_ids = payload.get("tutorial_group_ids")
@@ -554,6 +554,18 @@ def invite_tutorial_group_staff(
                 "UPDATE users SET display_name = ? WHERE user_id = ?",
                 (display_name, user_id),
             )
+    conn.execute(
+        """
+        INSERT INTO organization_memberships
+            (organization_id, user_id, added_by_user_id)
+        VALUES (?, ?, ?)
+        ON CONFLICT(organization_id, user_id)
+        DO UPDATE SET active = 1, ended_at = NULL,
+                      joined_at = CURRENT_TIMESTAMP,
+                      added_by_user_id = excluded.added_by_user_id
+        """,
+        (context["organization_id"], user_id, actor_user_id),
+    )
     conn.execute(
         """
         INSERT INTO unit_role_assignments

@@ -96,29 +96,16 @@ def _user_belongs_to_organization(
             FROM users AS user
             WHERE user.user_id = ?
               AND user.role IN ('admin', 'lead_lecturer', 'educator')
-              AND (
-                  EXISTS (
-                      SELECT 1
-                      FROM organization_role_assignments AS org_role
-                      WHERE org_role.user_id = user.user_id
-                        AND org_role.organization_id = ?
-                        AND org_role.active = 1
-                  )
-                  OR EXISTS (
-                      SELECT 1
-                      FROM unit_role_assignments AS unit_role
-                      JOIN unit_offerings AS offering
-                        ON offering.unit_offering_id =
-                           unit_role.unit_offering_id
-                      JOIN courses AS course
-                        ON course.course_id = offering.course_id
-                      WHERE unit_role.user_id = user.user_id
-                        AND course.organization_id = ?
-                  )
+              AND EXISTS (
+                  SELECT 1
+                  FROM organization_memberships AS membership
+                  WHERE membership.user_id = user.user_id
+                    AND membership.organization_id = ?
+                    AND membership.active = 1
               )
             LIMIT 1
             """,
-            (user_id, organization_id, organization_id),
+            (user_id, organization_id),
         ).fetchone()
         is not None
     )
@@ -169,25 +156,12 @@ def list_staff_candidates(
         WHERE user.role IN ('admin', 'lead_lecturer', 'educator')
           AND user.account_status = 'active'
           AND lower(user.email) LIKE '%' || ? || '%'
-          AND (
-              EXISTS (
-                  SELECT 1
-                  FROM organization_role_assignments AS org_role
-                  WHERE org_role.user_id = user.user_id
-                    AND org_role.organization_id = ?
-                    AND org_role.active = 1
-              )
-              OR EXISTS (
-                  SELECT 1
-                  FROM unit_role_assignments AS unit_role
-                  JOIN unit_offerings AS offering
-                    ON offering.unit_offering_id =
-                       unit_role.unit_offering_id
-                  JOIN courses AS course
-                    ON course.course_id = offering.course_id
-                  WHERE unit_role.user_id = user.user_id
-                    AND course.organization_id = ?
-              )
+          AND EXISTS (
+              SELECT 1
+              FROM organization_memberships AS membership
+              WHERE membership.user_id = user.user_id
+                AND membership.organization_id = ?
+                AND membership.active = 1
           )
         ORDER BY lower(user.email), user.user_id
         LIMIT ?
@@ -197,7 +171,6 @@ def list_staff_candidates(
             unit_offering_id,
             context["organization_id"],
             normalized,
-            context["organization_id"],
             context["organization_id"],
             bounded_limit,
         ),

@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "setup" / "migrations"
 
 
@@ -1833,9 +1833,36 @@ def _migration_checksum(version: int) -> str:
     elif version == 8:
         migration_path = MIGRATIONS_DIR / "008_assignment_feedback_models.sql"
         content = migration_bytes(migration_path)
+    elif version == 9:
+        migration_path = MIGRATIONS_DIR / "009_organization_memberships.sql"
+        content = migration_bytes(migration_path)
     else:
         raise ValueError(f"Unknown migration version: {version}")
 
+    return hashlib.sha256(content).hexdigest()
+
+
+def _legacy_windows_migration_checksum(version: int) -> str | None:
+    """Return the checksum produced before SQL line endings were normalised."""
+
+    migration_files = {
+        2: ("002_database_v2.sql", b"\n002_database_v2_backfill_v1"),
+        3: (
+            "003_feature_completion.sql",
+            b"\n003_feature_completion_backfill_v1",
+        ),
+        4: ("004_embedded_feedback_evaluations.sql", b""),
+        5: ("005_judge_evaluations.sql", b""),
+    }
+    migration_file = migration_files.get(version)
+    if migration_file is None:
+        return None
+    filename, suffix = migration_file
+    migration_bytes = (MIGRATIONS_DIR / filename).read_bytes()
+    windows_bytes = migration_bytes.replace(b"\r\n", b"\n").replace(
+        b"\n", b"\r\n"
+    )
+    content = windows_bytes + suffix
     return hashlib.sha256(content).hexdigest()
 
 
@@ -1893,6 +1920,16 @@ MIGRATIONS = (
             ).read_text(encoding="utf-8"),
         ),
     ),
+    (
+        9,
+        "organization_memberships",
+        lambda conn: _execute_sql_script(
+            conn,
+            (MIGRATIONS_DIR / "009_organization_memberships.sql").read_text(
+                encoding="utf-8"
+            ),
+        ),
+    ),
 )
 
 
@@ -1936,14 +1973,43 @@ def _normalise_pre_release_staff_allocation_version(
     )
 
 
-def migrate_database(conn: sqlite3.Connection) -> int:
-    """Apply pending, immutable database migrations exactly once."""
+def _normalise_legacy_windows_checksums(conn: sqlite3.Connection) -> None:
+    """Upgrade checksums recorded from CRLF migration files on Windows."""
 
+    for version, name, _migration in MIGRATIONS:
+        expected_checksum = _migration_checksum(version)
+        legacy_checksum = _legacy_windows_migration_checksum(version)
+        if legacy_checksum is None or legacy_checksum == expected_checksum:
+            continue
+        conn.execute(
+            """
+            UPDATE schema_migrations
+            SET checksum = ?
+            WHERE version = ?
+              AND name = ?
+              AND checksum = ?
+            """,
+            (expected_checksum, version, name, legacy_checksum),
+        )
+
+
+def migrate_database(conn: sqlite3.Connection) -> int:
+    """Apply pending, immutable database migrations exactly once.
+
+    When called with a clean connection, leave it clean.  Some migration
+    metadata normalisation statements start an implicit SQLite transaction
+    even when they match no rows; that transaction must not leak into the
+    first application operation that reuses the connection.  A transaction
+    owned by the caller is still left for the caller to commit or roll back.
+    """
+
+    started_in_transaction = conn.in_transaction
     if conn.row_factory is None:
         conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     _ensure_schema_migrations_table(conn)
     _normalise_pre_release_staff_allocation_version(conn)
+    _normalise_legacy_windows_checksums(conn)
     applied_rows = conn.execute(
         """
         SELECT version, name, checksum
@@ -1990,4 +2056,6 @@ def migrate_database(conn: sqlite3.Connection) -> int:
             raise
 
     require_current_schema(conn)
+    if not started_in_transaction and conn.in_transaction:
+        conn.commit()
     return CURRENT_SCHEMA_VERSION

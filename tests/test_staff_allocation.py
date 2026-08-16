@@ -69,6 +69,15 @@ def _attempt_ids(conn):
 
 
 class StaffAllocationTests(unittest.TestCase):
+    def test_organization_member_is_searchable_without_an_existing_unit_role(self):
+        with _allocation_connection() as conn:
+            conn.execute(
+                "DELETE FROM unit_role_assignments WHERE user_id = 3"
+            )
+            candidates = list_staff_candidates(conn, 1, 1, "SECOND@")
+            self.assertEqual([row["user_id"] for row in candidates], [3])
+            self.assertEqual(candidates[0]["already_staff"], 0)
+
     def test_partial_email_search_and_staff_reactivation(self):
         with _allocation_connection() as conn:
             candidates = list_staff_candidates(conn, 1, 1, "SECOND@")
