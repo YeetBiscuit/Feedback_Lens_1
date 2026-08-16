@@ -64,6 +64,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .settings-control span{font-size:.75rem;color:#6b7280}
 .settings-control select{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;border-radius:8px;font-size:.875rem;background:#fff;font-family:inherit}
 .settings-control select:focus{outline:none;border-color:#2563eb}
+.settings-note{font-size:.75rem;color:#4b5563;line-height:1.5;margin-bottom:.65rem;overflow-wrap:anywhere}
 .btn-reset{width:100%;padding:.5rem .8rem;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#374151;font-size:.8125rem;cursor:pointer;font-family:inherit;margin-bottom:.75rem}
 .btn-reset:hover{background:#f9fafb}
 .btn-generate{width:100%;padding:.65rem;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:.9375rem;font-weight:500;cursor:pointer;font-family:inherit}
@@ -130,11 +131,12 @@ input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;borde
     </div>
     <div class="nav-user">
       <div class="nav-user-name" id="nav-name">-</div>
-      <div class="nav-user-role">Educator</div>
+      <div class="nav-user-role">Staff</div>
     </div>
     <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
     <div class="dropdown user-menu" id="user-menu">
       <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item" id="admin-workspace-link" style="display:none" onclick="location.href='/admin/units'">Back to Admin Workspace</div>
       <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
     </div>
   </div>
@@ -247,8 +249,31 @@ function initGenerationSettings(){
 }
 
 function buildGenerationSettingsPanel(buttonText, actionName){
+  var actualModel = (data.run.llm_provider || '-') + ' · ' + (data.run.llm_model || '-');
+  var currentModel = (data.run.assignment_default_provider || '-') + ' · ' + (data.run.assignment_default_model || '-');
+  var changedModelNote = data.run.uses_current_assignment_model
+    ? ''
+    : '<div class="settings-note">The Assignment default is now <strong>' + escapeHtml(currentModel) + '</strong>. Existing feedback remains on its original model.</div>';
+  var previousLink = data.previous_generation
+    ? '<div class="settings-note"><a href="/educator/feedback-review?id=' + data.previous_generation.generation_id + '">Open previous generated version</a></div>'
+    : '';
+  var regenerateAllButton = data.run.can_regenerate_all
+    ? '<button class="btn-reset" onclick="regenerateEntireFeedback(this)">Regenerate all with current model</button>'
+    : '';
+  if(!data.run.is_current_generation){
+    return '<div class="card gen-form">'
+      + '<div class="card-title">Feedback Settings</div>'
+      + '<div class="settings-note">Historical version · read-only</div>'
+      + '<div class="settings-note">Generated with <strong>' + escapeHtml(actualModel) + '</strong>.</div>'
+      + changedModelNote
+      + previousLink
+      + '</div>';
+  }
   return '<div class="card gen-form">'
     + '<div class="card-title">Feedback Settings</div>'
+    + '<div class="settings-note">Generated with <strong>' + escapeHtml(actualModel) + '</strong>. Model selection is managed by the Assignment Admin.</div>'
+    + changedModelNote
+    + previousLink
     + '<label class="settings-control">'
     + '<span>Modifiers</span>'
     + '<select id="feedback-modifier-mode">'
@@ -274,7 +299,51 @@ function buildGenerationSettingsPanel(buttonText, actionName){
     + '</label>'
     + '<button class="btn-reset" onclick="resetGenerationSettings()">Reset</button>'
     + '<button class="btn-generate" onclick="' + actionName + '(this)">' + buttonText + '</button>'
+    + regenerateAllButton
+    + '<div id="generation-operation-error" class="settings-note" style="display:none;color:#b91c1c;white-space:pre-wrap"></div>'
     + '</div>';
+}
+
+function regenerateEntireFeedback(btn){
+  if(!data || !data.run.can_regenerate_all) return;
+  if(!confirm('Generate a new complete feedback version with the current Assignment model? Your current version will remain in history.')) return;
+  var original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Regenerating all...';
+  var payload = getGenerationSettings();
+  payload.submission_id = data.run.submission_id;
+  fetch('/api/feedback/generate', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  }).then(function(r){
+    return r.json().then(function(result){
+      if(!r.ok || result.error){
+        var error = new Error(result.error || 'Generation failed.');
+        error.details = result.generation_error || {};
+        throw error;
+      }
+      return result;
+    });
+  }).then(function(result){
+    location.href = '/educator/feedback-review?id=' + result.generation_id;
+  }).catch(function(error){
+    var details = error.details || {};
+    var lines = [
+      error.message,
+      'Provider: ' + (details.provider || '-'),
+      'Model: ' + (details.model || '-'),
+      'HTTP status: ' + (details.http_status || '-'),
+      'Error code: ' + (details.code || '-'),
+      'Request ID: ' + (details.request_id || '-'),
+      'Time: ' + (details.occurred_at || '-')
+    ];
+    var box = document.getElementById('generation-operation-error');
+    box.textContent = lines.join('\n');
+    box.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = original;
+  });
 }
 
 var saved = localStorage.getItem('fl-font-size');
@@ -332,6 +401,7 @@ function filterUnits(){
 }
 
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
+  document.getElementById('admin-workspace-link').style.display = d.can_access_admin ? 'block' : 'none';
   document.getElementById('nav-name').textContent = d.user.name || d.user.email;
   document.getElementById('nav-avatar').textContent = initials(d.user.name);
   document.getElementById('user-menu-email').textContent = d.user.email || '';
@@ -434,7 +504,11 @@ function drawPage(){
     + '</div>';
 
   document.getElementById('content').innerHTML = html;
-  initGenerationSettings();
+  if(!data.run.is_current_generation){
+    document.querySelectorAll('#content textarea,#content input').forEach(function(el){ el.disabled = true; });
+    document.querySelectorAll('#content .btn-save,#content .icon-btn').forEach(function(el){ el.disabled = true; });
+  }
+  if(data.run.is_current_generation) initGenerationSettings();
 }
 
 function buildSection(cls, label, taId, value){

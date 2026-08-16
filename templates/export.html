@@ -112,11 +112,12 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
     </div>
     <div class="nav-user">
       <div class="nav-user-name" id="nav-name">-</div>
-      <div class="nav-user-role">Educator</div>
+      <div class="nav-user-role">Staff</div>
     </div>
     <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
     <div class="dropdown user-menu" id="user-menu">
       <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item" id="admin-workspace-link" style="display:none" onclick="location.href='/admin/units'">Back to Admin Workspace</div>
       <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
     </div>
   </div>
@@ -418,6 +419,7 @@ document.getElementById('link-ai').onclick = function(){
 
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
   var u = d.user;
+  document.getElementById('admin-workspace-link').style.display = d.can_access_admin ? 'block' : 'none';
   document.getElementById('nav-name').textContent = u.name || u.email;
   document.getElementById('nav-avatar').textContent = initials(u.name);
   document.getElementById('user-menu-email').textContent = u.email || '';

@@ -26,13 +26,18 @@ def fetch_authenticated_user(
             role,
             display_name,
             tutor_id,
-            session_version
+            session_version,
+            account_status
         FROM users
         WHERE user_id = ?
         """,
         (user_id,),
     ).fetchone()
-    if row is None or int(row["session_version"]) != int(session_version):
+    if (
+        row is None
+        or row["account_status"] != "active"
+        or int(row["session_version"]) != int(session_version)
+    ):
         session.clear()
         return None
     return row
@@ -46,6 +51,28 @@ def is_chief_admin(conn: sqlite3.Connection, user_id: int) -> bool:
             FROM organization_role_assignments
             WHERE user_id = ?
               AND role = 'chief_admin'
+              AND active = 1
+            LIMIT 1
+            """,
+            (user_id,),
+        ).fetchone()
+        is not None
+    )
+
+
+def can_access_admin_workspace(
+    conn: sqlite3.Connection,
+    user_id: int,
+) -> bool:
+    if is_chief_admin(conn, user_id):
+        return True
+    return (
+        conn.execute(
+            """
+            SELECT 1
+            FROM unit_role_assignments
+            WHERE user_id = ?
+              AND role = 'unit_admin'
               AND active = 1
             LIMIT 1
             """,
@@ -84,7 +111,25 @@ def can_administer_unit(
     user_id: int,
     unit_offering_id: int,
 ) -> bool:
-    return is_chief_admin(conn, user_id) or has_unit_role(
+    chief_for_organization = (
+        conn.execute(
+            """
+            SELECT 1
+            FROM unit_offerings AS offering
+            JOIN courses AS course ON course.course_id = offering.course_id
+            JOIN organization_role_assignments AS role
+              ON role.organization_id = course.organization_id
+            WHERE offering.unit_offering_id = ?
+              AND role.user_id = ?
+              AND role.role = 'chief_admin'
+              AND role.active = 1
+            LIMIT 1
+            """,
+            (unit_offering_id, user_id),
+        ).fetchone()
+        is not None
+    )
+    return chief_for_organization or has_unit_role(
         conn,
         user_id,
         unit_offering_id,

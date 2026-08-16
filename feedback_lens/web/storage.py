@@ -27,6 +27,8 @@ class StoredUpload:
 MAGIC_PREFIXES = {
     ".pdf": (b"%PDF-",),
     ".zip": (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
+    ".xlsx": (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"),
+    ".xls": (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1",),
 }
 
 

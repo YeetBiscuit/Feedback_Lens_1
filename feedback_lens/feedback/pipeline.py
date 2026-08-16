@@ -4,7 +4,11 @@ import sqlite3
 from dataclasses import dataclass
 
 from feedback_lens.db.connection import fetch_latest_version_row
-from feedback_lens.feedback.llm.providers import generate_text, resolve_model_name
+from feedback_lens.feedback.llm.providers import (
+    DEFAULT_FEEDBACK_PROVIDER,
+    generate_text,
+    resolve_model_name,
+)
 from feedback_lens.feedback.prompt import (
     CUSTOM_FEEDBACK_MODIFIER_MODE,
     build_feedback_prompt,
@@ -30,13 +34,38 @@ from feedback_lens.feedback.retrieval_planner import (
 
 VALID_GRADE_BANDS = {"N", "P", "C", "D", "HD"}
 VALID_CONTEXT_MODES = {"retrieval", "direct"}
-DEFAULT_FEEDBACK_PROVIDER = "deepseek"
 NO_RETRIEVAL_STRATEGY = "none_direct_v1"
 ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY = "assignment_spec_multi_cue_v1"
 VALID_RETRIEVAL_STRATEGIES = {
     ASSIGNMENT_SPEC_RETRIEVAL_STRATEGY,
     RETRIEVAL_PLANNER_STRATEGY,
 }
+
+
+def _provider_error_details(err: Exception) -> dict[str, object | None]:
+    body = getattr(err, "body", None)
+    error_body = body.get("error", body) if isinstance(body, dict) else {}
+    message = str(error_body.get("message") or str(err) or type(err).__name__)
+    code = getattr(err, "code", None) or error_body.get("code")
+    status = getattr(err, "status_code", None)
+    request_id = getattr(err, "request_id", None)
+    response = getattr(err, "response", None)
+    if request_id is None and response is not None:
+        headers = getattr(response, "headers", None)
+        if headers is not None:
+            request_id = headers.get("x-request-id") or headers.get(
+                "request-id"
+            )
+    try:
+        status = int(status) if status is not None else None
+    except (TypeError, ValueError):
+        status = None
+    return {
+        "message": message[:4000],
+        "code": str(code)[:255] if code is not None else None,
+        "http_status": status,
+        "request_id": str(request_id)[:255] if request_id is not None else None,
+    }
 
 
 @dataclass(slots=True)
@@ -837,8 +866,13 @@ def generate_feedback_for_submission(
             feedback_tone=resolved_feedback_tone,
         )
     except Exception as err:
+        error_details = _provider_error_details(err)
         if planning_record_id is not None:
-            _fail_retrieval_planning_record(conn, planning_record_id, str(err))
+            _fail_retrieval_planning_record(
+                conn,
+                planning_record_id,
+                str(error_details["message"]),
+            )
         if generation_id is not None:
             conn.execute(
                 """
@@ -847,10 +881,21 @@ def generate_feedback_for_submission(
                     prompt_text = COALESCE(prompt_text, ?),
                     raw_response_text = COALESCE(raw_response_text, ?),
                     error_message = ?,
+                    provider_error_code = ?,
+                    provider_http_status = ?,
+                    provider_request_id = ?,
                     completed_at = CURRENT_TIMESTAMP
                 WHERE generation_id = ?
                 """,
-                (prompt, raw_response, str(err), generation_id),
+                (
+                    prompt,
+                    raw_response,
+                    error_details["message"],
+                    error_details["code"],
+                    error_details["http_status"],
+                    error_details["request_id"],
+                    generation_id,
+                ),
             )
             conn.commit()
         raise

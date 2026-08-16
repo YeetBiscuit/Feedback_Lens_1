@@ -37,7 +37,7 @@ python -m venv .venv
 # Windows PowerShell
 .venv\Scripts\Activate.ps1
 pip install -U pip
-pip install chromadb sentence-transformers pymupdf openai
+pip install chromadb sentence-transformers pymupdf openai xlrd openpyxl
 python build.py
 ```
 

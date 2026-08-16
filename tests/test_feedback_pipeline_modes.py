@@ -684,6 +684,43 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         )
         mock_retrieve.assert_not_called()
 
+    def test_provider_error_details_are_recorded_without_classification(self) -> None:
+        class ProviderError(RuntimeError):
+            status_code = 404
+            request_id = "request-test-123"
+            body = {
+                "error": {
+                    "code": "model_not_found",
+                    "message": "The selected model is unavailable.",
+                }
+            }
+
+        with patch(
+            "feedback_lens.feedback.pipeline.generate_text",
+            side_effect=ProviderError("provider request failed"),
+        ):
+            with _connect_minimal_feedback_db() as conn:
+                with self.assertRaises(ProviderError):
+                    generate_feedback_for_submission(
+                        conn,
+                        submission_id=1,
+                        provider="qwen",
+                        model="test-model",
+                        context_mode="direct",
+                    )
+                run = conn.execute(
+                    "SELECT * FROM generation_runs"
+                ).fetchone()
+
+        self.assertEqual(run["status"], "failed")
+        self.assertEqual(
+            run["error_message"],
+            "The selected model is unavailable.",
+        )
+        self.assertEqual(run["provider_error_code"], "model_not_found")
+        self.assertEqual(run["provider_http_status"], 404)
+        self.assertEqual(run["provider_request_id"], "request-test-123")
+
 
 if __name__ == "__main__":
     unittest.main()

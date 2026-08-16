@@ -8,8 +8,15 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
+from feedback_lens.feedback.llm.providers import (
+    DEFAULT_FEEDBACK_MODEL,
+    DEFAULT_FEEDBACK_PROVIDER,
+    list_feedback_models,
+    validate_feedback_model,
+)
 from feedback_lens.paths import PROJECT_ROOT
-from feedback_lens.web.common import record_audit_event
+from feedback_lens.web.allocation_service import list_unit_staff
+from feedback_lens.web.common import record_audit_event, student_import_is_ready
 from feedback_lens.web.config import get_web_settings
 from feedback_lens.web.errors import ApiError
 from feedback_lens.web.security import can_administer_unit, is_chief_admin
@@ -209,7 +216,6 @@ def list_admin_units(
     conn: sqlite3.Connection,
     user_id: int,
 ) -> list[dict]:
-    chief = is_chief_admin(conn, user_id)
     rows = conn.execute(
         """
         SELECT
@@ -239,7 +245,14 @@ def list_admin_units(
         JOIN courses AS course ON course.course_id = offering.course_id
         WHERE offering.status != 'archived'
           AND (
-              ? = 1
+              EXISTS (
+                  SELECT 1
+                  FROM organization_role_assignments AS org_role
+                  WHERE org_role.organization_id = course.organization_id
+                    AND org_role.user_id = ?
+                    AND org_role.role = 'chief_admin'
+                    AND org_role.active = 1
+              )
               OR EXISTS (
                   SELECT 1
                   FROM unit_role_assignments AS role
@@ -252,7 +265,7 @@ def list_admin_units(
           )
         ORDER BY course.course_code, offering.academic_year DESC
         """,
-        (1 if chief else 0, user_id),
+        (user_id, user_id),
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -829,6 +842,7 @@ def get_unit_detail(
         "unit": dict(unit),
         "assessments": [dict(row) for row in assessments],
         "unit_admins": [dict(row) for row in admins],
+        "staff": list_unit_staff(conn, user_id, unit_offering_id),
         "roster_imports": [dict(row) for row in rosters],
         "scoping_notes": _scoping_materials_with_display_names(
             notes,
@@ -1040,25 +1054,31 @@ def get_assessment_detail(
         """,
         (assessment_plan_id,),
     ).fetchall()
-    roster_ready = (
-        conn.execute(
-            """
-            SELECT 1
-            FROM roster_imports
-            WHERE unit_offering_id = ?
-              AND status IN ('imported', 'partially_imported')
-            LIMIT 1
-            """,
-            (plan["unit_offering_id"],),
-        ).fetchone()
-        is not None
+    roster_ready = student_import_is_ready(
+        conn,
+        int(plan["unit_offering_id"]),
     )
     active_version = next(
         (dict(row) for row in versions if row["status"] == "active"),
         None,
     )
+    model_summary = _assessment_feedback_model_summary(
+        conn,
+        int(assessment_plan_id),
+        (
+            int(plan["legacy_assignment_id"])
+            if plan["legacy_assignment_id"] is not None
+            else None
+        ),
+    )
     return {
         "assessment": dict(plan),
+        "feedback_models": list_feedback_models(),
+        "feedback_model_summary": model_summary,
+        "feedback_model_history": _assessment_feedback_model_history(
+            conn,
+            int(assessment_plan_id),
+        ),
         "specifications": _documents_with_display_names(
             specs,
             [
@@ -1088,6 +1108,188 @@ def get_assessment_detail(
             and active_version.get("spec_id")
             and active_version.get("rubric_id")
         ),
+    }
+
+
+def _assessment_feedback_model_summary(
+    conn: sqlite3.Connection,
+    assessment_plan_id: int,
+    legacy_assignment_id: int | None,
+) -> dict:
+    generated = 0
+    if legacy_assignment_id is not None:
+        generated = conn.execute(
+            """
+            SELECT COUNT(DISTINCT submission_id)
+            FROM generation_runs
+            WHERE assignment_id = ?
+              AND status = 'completed'
+            """,
+            (legacy_assignment_id,),
+        ).fetchone()[0]
+    reviewed = conn.execute(
+        """
+        SELECT COUNT(*)
+        FROM submission_workflow_states AS workflow
+        JOIN submission_attempts AS attempt
+          ON attempt.submission_attempt_id = workflow.submission_attempt_id
+        JOIN assessment_activities AS activity
+          ON activity.assessment_activity_id = attempt.assessment_activity_id
+        JOIN assessment_plan_versions AS version
+          ON version.assessment_plan_version_id =
+             activity.assessment_plan_version_id
+        WHERE version.assessment_plan_id = ?
+          AND workflow.marking_status = 'marker_confirmed'
+          AND attempt.validity_status = 'valid'
+        """,
+        (assessment_plan_id,),
+    ).fetchone()[0]
+    return {
+        "generated_feedback_count": int(generated or 0),
+        "reviewed_feedback_count": int(reviewed or 0),
+    }
+
+
+def _assessment_feedback_model_history(
+    conn: sqlite3.Connection,
+    assessment_plan_id: int,
+) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT
+            audit.created_at,
+            audit.metadata_json,
+            user.display_name,
+            user.email
+        FROM audit_events AS audit
+        LEFT JOIN users AS user ON user.user_id = audit.actor_user_id
+        WHERE audit.event_type = 'assessment.feedback_model_updated'
+          AND audit.entity_type = 'assessment_plan'
+          AND audit.entity_id = ?
+        ORDER BY audit.audit_event_id DESC
+        LIMIT 20
+        """,
+        (str(assessment_plan_id),),
+    ).fetchall()
+    history = []
+    for row in rows:
+        try:
+            metadata = json.loads(row["metadata_json"] or "{}")
+        except (TypeError, json.JSONDecodeError):
+            metadata = {}
+        history.append(
+            {
+                "created_at": row["created_at"],
+                "changed_by": row["display_name"] or row["email"] or "Unknown",
+                "old": metadata.get("old") or {},
+                "new": metadata.get("new") or {},
+                "generated_feedback_count": metadata.get(
+                    "generated_feedback_count",
+                    0,
+                ),
+                "reviewed_feedback_count": metadata.get(
+                    "reviewed_feedback_count",
+                    0,
+                ),
+            }
+        )
+    return history
+
+
+def update_assessment_feedback_model(
+    conn: sqlite3.Connection,
+    actor_user_id: int,
+    assessment_plan_id: int,
+    data: dict,
+) -> dict:
+    row = conn.execute(
+        """
+        SELECT
+            assessment_plan_id,
+            unit_offering_id,
+            legacy_assignment_id,
+            COALESCE(default_llm_provider, ?) AS default_llm_provider,
+            COALESCE(default_llm_model, ?) AS default_llm_model
+        FROM assessment_plans
+        WHERE assessment_plan_id = ?
+        """,
+        (
+            DEFAULT_FEEDBACK_PROVIDER,
+            DEFAULT_FEEDBACK_MODEL,
+            assessment_plan_id,
+        ),
+    ).fetchone()
+    if row is None:
+        raise ApiError("assessment_not_found", "Assessment not found.", 404)
+    if not can_administer_unit(
+        conn,
+        actor_user_id,
+        int(row["unit_offering_id"]),
+    ):
+        raise ApiError(
+            "assessment_forbidden",
+            "You are not authorised to manage this assessment.",
+            403,
+        )
+    if row["legacy_assignment_id"] is None:
+        raise ApiError(
+            "assessment_not_editable",
+            "This assessment is missing its linked assignment record.",
+            409,
+        )
+
+    try:
+        provider, model = validate_feedback_model(
+            data.get("provider"),
+            data.get("model"),
+        )
+    except ValueError as exc:
+        raise ApiError("invalid_feedback_model", str(exc), 422) from exc
+
+    old = {
+        "provider": row["default_llm_provider"],
+        "model": row["default_llm_model"],
+    }
+    new = {"provider": provider, "model": model}
+    summary = _assessment_feedback_model_summary(
+        conn,
+        assessment_plan_id,
+        int(row["legacy_assignment_id"]),
+    )
+    if old != new:
+        conn.execute(
+            """
+            UPDATE assessment_plans
+            SET default_llm_provider = ?,
+                default_llm_model = ?,
+                feedback_model_updated_by_user_id = ?,
+                feedback_model_updated_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE assessment_plan_id = ?
+            """,
+            (provider, model, actor_user_id, assessment_plan_id),
+        )
+        record_audit_event(
+            conn,
+            "assessment.feedback_model_updated",
+            "assessment_plan",
+            assessment_plan_id,
+            actor_user_id=actor_user_id,
+            metadata={
+                "old": old,
+                "new": new,
+                **summary,
+                "existing_feedback_unchanged": True,
+            },
+        )
+        conn.commit()
+
+    return {
+        "provider": provider,
+        "model": model,
+        "changed": old != new,
+        "existing_feedback_unchanged": True,
+        **summary,
     }
 
 

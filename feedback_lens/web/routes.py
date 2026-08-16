@@ -26,6 +26,17 @@ from feedback_lens.web.account_service import (
     request_password_reset,
     verify_token,
 )
+from feedback_lens.web.allocation_service import (
+    add_unit_staff,
+    confirm_allocation,
+    get_assessment_allocation,
+    list_notifications,
+    list_staff_candidates,
+    mark_notification_read,
+    preview_allocation,
+    remove_unit_staff,
+    reopen_submission,
+)
 from feedback_lens.web.admin_service import (
     assign_unit_admin,
     commit_roster_import,
@@ -41,6 +52,7 @@ from feedback_lens.web.admin_service import (
     list_unit_admin_candidates,
     preview_roster_import,
     update_assessment,
+    update_assessment_feedback_model,
     update_unit,
 )
 from feedback_lens.web.errors import ApiError
@@ -58,6 +70,19 @@ from feedback_lens.web.storage import (
     UploadValidationError,
     remove_stored_upload,
     store_upload,
+)
+from feedback_lens.web.tutorial_group_service import (
+    add_tutorial_group_staff,
+    apply_tutorial_group_import,
+    complete_staff_activation,
+    create_tutorial_group,
+    create_tutorial_group_import,
+    get_tutorial_group_overview,
+    import_tutorial_group_staff,
+    invite_tutorial_group_staff,
+    remove_tutorial_group_staff,
+    set_tutorial_staff_groups,
+    staff_activation_is_valid,
 )
 from feedback_lens.web.upload_service import (
     activate_latest_assessment_version,
@@ -312,6 +337,259 @@ def api_assign_unit_admin(unit_offering_id: int):
             target_user_id,
         )
     return jsonify({"status": "ok"})
+
+
+@feature_blueprint.get(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/staff-candidates"
+)
+@require_json_user
+def api_staff_candidates(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        candidates = list_staff_candidates(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            request.args.get("q", ""),
+        )
+    return jsonify({"candidates": candidates})
+
+
+@feature_blueprint.post(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/staff"
+)
+@require_json_user
+@require_csrf
+def api_add_unit_staff(unit_offering_id: int):
+    data = request.get_json(silent=True) or {}
+    try:
+        staff_user_id = int(data.get("staff_user_id"))
+    except (TypeError, ValueError) as error:
+        raise ApiError(
+            "staff_user_required",
+            "Choose a Staff account.",
+            422,
+        ) from error
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = add_unit_staff(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            staff_user_id,
+        )
+    return jsonify(result), 201
+
+
+@feature_blueprint.delete(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/staff/<int:staff_user_id>"
+)
+@require_json_user
+@require_csrf
+def api_remove_unit_staff(unit_offering_id: int, staff_user_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        remove_unit_staff(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            staff_user_id,
+        )
+    return jsonify({"status": "ok"})
+
+
+@feature_blueprint.get(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/tutorial-groups"
+)
+@require_json_user
+def api_tutorial_groups(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = get_tutorial_group_overview(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/tutorial-groups"
+)
+@require_json_user
+@require_csrf
+def api_create_tutorial_group(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = create_tutorial_group(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result), 201
+
+
+@feature_blueprint.post(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/tutorial-group-imports"
+)
+@require_json_user
+@require_csrf
+def api_upload_tutorial_group_import(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        if not can_administer_unit(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+        ):
+            raise ApiError("unit_forbidden", "Not authorised.", 403)
+        upload = store_upload(
+            request.files.get("file"),
+            "tutorial-groups",
+            {".csv", ".xls", ".xlsx"},
+        )
+        try:
+            result = create_tutorial_group_import(
+                conn,
+                int(user["user_id"]),
+                unit_offering_id,
+                upload,
+                activity_type=str(request.form.get("activity_type") or "Applied"),
+            )
+        except Exception:
+            remove_stored_upload(upload.storage_path)
+            raise
+    return jsonify(result), 201
+
+
+@feature_blueprint.post(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/tutorial-staff-imports"
+)
+@require_json_user
+@require_csrf
+def api_upload_tutorial_staff_import(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        if not can_administer_unit(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+        ):
+            raise ApiError("unit_forbidden", "Not authorised.", 403)
+        upload = store_upload(
+            request.files.get("file"),
+            "tutorial-staff",
+            {".csv"},
+        )
+        try:
+            result = import_tutorial_group_staff(
+                conn,
+                int(user["user_id"]),
+                unit_offering_id,
+                upload,
+            )
+        finally:
+            remove_stored_upload(upload.storage_path)
+    return jsonify(result), 201
+
+
+@feature_blueprint.put(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/tutorial-staff/"
+    "<int:staff_user_id>/groups"
+)
+@require_json_user
+@require_csrf
+def api_set_tutorial_staff_groups(
+    unit_offering_id: int,
+    staff_user_id: int,
+):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        payload = request.get_json(silent=True) or {}
+        result = set_tutorial_staff_groups(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            staff_user_id,
+            payload.get("tutorial_group_ids") or [],
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/tutorial-group-imports/<int:tutorial_group_import_id>/apply"
+)
+@require_json_user
+@require_csrf
+def api_apply_tutorial_group_import(tutorial_group_import_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = apply_tutorial_group_import(
+            conn,
+            int(user["user_id"]),
+            tutorial_group_import_id,
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/tutorial-groups/<int:tutorial_group_id>/staff"
+)
+@require_json_user
+@require_csrf
+def api_add_tutorial_group_staff(tutorial_group_id: int):
+    data = request.get_json(silent=True) or {}
+    try:
+        staff_user_id = int(data.get("staff_user_id"))
+    except (TypeError, ValueError) as error:
+        raise ApiError("staff_user_required", "Choose a Staff account.", 422) from error
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = add_tutorial_group_staff(
+            conn,
+            int(user["user_id"]),
+            tutorial_group_id,
+            staff_user_id,
+        )
+    return jsonify(result), 201
+
+
+@feature_blueprint.delete(
+    "/api/admin/tutorial-groups/<int:tutorial_group_id>/staff/<int:staff_user_id>"
+)
+@require_json_user
+@require_csrf
+def api_remove_tutorial_group_staff(
+    tutorial_group_id: int,
+    staff_user_id: int,
+):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = remove_tutorial_group_staff(
+            conn,
+            int(user["user_id"]),
+            tutorial_group_id,
+            staff_user_id,
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/unit-offerings/<int:unit_offering_id>/tutorial-staff/invite"
+)
+@require_json_user
+@require_csrf
+def api_invite_tutorial_group_staff(unit_offering_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = invite_tutorial_group_staff(
+            conn,
+            int(user["user_id"]),
+            unit_offering_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result), 201
 
 
 @feature_blueprint.post(
@@ -611,6 +889,76 @@ def api_assessment_detail(assessment_plan_id: int):
     return jsonify(result)
 
 
+@feature_blueprint.get(
+    "/api/admin/assessments/<int:assessment_plan_id>/allocation"
+)
+@require_json_user
+def api_assessment_allocation(assessment_plan_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = get_assessment_allocation(
+            conn,
+            int(user["user_id"]),
+            assessment_plan_id,
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/assessments/<int:assessment_plan_id>/allocation/preview"
+)
+@require_json_user
+@require_csrf
+def api_preview_allocation(assessment_plan_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = preview_allocation(
+            conn,
+            int(user["user_id"]),
+            assessment_plan_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/assessments/<int:assessment_plan_id>/allocation/confirm"
+)
+@require_json_user
+@require_csrf
+def api_confirm_allocation(assessment_plan_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = confirm_allocation(
+            conn,
+            int(user["user_id"]),
+            assessment_plan_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.post(
+    "/api/admin/assessments/<int:assessment_plan_id>/submissions/"
+    "<int:submission_attempt_id>/reopen"
+)
+@require_json_user
+@require_csrf
+def api_reopen_submission(
+    assessment_plan_id: int,
+    submission_attempt_id: int,
+):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        reopen_submission(
+            conn,
+            int(user["user_id"]),
+            assessment_plan_id,
+            submission_attempt_id,
+        )
+    return jsonify({"status": "ok"})
+
+
 @feature_blueprint.patch(
     "/api/admin/assessments/<int:assessment_plan_id>"
 )
@@ -620,6 +968,23 @@ def api_update_assessment(assessment_plan_id: int):
     with connect_db() as conn:
         user = _json_user(conn)
         result = update_assessment(
+            conn,
+            int(user["user_id"]),
+            assessment_plan_id,
+            request.get_json(silent=True) or {},
+        )
+    return jsonify(result)
+
+
+@feature_blueprint.patch(
+    "/api/admin/assessments/<int:assessment_plan_id>/feedback-model"
+)
+@require_json_user
+@require_csrf
+def api_update_assessment_feedback_model(assessment_plan_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = update_assessment_feedback_model(
             conn,
             int(user["user_id"]),
             assessment_plan_id,
@@ -835,7 +1200,7 @@ def api_resolve_batch_item(item_id: int):
     except (TypeError, ValueError) as exc:
         raise ApiError(
             "student_invalid",
-            "Choose a roster student.",
+            "Choose an enrolled student.",
             422,
         ) from exc
     ignore = request.form.get("ignore") in {"1", "true", "True"}
@@ -966,6 +1331,33 @@ def api_get_activation_entry(unit_offering_id: int):
     return jsonify(result)
 
 
+@feature_blueprint.get("/api/notifications")
+@require_json_user
+def api_notifications():
+    with connect_db() as conn:
+        user = _json_user(conn)
+        notifications = list_notifications(
+            conn,
+            int(user["user_id"]),
+            unread_only=request.args.get("all") != "1",
+        )
+    return jsonify({"notifications": notifications})
+
+
+@feature_blueprint.post("/api/notifications/<int:notification_id>/read")
+@require_json_user
+@require_csrf
+def api_mark_notification_read(notification_id: int):
+    with connect_db() as conn:
+        user = _json_user(conn)
+        result = mark_notification_read(
+            conn,
+            int(user["user_id"]),
+            notification_id,
+        )
+    return jsonify(result)
+
+
 @feature_blueprint.post(
     "/api/admin/unit-offerings/<int:unit_offering_id>/activation-entry"
 )
@@ -1065,6 +1457,47 @@ def complete_activation_page(token_value: str):
     return render_template(
         "set_password.html",
         title="Activate account",
+        token_value=token_value,
+        action_url=request.path,
+        error=None,
+    )
+
+
+@feature_blueprint.route(
+    "/account/staff-activate/<path:token_value>",
+    methods=["GET", "POST"],
+)
+def complete_staff_activation_page(token_value: str):
+    if request.method == "POST":
+        password = request.form.get("password") or ""
+        confirmation = request.form.get("password_confirmation") or ""
+        if password != confirmation:
+            return render_template(
+                "set_password.html",
+                title="Activate Staff account",
+                token_value=token_value,
+                action_url=request.path,
+                error="Passwords do not match.",
+            ), 422
+        with connect_db() as conn:
+            complete_staff_activation(conn, token_value, password)
+        return render_template(
+            "account_message.html",
+            title="Staff account activated",
+            message="Your Staff account is ready. You can now log in.",
+            success=True,
+        )
+    with connect_db() as conn:
+        valid = staff_activation_is_valid(conn, token_value)
+    if not valid:
+        raise ApiError(
+            "token_invalid",
+            "This Staff activation link is invalid or has expired.",
+            409,
+        )
+    return render_template(
+        "set_password.html",
+        title="Activate Staff account",
         token_value=token_value,
         action_url=request.path,
         error=None,

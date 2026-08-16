@@ -27,7 +27,8 @@ from feedback_lens.file_management.indexing.embedding import (
 )
 from feedback_lens.paths import PROJECT_ROOT
 from feedback_lens.web.admin_service import get_assessment_detail
-from feedback_lens.web.common import record_audit_event
+from feedback_lens.web.allocation_service import auto_assign_submission_if_enabled
+from feedback_lens.web.common import record_audit_event, student_import_is_ready
 from feedback_lens.web.config import get_web_settings
 from feedback_lens.web.errors import ApiError
 from feedback_lens.web.jobs import enqueue_job, update_job_progress
@@ -1167,16 +1168,10 @@ def create_submission_batch(
         int(plan["unit_offering_id"]),
     ):
         raise ApiError("assessment_forbidden", "Not authorised.", 403)
-    roster_ready = conn.execute(
-        """
-        SELECT 1
-        FROM roster_imports
-        WHERE unit_offering_id = ?
-          AND status IN ('imported', 'partially_imported')
-        LIMIT 1
-        """,
-        (plan["unit_offering_id"],),
-    ).fetchone()
+    roster_ready = student_import_is_ready(
+        conn,
+        int(plan["unit_offering_id"]),
+    )
     active = conn.execute(
         """
         SELECT
@@ -1195,10 +1190,13 @@ def create_submission_batch(
         """,
         (assessment_plan_id,),
     ).fetchone()
-    if roster_ready is None or active is None:
+    if not roster_ready or active is None:
         raise ApiError(
             "summative_prerequisites_missing",
-            "Import a roster and upload a valid specification and rubric first.",
+            (
+                "Import a full Applied Allocate+ workbook, then upload "
+                "a valid specification and rubric first."
+            ),
             409,
         )
     existing = conn.execute(
@@ -1521,7 +1519,7 @@ def _handle_submission_batch(
                                 item_id,
                                 "unmatched",
                                 (
-                                    "No exact roster student ID was found "
+                                    "No exact enrolled student ID was found "
                                     "in the folder name."
                                 ),
                             )
@@ -1532,7 +1530,7 @@ def _handle_submission_batch(
                                 item_id,
                                 "ambiguous",
                                 (
-                                    "More than one roster student ID "
+                                    "More than one enrolled student ID "
                                     "matched the folder name."
                                 ),
                             )
@@ -1877,6 +1875,7 @@ def _import_ready_batch_item(
                 f"Superseded by attempt {attempt_id}.",
             ),
         )
+    auto_assign_submission_if_enabled(conn, attempt_id)
     conn.execute(
         """
         UPDATE submission_batch_items
@@ -2042,7 +2041,7 @@ def resolve_submission_batch_item(
     if student_id is None:
         raise ApiError(
             "student_required",
-            "Choose a roster student.",
+            "Choose an enrolled student.",
             422,
         )
     enrolled = conn.execute(

@@ -17,6 +17,7 @@ feedback_system.db-shm
 chromadb/
 uploads/
 test_feedback
+output/
 
 # Keep document folder structure, ignore local document contents
 documents/**

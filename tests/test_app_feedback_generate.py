@@ -139,7 +139,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         _, kwargs = mock_generate.call_args
         self.assertEqual(kwargs["submission_id"], 1)
         self.assertEqual(kwargs["provider"], "deepseek")
-        self.assertIsNone(kwargs["model"])
+        self.assertEqual(kwargs["model"], "deepseek-v4-pro")
         self.assertEqual(kwargs["context_mode"], "retrieval")
         self.assertEqual(kwargs["retrieval_strategy"], "planned")
         self.assertEqual(kwargs["prompt_template_version"], "unit-grounded-v2")
@@ -147,7 +147,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
         self.assertIsNone(kwargs["feedback_length"])
         self.assertIsNone(kwargs["feedback_tone"])
 
-    def test_generate_feedback_preserves_explicit_overrides(self) -> None:
+    def test_generate_feedback_ignores_tutor_model_overrides(self) -> None:
         conn = _connect_app_feedback_db()
         client = self._client_with_user(1, "allowed@example.test")
 
@@ -156,8 +156,6 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
             patch(
                 "app.generate_feedback_for_submission",
                 return_value=_generation_result(
-                    provider="qwen",
-                    model="test-model",
                     retrieval_strategy="assignment_spec_multi_cue_v1",
                     prompt_template_version="baseline_feedback_json_v1",
                     feedback_modifier_mode="custom",
@@ -184,8 +182,8 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         _, kwargs = mock_generate.call_args
-        self.assertEqual(kwargs["provider"], "qwen")
-        self.assertEqual(kwargs["model"], "test-model")
+        self.assertEqual(kwargs["provider"], "deepseek")
+        self.assertEqual(kwargs["model"], "deepseek-v4-pro")
         self.assertEqual(kwargs["retrieval_strategy"], "baseline")
         self.assertEqual(kwargs["prompt_template_version"], "baseline_feedback_json_v1")
         self.assertEqual(kwargs["per_cue_top_k"], 3)

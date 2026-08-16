@@ -100,6 +100,18 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 .btn-generate:hover{background:#1d4ed8}
 .btn-view{background:#1f2937;color:#fff}
 .btn-view:hover{background:#111827}
+.btn-error{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;margin-left:.35rem}
+.btn-error:hover{background:#ffedd5}
+.model-cell{font-size:.75rem;color:#4b5563;max-width:12rem;overflow-wrap:anywhere}
+.generation-error{background:#fff7ed;border:1px solid #fdba74;border-radius:10px;padding:1rem;margin-bottom:1rem;color:#7c2d12}
+.generation-error.hidden{display:none}
+.generation-error-header{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.generation-error h3{font-size:.95rem;margin-bottom:.35rem}
+.generation-error-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.65rem;margin-top:.75rem}
+.generation-error-field{background:#fff;border:1px solid #fed7aa;border-radius:7px;padding:.55rem .65rem;overflow-wrap:anywhere}
+.generation-error-field span{display:block;font-size:.68rem;color:#9a3412;margin-bottom:.15rem}
+.generation-error-message{margin-top:.75rem;white-space:pre-wrap;overflow-wrap:anywhere}
+.generation-error-close{border:0;background:transparent;color:#9a3412;font-size:1.1rem;cursor:pointer}
 .empty-row td{padding:2rem;text-align:center;color:#888}
 .empty{color:#999;font-size:.875rem;text-align:center;padding:1rem}
 </style>
@@ -127,11 +139,12 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
     </div>
     <div class="nav-user">
       <div class="nav-user-name" id="nav-name">-</div>
-      <div class="nav-user-role">Educator</div>
+      <div class="nav-user-role">Staff</div>
     </div>
     <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
     <div class="dropdown user-menu" id="user-menu">
       <div class="user-menu-email" id="user-menu-email">-</div>
+      <div class="user-menu-item" id="admin-workspace-link" style="display:none" onclick="location.href='/admin/units'">Back to Admin Workspace</div>
       <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
     </div>
   </div>
@@ -163,6 +176,10 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 
     <div class="settings-bar">
       <div class="settings-title">Feedback settings</div>
+      <div class="settings-control">
+        <span>Model</span>
+        <strong>Set by the Assignment Admin</strong>
+      </div>
       <label class="settings-control">
         <span>Modifiers</span>
         <select id="feedback-modifier-mode">
@@ -189,6 +206,22 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
       <button class="btn-reset" onclick="resetGenerationSettings()">Reset</button>
     </div>
 
+    <div id="generation-error" class="generation-error hidden" role="alert">
+      <div class="generation-error-header">
+        <div><h3>Feedback generation failed</h3><div>No existing feedback was changed. Report these details to your Admin if the Assignment model may need to change.</div></div>
+        <button class="generation-error-close" type="button" aria-label="Close error details" onclick="hideGenerationError()">×</button>
+      </div>
+      <div class="generation-error-grid">
+        <div class="generation-error-field"><span>Provider</span><strong id="error-provider">-</strong></div>
+        <div class="generation-error-field"><span>Model</span><strong id="error-model">-</strong></div>
+        <div class="generation-error-field"><span>Time</span><strong id="error-time">-</strong></div>
+        <div class="generation-error-field"><span>HTTP status</span><strong id="error-http-status">-</strong></div>
+        <div class="generation-error-field"><span>Error code</span><strong id="error-code">-</strong></div>
+        <div class="generation-error-field"><span>Request ID</span><strong id="error-request-id">-</strong></div>
+      </div>
+      <div id="error-message" class="generation-error-message"></div>
+    </div>
+
     <div class="bulk-bar" id="bulk-bar">
       <div class="bulk-text"><span id="bulk-count">0</span> selected</div>
       <div>
@@ -203,6 +236,7 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
             <th class="cb-col"><input type="checkbox" id="cb-all" onchange="toggleAll()"></th>
             <th>Student</th>
             <th>Assessment</th>
+            <th>Model</th>
             <th>Submission Date</th>
             <th>Estimate Grade</th>
             <th>Final Mark</th>
@@ -211,7 +245,7 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr class="empty-row"><td colspan="8">Loading...</td></tr>
+          <tr class="empty-row"><td colspan="9">Loading...</td></tr>
         </tbody>
       </table>
     </div>
@@ -223,6 +257,7 @@ var unitId = {{ unit_id }};
 var rows = [];
 var selected = {};
 var allUnits = [];
+var assessmentFilter = new URLSearchParams(location.search).get('assessment_plan_id');
 
 function initials(name){
   if(!name) return '?';
@@ -250,6 +285,7 @@ function getVisible(){
   var query = document.getElementById('search').value.trim().toLowerCase();
   var filter = document.getElementById('status-filter').value;
   return rows.filter(function(r){
+    if(assessmentFilter && String(r.assessment_plan_id) !== String(assessmentFilter)) return false;
     if(filter !== 'all' && r.review_status !== filter) return false;
     if(query){
       var text = (r.student_identifier + ' ' + r.assignment_name).toLowerCase();
@@ -263,7 +299,7 @@ function render(){
   var visible = getVisible();
   var body = document.getElementById('table-body');
   if(!visible.length){
-    body.innerHTML = '<tr class="empty-row"><td colspan="8">No submissions found.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="9">No submissions found.</td></tr>';
     updateBulkBar();
     return;
   }
@@ -273,30 +309,42 @@ function render(){
     var gradeCls = r.overall_grade_band ? 'grade grade-' + r.overall_grade_band : 'grade';
     var mark = r.final_mark != null ? r.final_mark : '-';
     var checked = selected[r.submission_id] ? 'checked' : '';
+    var selectable = !!r.can_generate && r.review_status !== 'reviewed';
     var statusCls = statusClass(r.review_status);
 
     var statusCell;
     if(r.generation_id){
-      statusCell = '<select class="status-select-inline ' + statusCls + '" onchange="changeStatus(' + r.generation_id + ', this)">'
+      statusCell = '<select class="status-select-inline ' + statusCls + '" ' + (r.can_generate ? '' : 'disabled') + ' onchange="changeStatus(' + r.generation_id + ', this)">'
         + '<option value="pending"' + (r.review_status === 'pending' ? ' selected' : '') + '>Pending</option>'
         + '<option value="ai_generated"' + (r.review_status === 'ai_generated' ? ' selected' : '') + '>AI Generated</option>'
         + '<option value="reviewed"' + (r.review_status === 'reviewed' ? ' selected' : '') + '>Reviewed</option>'
         + '</select>';
+    } else if(r.has_current_generation_error) {
+      statusCell = '<span class="status-select-inline pending">Generation failed</span>';
     } else {
       statusCell = '<select class="status-select-inline pending" disabled><option>Pending</option></select>';
     }
 
     var action;
     if(r.generation_id){
-      action = '<button class="btn-action btn-view" onclick="openReview(' + r.generation_id + ')">View Detail</button>';
+      action = '<button class="btn-action btn-view" onclick="openReview(' + r.generation_id + ')">Open feedback</button>';
+    } else if(r.can_generate) {
+      action = '<button class="btn-action btn-generate" onclick="generateOne(' + r.submission_id + ', this)">' + (r.has_current_generation_error ? 'Retry generation' : 'Generate AI feedback') + '</button>';
     } else {
-      action = '<button class="btn-action btn-generate" onclick="generateOne(' + r.submission_id + ', this)">Generate</button>';
+      action = '<span class="muted">' + (r.marker_email ? 'Assigned to ' + r.marker_email : 'Unassigned') + '</span>';
     }
+    if(r.has_current_generation_error){
+      action += '<button class="btn-action btn-error" onclick="showRowGenerationError(' + r.submission_id + ')">Error details</button>';
+    }
+    var modelText = r.generation_id
+      ? (r.llm_provider + ' · ' + r.llm_model)
+      : ('Next: ' + r.default_llm_provider + ' · ' + r.default_llm_model);
 
     return '<tr>'
-      + '<td><input type="checkbox" ' + checked + ' onchange="toggleOne(' + r.submission_id + ', this.checked)"></td>'
+      + '<td><input type="checkbox" ' + checked + (selectable ? '' : ' disabled') + ' onchange="toggleOne(' + r.submission_id + ', this.checked)"></td>'
       + '<td>' + shortId(r.student_identifier) + '</td>'
       + '<td>' + (r.assignment_name || '-') + '</td>'
+      + '<td class="model-cell">' + modelText + '</td>'
       + '<td>' + formatDate(r.submitted_at) + '</td>'
       + '<td><span class="' + gradeCls + '">' + grade + '</span></td>'
       + '<td>' + mark + '</td>'
@@ -333,7 +381,7 @@ function toggleAll(){
   var visible = getVisible();
   selected = {};
   if(all){
-    visible.forEach(function(r){ selected[r.submission_id] = true; });
+    visible.filter(function(r){ return r.can_generate && r.review_status !== 'reviewed'; }).forEach(function(r){ selected[r.submission_id] = true; });
   }
   render();
 }
@@ -341,7 +389,8 @@ function toggleAll(){
 function syncSelectAll(){
   var visible = getVisible();
   var picked = visible.filter(function(r){ return selected[r.submission_id]; }).length;
-  document.getElementById('cb-all').checked = visible.length > 0 && picked === visible.length;
+  var selectable = visible.filter(function(r){ return r.can_generate && r.review_status !== 'reviewed'; });
+  document.getElementById('cb-all').checked = selectable.length > 0 && picked === selectable.length;
 }
 
 function updateBulkBar(){
@@ -425,7 +474,9 @@ function requestGeneration(id){
   }).then(function(r){
     return r.json().then(function(data){
       if(!r.ok || data.error){
-        throw new Error(data.error || 'Generation failed.');
+        var error = new Error(data.error || 'Generation failed.');
+        error.generationError = data.generation_error || null;
+        throw error;
       }
       return data;
     });
@@ -434,7 +485,7 @@ function requestGeneration(id){
 
 function bulkGenerate(){
   var ids = rows.filter(function(r){
-    return selected[r.submission_id] && !r.generation_id;
+    return selected[r.submission_id] && r.can_generate && !r.generation_id;
   }).map(function(r){ return r.submission_id; });
   if(!ids.length){
     alert('Select one or more pending submissions to generate feedback.');
@@ -452,7 +503,7 @@ function bulkGenerate(){
     selected = {};
     location.reload();
   }).catch(function(err){
-    alert(err.message || 'Generation failed. Please try again.');
+    showGenerationError(err.generationError, err.message || 'Generation failed. Please try again.');
     btn.disabled = false;
     btn.textContent = 'Generate Feedback';
   });
@@ -465,7 +516,7 @@ function generateOne(id, btn){
   requestGeneration(id).then(function(data){
     location.href = '/educator/feedback-review?id=' + data.generation_id;
   }).catch(function(err){
-    alert(err.message || 'Generation failed. Please try again.');
+    showGenerationError(err.generationError, err.message || 'Generation failed. Please try again.');
     btn.disabled = false;
     btn.textContent = original;
   });
@@ -473,6 +524,38 @@ function generateOne(id, btn){
 
 function openReview(id){
   location.href = '/educator/feedback-review?id=' + id;
+}
+
+function showGenerationError(details, fallbackMessage){
+  details = details || {};
+  document.getElementById('error-provider').textContent = details.provider || '-';
+  document.getElementById('error-model').textContent = details.model || '-';
+  document.getElementById('error-time').textContent = details.occurred_at || '-';
+  document.getElementById('error-http-status').textContent = details.http_status || '-';
+  document.getElementById('error-code').textContent = details.code || '-';
+  document.getElementById('error-request-id').textContent = details.request_id || '-';
+  document.getElementById('error-message').textContent = details.message || fallbackMessage || 'Generation failed.';
+  var panel = document.getElementById('generation-error');
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function showRowGenerationError(submissionId){
+  var row = rows.find(function(item){ return item.submission_id === submissionId; });
+  if(!row) return;
+  showGenerationError({
+    provider: row.failed_llm_provider,
+    model: row.failed_llm_model,
+    occurred_at: row.generation_error_at,
+    http_status: row.provider_http_status,
+    code: row.provider_error_code,
+    request_id: row.provider_request_id,
+    message: row.generation_error_message
+  });
+}
+
+function hideGenerationError(){
+  document.getElementById('generation-error').classList.add('hidden');
 }
 
 document.getElementById('search').addEventListener('input', render);
@@ -551,6 +634,7 @@ document.getElementById('link-export').onclick = function(){
 
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(d){
   var u = d.user;
+  document.getElementById('admin-workspace-link').style.display = d.can_access_admin ? 'block' : 'none';
   document.getElementById('nav-name').textContent = u.name || u.email;
   document.getElementById('nav-avatar').textContent = initials(u.name);
   document.getElementById('user-menu-email').textContent = u.email || '';

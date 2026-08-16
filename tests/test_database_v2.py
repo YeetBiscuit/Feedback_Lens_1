@@ -7,6 +7,9 @@ from feedback_lens.db.connection import connect_db
 from feedback_lens.db.migrations import (
     CURRENT_SCHEMA_VERSION,
     DatabaseSchemaError,
+    MIGRATIONS,
+    _ensure_schema_migrations_table,
+    _migration_checksum,
     get_schema_version,
     migrate_database,
     require_current_schema,
@@ -154,6 +157,63 @@ class DatabaseV2Tests(unittest.TestCase):
                     (2, "database_v2"),
                     (3, "feature_completion"),
                     (4, "embedded_feedback_evaluations"),
+                    (5, "judge_evaluations"),
+                    (6, "staff_allocation"),
+                    (7, "tutorial_group_allocation"),
+                    (8, "assignment_feedback_models"),
+                ],
+            )
+            self.assertIsNotNone(
+                conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name = 'tutorial_groups'"
+                ).fetchone()
+            )
+            self.assertIsNotNone(
+                conn.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name = 'tutorial_group_staff'"
+                ).fetchone()
+            )
+
+    def test_pre_release_staff_migration_version_is_normalised(self) -> None:
+        with _legacy_connection() as conn:
+            _insert_legacy_sample(conn)
+            _ensure_schema_migrations_table(conn)
+            for version, name, migration in MIGRATIONS[:4]:
+                migration(conn)
+                conn.execute(
+                    """
+                    INSERT INTO schema_migrations(version, name, checksum)
+                    VALUES (?, ?, ?)
+                    """,
+                    (version, name, _migration_checksum(version)),
+                )
+            staff_migration = MIGRATIONS[5][2]
+            staff_migration(conn)
+            conn.execute(
+                """
+                INSERT INTO schema_migrations(version, name, checksum)
+                VALUES (5, 'staff_allocation', ?)
+                """,
+                (_migration_checksum(6),),
+            )
+            conn.commit()
+
+            self.assertEqual(migrate_database(conn), CURRENT_SCHEMA_VERSION)
+            migrations = conn.execute(
+                """
+                SELECT version, name
+                FROM schema_migrations
+                WHERE version IN (5, 6, 7, 8)
+                ORDER BY version
+                """
+            ).fetchall()
+            self.assertEqual(
+                [(row["version"], row["name"]) for row in migrations],
+                [
+                    (5, "judge_evaluations"),
+                    (6, "staff_allocation"),
+                    (7, "tutorial_group_allocation"),
+                    (8, "assignment_feedback_models"),
                 ],
             )
 

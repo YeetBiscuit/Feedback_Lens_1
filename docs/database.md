@@ -75,7 +75,8 @@ and administrative-upload workflows:
 - student institutional name/email, login session invalidation, and scoping
   material deactivation.
 
-Schema changes are now frozen for this delivery. Multi-file submissions, OCR,
+The core domain model remains frozen; later migrations only add bounded feature
+state. Multi-file submissions, OCR,
 Moodle API synchronisation, student summative upload, and provider-specific
 email infrastructure are future scope rather than placeholders in this schema.
 
@@ -95,6 +96,9 @@ authorization work should use the scoped role-assignment tables.
 ### Versioned assessment configuration
 
 - `assessment_plans` represents one assessment in a unit offering.
+- Each assessment plan stores the current default feedback provider and concrete
+  model. Changing that default affects future full generations only; existing
+  generation rows retain their original provider and model snapshot.
 - `assessment_plan_versions` freezes the specification, rubric, maximum mark,
   and configuration used for a period of grading.
 - `assessment_activities` defines the formative and summative channels
@@ -116,11 +120,23 @@ instead of rewriting history.
 ### Allocation and marking workflow
 
 - `marker_assignments` retains assignment history and enforces one active
-  primary marker per submission.
+  primary marker per submission; `allocation_source` and
+  `tutorial_group_id` preserve how a Group allocation was produced.
+- `tutorial_groups`, `student_tutorial_memberships`, and
+  `tutorial_group_staff` model the many-to-many TA teaching structure while
+  retaining student Group movement history.
+- `tutorial_group_imports` and `tutorial_group_import_rows` preserve CSV or
+  Allocate+ workbook validation, preview, and application evidence.
+- `assessment_allocation_policies` enables Group-local automatic allocation
+  independently for each Assessment.
+- `staff_activation_invites` supports pending TA accounts. Pending Staff block
+  automated allocation for their configured Group until activation.
 - `submission_workflow_states` stores allocation, AI generation, and human
   marking as separate state dimensions.
 - `submission_workflow_events` provides an append-only history for assignment,
   return, regeneration, confirmation, and invalidation actions.
+- `user_notifications` stores compact dashboard notifications for grouped
+  assignment, reassignment, feedback-return, and Unit-removal events.
 - `feedback_revisions`, `criterion_feedback_revisions`, and
   `overall_feedback_revisions` preserve every AI, Marker, and Admin revision.
 - `assessment_results` points to the current revision and retains calculated
@@ -136,6 +152,8 @@ no student-visible "released" state for summative feedback.
   rubric, specification, index build, model configuration, and code version
   associated with a generation.
 - `model_usage_records` supports token, latency, and cost accounting.
+- Failed `generation_runs` retain the provider error code, HTTP status, request
+  ID, message, provider, and concrete model for Staff/Admin troubleshooting.
 - `retrieval_queries_v2` and `retrieval_hits_v2` preserve query-level ranking
   evidence and whether each hit was used in the prompt.
 
@@ -226,7 +244,7 @@ The baseline schema is `feedback_lens/setup/schema.sql`. Ordered migration SQL
 lives under `feedback_lens/setup/migrations/`, and migration orchestration and
 data backfill live in `feedback_lens/db/migrations.py`.
 
-The current schema version is 3:
+The current schema version is 8:
 
 1. V1 stabilization converts former runtime patches into a one-time migration
    and normalizes legacy indexes and columns.
@@ -234,9 +252,24 @@ The current schema version is 3:
    provenance, audit, and privacy tables, then backfills existing data.
 3. `feature_completion` supplies the bounded account and upload state listed
    above without replacing the V2 domain model.
+4. `embedded_feedback_evaluations` stores optional, pseudonymous usefulness
+   evaluations separately from operational feedback records.
+5. `judge_evaluations` stores quality-gate scores, evidence, defects, and
+   acceptance decisions for generated feedback.
+6. `staff_allocation` adds durable, read-tracked dashboard notifications; Staff
+   membership, assignment history, workflow state, and audit history continue
+   to use the existing V2 tables.
+7. `tutorial_group_allocation` adds CSV- or Allocate+-backed student Group membership,
+   many-to-many Group Staff, pending TA activation, per-Assessment allocation
+   policy, and assignment provenance. Tutorial Groups are a hard boundary;
+   existing and confirmed assignments are not silently moved.
+8. `assignment_feedback_models` adds the per-Assessment default model and
+   structured provider-error fields. Model changes are audited and do not
+   rewrite, invalidate, or automatically regenerate existing feedback.
 
 Migration execution is transactional, checksum-verified, idempotent, and ends
-with a foreign-key check. Application code should call `connect_db()`; setup and
+with a foreign-key check. SQL checksums normalize line endings so the same
+migration has one identity on Windows and Unix. Application code should call `connect_db()`; setup and
 deployment code should call `initialise_database()` explicitly.
 
 ## Useful Inspection Queries

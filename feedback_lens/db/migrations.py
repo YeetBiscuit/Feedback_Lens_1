@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 8
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "setup" / "migrations"
 
 
@@ -1796,28 +1796,43 @@ def _migration_003_feature_completion(conn: sqlite3.Connection) -> None:
 
 
 def _migration_checksum(version: int) -> str:
+    def migration_bytes(path: Path) -> bytes:
+        # Git may materialise the same SQL with CRLF on Windows and LF on
+        # other platforms.  Migration identity is based on SQL content, not
+        # the checkout's line-ending convention.
+        return path.read_bytes().replace(b"\r\n", b"\n")
+
     if version == 1:
         content = b"001_legacy_stabilization_v1"
     elif version == 2:
         migration_path = MIGRATIONS_DIR / "002_database_v2.sql"
         content = (
-            migration_path.read_bytes()
+            migration_bytes(migration_path)
             + b"\n002_database_v2_backfill_v1"
         )
     elif version == 3:
         migration_path = MIGRATIONS_DIR / "003_feature_completion.sql"
         content = (
-            migration_path.read_bytes()
+            migration_bytes(migration_path)
             + b"\n003_feature_completion_backfill_v1"
         )
     elif version == 4:
         migration_path = (
             MIGRATIONS_DIR / "004_embedded_feedback_evaluations.sql"
         )
-        content = migration_path.read_bytes()
+        content = migration_bytes(migration_path)
     elif version == 5:
         migration_path = MIGRATIONS_DIR / "005_judge_evaluations.sql"
-        content = migration_path.read_bytes()
+        content = migration_bytes(migration_path)
+    elif version == 6:
+        migration_path = MIGRATIONS_DIR / "006_staff_allocation.sql"
+        content = migration_bytes(migration_path)
+    elif version == 7:
+        migration_path = MIGRATIONS_DIR / "007_tutorial_group_allocation.sql"
+        content = migration_bytes(migration_path)
+    elif version == 8:
+        migration_path = MIGRATIONS_DIR / "008_assignment_feedback_models.sql"
+        content = migration_bytes(migration_path)
     else:
         raise ValueError(f"Unknown migration version: {version}")
 
@@ -1848,7 +1863,77 @@ MIGRATIONS = (
             ).read_text(encoding="utf-8"),
         ),
     ),
+    (
+        6,
+        "staff_allocation",
+        lambda conn: _execute_sql_script(
+            conn,
+            (MIGRATIONS_DIR / "006_staff_allocation.sql").read_text(
+                encoding="utf-8"
+            ),
+        ),
+    ),
+    (
+        7,
+        "tutorial_group_allocation",
+        lambda conn: _execute_sql_script(
+            conn,
+            (
+                MIGRATIONS_DIR / "007_tutorial_group_allocation.sql"
+            ).read_text(encoding="utf-8"),
+        ),
+    ),
+    (
+        8,
+        "assignment_feedback_models",
+        lambda conn: _execute_sql_script(
+            conn,
+            (
+                MIGRATIONS_DIR / "008_assignment_feedback_models.sql"
+            ).read_text(encoding="utf-8"),
+        ),
+    ),
 )
+
+
+def _normalise_pre_release_staff_allocation_version(
+    conn: sqlite3.Connection,
+) -> None:
+    """Move the short-lived version-5 Staff migration to its final version."""
+
+    legacy = conn.execute(
+        """
+        SELECT version, name, checksum
+        FROM schema_migrations
+        WHERE version = 5
+        """
+    ).fetchone()
+    if legacy is None:
+        return
+    expected_staff_checksum = _migration_checksum(6)
+    if (
+        legacy["name"] != "staff_allocation"
+        or legacy["checksum"] != expected_staff_checksum
+    ):
+        return
+    conflict = conn.execute(
+        "SELECT 1 FROM schema_migrations WHERE version = 6"
+    ).fetchone()
+    if conflict is not None:
+        raise DatabaseSchemaError(
+            "Cannot normalise the pre-release Staff allocation migration: "
+            "schema version 6 is already occupied."
+        )
+    conn.execute(
+        """
+        UPDATE schema_migrations
+        SET version = 6
+        WHERE version = 5
+          AND name = 'staff_allocation'
+          AND checksum = ?
+        """,
+        (expected_staff_checksum,),
+    )
 
 
 def migrate_database(conn: sqlite3.Connection) -> int:
@@ -1858,6 +1943,7 @@ def migrate_database(conn: sqlite3.Connection) -> int:
         conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     _ensure_schema_migrations_table(conn)
+    _normalise_pre_release_staff_allocation_version(conn)
     applied_rows = conn.execute(
         """
         SELECT version, name, checksum

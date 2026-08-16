@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Educator Dashboard</title>
+<title>Staff Dashboard</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{font-size:16px}
@@ -47,6 +47,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 .unit-done{font-size:.8125rem;color:#16a34a;margin-bottom:.75rem}
 .view-link{font-size:.875rem;color:#2563eb;font-weight:500;margin-top:.5rem;display:block}
 .empty{color:#999;font-size:.875rem;padding:1rem 0}
+.notifications{margin:-.75rem 0 1.25rem}
+.notification{display:flex;justify-content:space-between;align-items:center;gap:1rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:.75rem 1rem;margin-bottom:.5rem;cursor:pointer}
+.notification:hover{background:#dbeafe}
+.notification-title{font-size:.875rem;font-weight:700;color:#1e3a8a}
+.notification-message{font-size:.8125rem;color:#1e40af;margin-top:2px}
+.notification-link{font-size:.8125rem;color:#2563eb;font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -64,11 +70,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
   </div>
   <div class="nav-user">
     <div class="nav-user-name" id="nav-name">-</div>
-    <div class="nav-user-role">Educator</div>
+    <div class="nav-user-role">Staff</div>
   </div>
   <div class="nav-avatar" id="nav-avatar" onclick="toggleUserMenu(event)">-</div>
   <div class="dropdown user-menu" id="user-menu">
     <div class="user-menu-email" id="user-menu-email">-</div>
+    <div class="user-menu-item" id="admin-workspace-link" style="display:none" onclick="location.href='/admin/units'">Back to Admin Workspace</div>
     <div class="user-menu-item danger" onclick="location.href='/logout'">Log out</div>
   </div>
 </div>
@@ -79,6 +86,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
     <h1 id="welcome-msg">Welcome back!</h1>
     <p>Here's an overview of your teaching units and activities.</p>
   </div>
+
+  <div class="notifications" id="notifications"></div>
 
   <div class="section-title">In Progress Units</div>
   <div class="units-grid" id="inprogress-grid">
@@ -92,6 +101,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f5f4;min-heigh
 </div>
 
 <script>
+var CSRF_TOKEN = {{ csrf_token|tojson }};
 function initials(name){
   if(!name) return '?';
   var p = name.trim().split(/\s+/);
@@ -128,6 +138,7 @@ document.querySelectorAll('.font-btn').forEach(function(btn){
 
 fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(function(data){
   var user = data.user;
+  document.getElementById('admin-workspace-link').style.display = data.can_access_admin ? 'block' : 'none';
   document.getElementById('nav-name').textContent = user.name || user.email;
   document.getElementById('nav-avatar').textContent = initials(user.name);
   document.getElementById('user-menu-email').textContent = user.email || '';
@@ -156,6 +167,28 @@ fetch('/api/educator/dashboard').then(function(r){return r.json();}).then(functi
 
   document.getElementById('completed-grid').innerHTML = '<div class="empty">No completed units.</div>';
 });
+
+fetch('/api/notifications').then(function(r){return r.json();}).then(function(data){
+  var items = data.notifications || [];
+  document.getElementById('notifications').innerHTML = items.slice(0, 5).map(function(item){
+    return '<div class="notification" onclick="openNotification(' + item.notification_id + ', ' + JSON.stringify(item.action_url || '/educator').replace(/"/g, '&quot;') + ')">'
+      + '<div><div class="notification-title">' + escapeText(item.title) + '</div><div class="notification-message">' + escapeText(item.message) + '</div></div>'
+      + '<div class="notification-link">View tasks</div></div>';
+  }).join('');
+});
+
+function escapeText(value){
+  var div = document.createElement('div');
+  div.textContent = value == null ? '' : value;
+  return div.innerHTML;
+}
+
+function openNotification(id, actionUrl){
+  fetch('/api/notifications/' + id + '/read', {
+    method:'POST',
+    headers:{'X-CSRF-Token':CSRF_TOKEN}
+  }).then(function(){ location.href = actionUrl || '/educator'; });
+}
 </script>
 </body>
 </html>

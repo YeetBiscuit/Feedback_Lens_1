@@ -1,6 +1,79 @@
 {% extends "admin_base.html" %}
 {% block title %}Assessment | FeedbackLens{% endblock %}
 {% block content %}
+<style>
+.allocation-card{padding:0;overflow:hidden}
+.allocation-card-header{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid #e5e7eb;background:linear-gradient(135deg,#fff 0%,#f8fbff 100%)}
+.allocation-card-title{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}
+.allocation-card-title h2{font-size:1.125rem;margin:.15rem 0 .25rem}
+.allocation-eyebrow{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#2563eb}
+.allocation-coming-soon{display:inline-flex;align-items:center;border:1px solid #dbeafe;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:.3rem .65rem;font-size:.72rem;font-weight:600;white-space:nowrap}
+.allocation-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem;margin-top:1rem}
+.allocation-stat{border:1px solid #e5e7eb;background:rgba(255,255,255,.9);border-radius:9px;padding:.7rem .8rem}
+.allocation-stat-value{display:block;font-size:1.15rem;font-weight:700;color:#111827}
+.allocation-stat-label{display:block;margin-top:.1rem;font-size:.7rem;color:#6b7280}
+.allocation-workspace{padding:1.25rem}
+.allocation-mode-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;padding:.35rem;background:#f3f4f6;border-radius:10px;margin-bottom:1rem}
+button.allocation-mode-tab{display:block;width:100%;text-align:left;background:transparent;color:#4b5563;padding:.7rem .8rem;border:1px solid transparent;border-radius:8px;white-space:normal}
+button.allocation-mode-tab:hover{background:#fff;color:#1f2937}
+button.allocation-mode-tab.active{background:#fff;color:#1d4ed8;border-color:#dbeafe;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+.allocation-mode-name{display:block;font-size:.83rem;font-weight:700}
+.allocation-mode-summary{display:block;margin-top:.15rem;font-size:.7rem;font-weight:400;color:#6b7280;line-height:1.35}
+.allocation-mode-panel{border:1px solid #e5e7eb;border-radius:10px;padding:1rem;background:#fff;margin-bottom:1.1rem}
+.allocation-mode-panel[hidden]{display:none}
+.allocation-mode-heading{display:flex;gap:.75rem;align-items:flex-start;margin-bottom:.9rem}
+.allocation-step{display:flex;align-items:center;justify-content:center;flex:0 0 auto;width:1.65rem;height:1.65rem;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-size:.75rem;font-weight:700}
+.allocation-mode-heading h3,.allocation-table-header h3{font-size:.9rem;margin:0 0 .2rem}
+.allocation-mode-heading p,.allocation-table-header p{margin:0}
+.allocation-action-grid{display:grid;grid-template-columns:minmax(16rem,1fr) auto;gap:1rem;align-items:end}
+.allocation-button-group{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap}
+.allocation-staff-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.5rem;margin:.75rem 0}
+label.allocation-staff-option{display:flex;gap:.55rem;align-items:flex-start;margin:0;padding:.65rem .7rem;border:1px solid #e5e7eb;border-radius:8px;background:#fff;cursor:pointer}
+label.allocation-staff-option:hover{border-color:#93c5fd;background:#f8fbff}
+label.allocation-staff-option:has(input:checked){border-color:#60a5fa;background:#eff6ff}
+.allocation-staff-option input{width:auto;margin:.12rem 0 0;flex:0 0 auto}
+.allocation-staff-name{display:block;font-size:.78rem;font-weight:600;color:#1f2937;overflow-wrap:anywhere}
+.allocation-staff-role{display:block;margin-top:.12rem;font-size:.68rem;font-weight:400;color:#6b7280}
+.allocation-inline-toolbar{display:flex;justify-content:space-between;gap:.75rem;align-items:center;flex-wrap:wrap}
+.allocation-text-action{border:0;background:transparent;color:#2563eb;padding:.2rem .15rem;font-weight:600}
+.allocation-text-action:hover{background:transparent;color:#1d4ed8;text-decoration:underline}
+.allocation-auto-callout{display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;background:#eff6ff;border:1px solid #bfdbfe;border-radius:9px;padding:.85rem 1rem}
+.allocation-auto-callout strong{color:#1e3a8a}
+.allocation-table-header{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin:1.15rem 0 .65rem}
+.allocation-selection-tools{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;justify-content:flex-end}
+.allocation-selected-count{display:inline-flex;align-items:center;border-radius:999px;background:#eff6ff;color:#1d4ed8;padding:.28rem .65rem;font-size:.72rem;font-weight:700}
+.allocation-table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:9px}
+.allocation-table-wrap table{min-width:760px}
+.allocation-table-wrap thead{position:sticky;top:0;z-index:1}
+.allocation-select-cell{width:3.5rem;text-align:center!important}
+.allocation-select-cell input{width:auto}
+.allocation-table-wrap.automatic-scope tr[data-auto-target="true"]{background:#eff6ff}
+.allocation-table-wrap.automatic-scope tr[data-auto-target="true"]:hover{background:#dbeafe}
+.allocation-table-wrap.automatic-scope tr[data-auto-target="true"] .allocation-select-cell::after{content:'Auto';display:inline-block;color:#1d4ed8;font-size:.65rem;font-weight:700}
+.allocation-table-wrap.automatic-scope tr[data-auto-target="true"] .allocation-select-cell input{display:none}
+.allocation-preview-dialog{max-width:760px}
+.allocation-preview-meta{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.allocation-preview-groups{margin-top:1rem}
+.allocation-preview-group{border:1px solid #e5e7eb;border-radius:8px;padding:.75rem .85rem;margin-top:.55rem}
+.allocation-preview-group-header{display:flex;justify-content:space-between;gap:.75rem;align-items:center}
+.allocation-preview-list{margin:.6rem 0 0;padding-left:1.15rem;color:#4b5563;font-size:.8rem;line-height:1.65}
+.allocation-change-label{font-size:.68rem;font-weight:700;color:#1d4ed8}
+.model-card-body{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1rem;align-items:center}
+.model-name{font-size:1rem;font-weight:700;color:#111827;overflow-wrap:anywhere}
+.model-warning{margin-top:.8rem;padding:.75rem .85rem;border:1px solid #fbbf24;background:#fffbeb;color:#92400e;border-radius:8px;font-size:.78rem;line-height:1.5}
+.model-history{margin-top:.8rem;padding-top:.8rem;border-top:1px solid #e5e7eb}
+.model-history-item{font-size:.74rem;color:#4b5563;margin-top:.35rem}
+@media(max-width:900px){
+  .allocation-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .allocation-mode-tabs{grid-template-columns:1fr}
+  .allocation-action-grid,.allocation-auto-callout{grid-template-columns:1fr}
+  .allocation-button-group{justify-content:flex-start}
+  .allocation-staff-grid{grid-template-columns:1fr}
+  .allocation-table-header{align-items:flex-start;flex-direction:column}
+  .allocation-selection-tools{justify-content:flex-start}
+  .model-card-body{grid-template-columns:1fr}
+}
+</style>
 <div class="breadcrumb" id="back"><a href="/admin/units">Units</a> &rsaquo; <span>Assessment</span></div>
 <div class="toolbar">
   <div>
@@ -34,6 +107,19 @@
 </div>
 
 <div class="card">
+  <div class="model-card-body">
+    <div>
+      <h2>Feedback generation model</h2>
+      <div id="feedback-model-name" class="model-name">Loading...</div>
+      <p class="muted">This is the default model for future full feedback generations. Existing generated, edited or Reviewed feedback is never changed automatically.</p>
+      <div id="feedback-model-counts" class="muted"></div>
+      <div id="feedback-model-history" class="model-history hidden"></div>
+    </div>
+    <button class="secondary" onclick="openFeedbackModelEditor()">Change model</button>
+  </div>
+</div>
+
+<div class="card">
   <h2>Moodle summative ZIP</h2>
   <p id="prerequisite" class="muted"></p>
   <div class="row-actions">
@@ -43,6 +129,101 @@
 </div>
 
 <div class="card"><h2>Submission batches</h2><div id="batches"></div></div>
+
+<div class="card allocation-card" id="allocation-card">
+  <div class="allocation-card-header">
+    <div class="allocation-card-title">
+      <div>
+        <div class="allocation-eyebrow">Assessment workflow</div>
+        <h2>Staff allocation</h2>
+        <p class="muted">Choose one allocation method, review the exact changes, then confirm. Confirmed feedback remains locked until it is returned for editing.</p>
+      </div>
+      <span class="allocation-coming-soon" title="Advanced allocation rules are not part of the current workflow.">Advanced · Coming later</span>
+    </div>
+    <div class="allocation-summary" aria-label="Allocation summary">
+      <div class="allocation-stat"><span class="allocation-stat-value" id="allocation-total-count">0</span><span class="allocation-stat-label">Current submissions</span></div>
+      <div class="allocation-stat"><span class="allocation-stat-value" id="allocation-unassigned-count">0</span><span class="allocation-stat-label">Unassigned</span></div>
+      <div class="allocation-stat"><span class="allocation-stat-value" id="allocation-assigned-count">0</span><span class="allocation-stat-label">Assigned</span></div>
+      <div class="allocation-stat"><span class="allocation-stat-value" id="allocation-confirmed-count">0</span><span class="allocation-stat-label">Feedback confirmed</span></div>
+    </div>
+  </div>
+
+  <div class="allocation-workspace">
+    <div id="allocation-message" class="hidden" role="status"></div>
+    <div class="allocation-mode-tabs" role="tablist" aria-label="Allocation method">
+      <button type="button" id="allocation-tab-manual" class="allocation-mode-tab active" role="tab" aria-selected="true" aria-controls="allocation-panel-manual" data-allocation-mode="manual" onclick="setAllocationMode('manual')">
+        <span class="allocation-mode-name">Manual</span>
+        <span class="allocation-mode-summary">Selected submissions → one Staff member</span>
+      </button>
+      <button type="button" id="allocation-tab-equal" class="allocation-mode-tab" role="tab" aria-selected="false" aria-controls="allocation-panel-equal" data-allocation-mode="equal" onclick="setAllocationMode('equal')">
+        <span class="allocation-mode-name">Equal distribution</span>
+        <span class="allocation-mode-summary">Selected submissions → selected Staff</span>
+      </button>
+      <button type="button" id="allocation-tab-tutorial-groups" class="allocation-mode-tab" role="tab" aria-selected="false" aria-controls="allocation-panel-tutorial_groups" data-allocation-mode="tutorial_groups" onclick="setAllocationMode('tutorial_groups')">
+        <span class="allocation-mode-name">Tutorial Groups</span>
+        <span class="allocation-mode-summary">Each student → an active TA in their Group</span>
+      </button>
+    </div>
+
+    <section id="allocation-panel-manual" class="allocation-mode-panel" role="tabpanel" aria-labelledby="allocation-tab-manual">
+      <div class="allocation-mode-heading">
+        <span class="allocation-step">1</span>
+        <div><h3>Assign selected submissions</h3><p class="muted">Select submissions in the table, then choose exactly one responsible Staff member.</p></div>
+      </div>
+      <div class="allocation-action-grid">
+        <div>
+          <label for="allocation-target">Responsible Staff</label>
+          <select id="allocation-target" onchange="updateAllocationActions()"></select>
+        </div>
+        <div class="allocation-button-group">
+          <button type="button" id="assign-to-me-btn" class="secondary" onclick="assignToMe()">Assign to me</button>
+          <button type="button" id="preview-manual-btn" onclick="previewManualAllocation()" disabled>Preview manual allocation</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="allocation-panel-equal" class="allocation-mode-panel" role="tabpanel" aria-labelledby="allocation-tab-equal" hidden>
+      <div class="allocation-mode-heading">
+        <span class="allocation-step">1</span>
+        <div><h3>Balance selected submissions</h3><p class="muted">Choose the participating Staff. Current assessment workload is included, and ties are resolved deterministically.</p></div>
+      </div>
+      <div class="allocation-inline-toolbar">
+        <span class="muted" id="equal-staff-count">0 Staff selected</span>
+        <label class="muted" style="display:flex;gap:.45rem;align-items:center;margin:0"><input id="select-all-staff" type="checkbox" style="width:auto" onchange="toggleAllStaff(this.checked)"> Select all available Staff</label>
+      </div>
+      <div id="allocation-staff" class="allocation-staff-grid"></div>
+      <div class="allocation-button-group">
+        <button type="button" id="preview-equal-btn" onclick="previewEqualAllocation()" disabled>Preview equal distribution</button>
+      </div>
+    </section>
+
+    <section id="allocation-panel-tutorial_groups" class="allocation-mode-panel" role="tabpanel" aria-labelledby="allocation-tab-tutorial-groups" hidden>
+      <div class="allocation-mode-heading">
+        <span class="allocation-step">1</span>
+        <div><h3>Allocate by Tutorial Group</h3><p class="muted">Only active TA accounts attached to each student's Group are eligible. Existing assignments are always left unchanged.</p></div>
+      </div>
+      <div class="allocation-auto-callout">
+        <div><strong id="tutorial-scope-title">Preparing Tutorial Group scope…</strong><div class="muted" id="tutorial-scope-detail"></div></div>
+        <button type="button" id="preview-tutorial-btn" onclick="previewTutorialAllocation()" disabled>Preview Tutorial allocation</button>
+      </div>
+    </section>
+
+    <div class="allocation-table-header">
+      <div><h3>Submissions</h3><p class="muted" id="allocation-selection-help">Select one or more editable submissions for Manual allocation.</p></div>
+      <div class="allocation-selection-tools" id="allocation-selection-tools">
+        <span class="allocation-selected-count" id="selected-submission-count">0 selected</span>
+        <button type="button" class="allocation-text-action" onclick="toggleAllSubmissions(true)">Select all editable</button>
+        <button type="button" class="allocation-text-action" onclick="clearAllocationSelection()">Clear</button>
+      </div>
+    </div>
+    <div class="allocation-table-wrap" id="allocation-table-wrap">
+      <table>
+        <thead><tr><th class="allocation-select-cell"><input id="select-all-submissions" type="checkbox" aria-label="Select all editable submissions" onchange="toggleAllSubmissions(this.checked)"></th><th>Student</th><th>Responsible Staff</th><th>Progress</th><th>Action</th></tr></thead>
+        <tbody id="allocation-submissions"><tr><td colspan="5" class="empty">Loading allocation...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
 
 <dialog id="batch-dialog">
   <div class="dialog-body">
@@ -61,7 +242,7 @@
 <dialog id="resolution-dialog">
   <div class="dialog-body">
     <h2>Resolve submission</h2>
-    <label>Roster student<select id="resolution-student"></select></label>
+    <label>Enrolled student<select id="resolution-student"></select></label>
     <label>Corrected PDF (only if the original file is invalid)<input id="resolution-file" type="file" accept=".pdf"></label>
     <p class="muted">A valid PDF from the Moodle ZIP is kept even when the student name could not be matched.</p>
     <div class="dialog-actions">
@@ -87,6 +268,39 @@
     </div>
   </form>
 </dialog>
+
+<dialog id="feedback-model-dialog">
+  <form class="dialog-body" onsubmit="saveFeedbackModel(event)">
+    <h2>Change feedback generation model</h2>
+    <label>Model<select id="feedback-model-select" required></select></label>
+    <div id="feedback-model-warning" class="model-warning"></div>
+    <p class="muted">The new model applies only to feedback generated after this change. Existing feedback and work already completed by Tutors remain unchanged.</p>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" onclick="document.getElementById('feedback-model-dialog').close()">Cancel</button>
+      <button>Use this model</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="allocation-dialog" class="allocation-preview-dialog">
+  <div class="dialog-body">
+    <h2>Preview Staff allocation</h2>
+    <div class="allocation-preview-meta"><span class="pill" id="allocation-preview-mode">Manual</span><strong id="allocation-preview-note"></strong></div>
+    <p class="muted">No changes are saved until you confirm this preview.</p>
+    <div id="allocation-preview-exceptions" class="hidden"></div>
+    <div style="max-height:55vh;overflow:auto">
+      <table>
+        <thead><tr><th>Staff</th><th>Current</th><th>Added</th><th>Reassigned away</th><th>Final</th></tr></thead>
+        <tbody id="allocation-preview-summary"></tbody>
+      </table>
+    </div>
+    <div id="allocation-preview-students" class="allocation-preview-groups"></div>
+    <div class="dialog-actions">
+      <button type="button" class="secondary" onclick="closeAllocationDialog()">Cancel</button>
+      <button id="confirm-allocation-btn" onclick="confirmAllocation()">Confirm allocation</button>
+    </div>
+  </div>
+</dialog>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -95,6 +309,11 @@ let data = null;
 let batchData = null;
 let resolutionItemId = null;
 let resolutionBatchId = null;
+let allocationData = null;
+let pendingAllocationPayload = null;
+let allocationMode = 'manual';
+let allocationBusy = false;
+const CURRENT_USER_ID = {{ user.user_id }};
 
 function documentVersions(items, emptyText){
   if(!items.length) return `<p class="muted">${escapeHtml(emptyText)}</p>`;
@@ -105,9 +324,11 @@ async function load(){
   try{
     const responses = await Promise.all([
       api('/api/admin/assessments/' + PLAN_ID),
-      api('/api/admin/units')
+      api('/api/admin/units'),
+      api('/api/admin/assessments/' + PLAN_ID + '/allocation')
     ]);
     data = responses[0];
+    allocationData = responses[2];
     setAdminRole(responses[1].is_chief_admin ? 'Chief Admin' : 'Unit Admin');
     const assessment = data.assessment;
     document.getElementById('title').textContent = assessment.title;
@@ -119,16 +340,335 @@ async function load(){
     document.getElementById('rubric').innerHTML = documentVersions(data.rubrics, 'Required before summative upload.');
     document.getElementById('version').textContent = data.active_version ? 'Active version ' + data.active_version.version : 'No active version';
     document.getElementById('activate-btn').disabled = !(specification && rubric);
-    document.getElementById('prerequisite').textContent = data.summative_upload_ready ? 'Ready: roster, specification and rubric are valid.' : 'Blocked until the Unit roster, specification and rubric are ready.';
+    document.getElementById('prerequisite').textContent = data.summative_upload_ready ? 'Ready: Applied Allocate+ student import, specification and rubric are valid.' : 'Blocked until the Applied Allocate+ student import, specification and rubric are ready.';
     document.getElementById('zip-btn').disabled = !data.summative_upload_ready;
     document.getElementById('batches').innerHTML = data.batches.length ? data.batches.map(batch => `
       <div class="toolbar">
         <div><strong>${escapeHtml(batch.source_file_name)}</strong><br><span class="pill ${batch.status === 'partially_imported' ? 'warn' : ''}">${escapeHtml(batch.status)}</span> ${batch.imported_submission_count || 0}/${batch.detected_submission_count || 0} imported</div>
         <button class="secondary" onclick="openBatch(${batch.submission_batch_id})">Review</button>
       </div>`).join('') : '<p class="muted">No Moodle batches uploaded.</p>';
+    renderFeedbackModel();
+    renderAllocation();
   }catch(error){
     showMessage('message', error.message, true);
   }
+}
+
+function renderAllocation(){
+  const candidates = allocationData.candidates || [];
+  const submissions = allocationData.submissions || [];
+  const tutorialScope = allocationData.tutorial_group_scope || {};
+  const selectedIds = new Set(selectedSubmissionIds());
+  const currentTarget = document.getElementById('allocation-target').value;
+  const unassigned = submissions.filter(item => item.marker_user_id == null && !item.is_confirmed);
+  const confirmed = submissions.filter(item => item.is_confirmed);
+
+  document.getElementById('allocation-total-count').textContent = submissions.length;
+  document.getElementById('allocation-unassigned-count').textContent = unassigned.length;
+  document.getElementById('allocation-assigned-count').textContent = submissions.length - submissions.filter(item => item.marker_user_id == null).length;
+  document.getElementById('allocation-confirmed-count').textContent = confirmed.length;
+
+  document.getElementById('allocation-target').innerHTML = candidates.length ?
+    '<option value="">Choose Staff...</option>' + candidates.map(person => `<option value="${person.user_id}">${escapeHtml(person.email)} · ${escapeHtml(person.scope_roles.join(', '))}</option>`).join('') :
+    '<option value="">No eligible Staff</option>';
+  if(candidates.some(person => String(person.user_id) === currentTarget)){
+    document.getElementById('allocation-target').value = currentTarget;
+  }
+  document.getElementById('allocation-staff').innerHTML = candidates.map(person => `
+    <label class="allocation-staff-option">
+      <input class="allocation-staff-checkbox" type="checkbox" value="${person.user_id}" onchange="updateAllocationActions()">
+      <span><span class="allocation-staff-name">${escapeHtml(person.display_name || person.email)}</span><span class="allocation-staff-role">${escapeHtml((person.scope_roles || []).join(' · ') || 'Staff')}</span></span>
+    </label>`).join('') || '<span class="muted">Add Staff to the Unit before using equal distribution.</span>';
+  document.getElementById('allocation-submissions').innerHTML = submissions.length ? submissions.map(item => {
+    const locked = item.is_confirmed;
+    const staff = item.marker_email ? escapeHtml(item.marker_name || item.marker_email) + '<br><span class="muted">' + escapeHtml(item.marker_email) + '</span>' : '<span class="pill warn">Unassigned</span>';
+    const workflow = item.marking_status === 'marker_confirmed' ? '<span class="pill">Confirmed</span>' : item.ai_generation_status === 'generated' ? '<span class="pill warn">AI generated</span>' : item.marking_status === 'in_progress' ? '<span class="pill warn">In review</span>' : '<span class="pill warn">Not started</span>';
+    const action = locked ? `<button class="secondary" onclick="reopenSubmission(${item.submission_attempt_id})">Return for editing</button>` : '';
+    const checked = selectedIds.has(Number(item.submission_attempt_id)) ? 'checked' : '';
+    return `<tr data-auto-target="${item.marker_user_id == null && !locked}">
+      <td class="allocation-select-cell"><input class="allocation-submission-checkbox" type="checkbox" value="${item.submission_attempt_id}" data-locked="${locked}" ${checked} ${locked || allocationMode === 'tutorial_groups' ? 'disabled' : ''} aria-label="Select ${escapeHtml(item.student_name || item.student_identifier)}" onchange="updateAllocationActions()"></td>
+      <td><strong>${escapeHtml(item.student_name || item.student_identifier)}</strong><br><span class="muted">${escapeHtml(item.student_identifier)} · ${item.tutorial_group_code ? 'Tutorial ' + escapeHtml(item.tutorial_group_code) : 'No Tutorial Group'}</span></td>
+      <td>${staff}</td><td>${workflow}</td><td>${action}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" class="empty">No successfully imported current submissions are ready for allocation.</td></tr>';
+
+  const currentUserEligible = candidates.some(person => Number(person.user_id) === CURRENT_USER_ID);
+  document.getElementById('assign-to-me-btn').title = currentUserEligible ? 'Choose your account as the responsible Staff member.' : 'Your account is not eligible for allocation in this Unit.';
+  document.getElementById('tutorial-scope-title').textContent = `${unassigned.length} unassigned submission${unassigned.length === 1 ? '' : 's'} in scope`;
+  document.getElementById('tutorial-scope-detail').textContent = tutorialScope.incomplete_group_count ?
+    `${tutorialScope.incomplete_group_count} Tutorial Group${tutorialScope.incomplete_group_count === 1 ? '' : 's'} need TA configuration before confirmation.` :
+    tutorialScope.incomplete_submission_count ?
+    `${tutorialScope.incomplete_submission_count} submission${tutorialScope.incomplete_submission_count === 1 ? '' : 's'} need Group membership before confirmation.` :
+    (tutorialScope.groups || []).length ? `${tutorialScope.ready_group_count || 0} Tutorial Group${tutorialScope.ready_group_count === 1 ? '' : 's'} ready.${tutorialScope.policy_active ? ' Automatic assignment is enabled for new Submissions.' : ''}` :
+    'Import Tutorial Group membership and configure TA accounts on the Unit page.';
+  setAllocationMode(allocationMode, false);
+}
+
+function selectedSubmissionIds(){
+  return [...document.querySelectorAll('.allocation-submission-checkbox:checked')].map(item => Number(item.value));
+}
+function selectedStaffIds(){
+  return [...document.querySelectorAll('.allocation-staff-checkbox:checked')].map(item => Number(item.value));
+}
+function editableSubmissionCheckboxes(){
+  return [...document.querySelectorAll('.allocation-submission-checkbox')].filter(item => item.dataset.locked !== 'true');
+}
+function setAllocationMode(mode, focusTab = true){
+  if(!['manual','equal','tutorial_groups'].includes(mode)) return;
+  allocationMode = mode;
+  document.querySelectorAll('.allocation-mode-tab').forEach(tab => {
+    const active = tab.dataset.allocationMode === mode;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    tab.tabIndex = active ? 0 : -1;
+    if(active && focusTab) tab.focus();
+  });
+  ['manual','equal','tutorial_groups'].forEach(name => {
+    document.getElementById('allocation-panel-' + name).hidden = name !== mode;
+  });
+  const selectionEnabled = mode !== 'tutorial_groups';
+  document.getElementById('allocation-selection-tools').classList.toggle('hidden', !selectionEnabled);
+  document.getElementById('select-all-submissions').disabled = !selectionEnabled;
+  editableSubmissionCheckboxes().forEach(item => item.disabled = !selectionEnabled);
+  document.getElementById('allocation-table-wrap').classList.toggle('automatic-scope', mode === 'tutorial_groups');
+  document.getElementById('allocation-selection-help').textContent = mode === 'manual' ?
+    'Select one or more editable submissions, then assign them to one Staff member.' : mode === 'equal' ?
+    'Select the editable submissions to balance across the participating Staff.' :
+    'Blue rows are currently unassigned. Each row will be assigned only to an active TA in the student’s Tutorial Group.';
+  clearAllocationMessage();
+  updateAllocationActions();
+}
+function handleAllocationTabKeydown(event){
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+  event.preventDefault();
+  const modes = ['manual','equal','tutorial_groups'];
+  let index = modes.indexOf(allocationMode);
+  if(event.key === 'Home') index = 0;
+  else if(event.key === 'End') index = modes.length - 1;
+  else index = (index + (event.key === 'ArrowRight' ? 1 : -1) + modes.length) % modes.length;
+  setAllocationMode(modes[index]);
+}
+function updateAllocationActions(){
+  const selectedCount = selectedSubmissionIds().length;
+  const selectedStaffCount = selectedStaffIds().length;
+  const candidates = allocationData?.candidates || [];
+  const submissions = allocationData?.submissions || [];
+  const editable = editableSubmissionCheckboxes();
+  const selectedEditable = editable.filter(item => item.checked).length;
+  const tutorialCount = submissions.filter(item => item.marker_user_id == null && !item.is_confirmed).length;
+  const tutorialScope = allocationData?.tutorial_group_scope || {};
+  const targetSelected = Boolean(document.getElementById('allocation-target').value);
+  const currentUserEligible = candidates.some(person => Number(person.user_id) === CURRENT_USER_ID);
+
+  document.getElementById('selected-submission-count').textContent = `${selectedCount} selected`;
+  document.getElementById('equal-staff-count').textContent = `${selectedStaffCount} Staff selected`;
+  document.getElementById('preview-manual-btn').disabled = allocationBusy || !selectedCount || !targetSelected;
+  document.getElementById('preview-equal-btn').disabled = allocationBusy || !selectedCount || !selectedStaffCount;
+  document.getElementById('preview-tutorial-btn').disabled = allocationBusy || (!(tutorialScope.groups || []).length && !tutorialCount);
+  document.getElementById('assign-to-me-btn').disabled = allocationBusy || !selectedCount || !currentUserEligible;
+
+  const selectAllSubmissions = document.getElementById('select-all-submissions');
+  selectAllSubmissions.checked = editable.length > 0 && selectedEditable === editable.length;
+  selectAllSubmissions.indeterminate = selectedEditable > 0 && selectedEditable < editable.length;
+  const selectAllStaff = document.getElementById('select-all-staff');
+  selectAllStaff.checked = candidates.length > 0 && selectedStaffCount === candidates.length;
+  selectAllStaff.indeterminate = selectedStaffCount > 0 && selectedStaffCount < candidates.length;
+}
+function toggleAllSubmissions(checked){
+  if(allocationMode === 'tutorial_groups') return;
+  editableSubmissionCheckboxes().forEach(item => item.checked = checked);
+  updateAllocationActions();
+}
+function clearAllocationSelection(){
+  editableSubmissionCheckboxes().forEach(item => item.checked = false);
+  updateAllocationActions();
+}
+function toggleAllStaff(checked){
+  document.querySelectorAll('.allocation-staff-checkbox').forEach(item => item.checked = checked);
+  updateAllocationActions();
+}
+function showAllocationMessage(message, isError = true){
+  showMessage('allocation-message', message, isError);
+}
+function clearAllocationMessage(){
+  const box = document.getElementById('allocation-message');
+  box.textContent = '';
+  box.className = 'hidden';
+}
+function assignToMe(){
+  const select = document.getElementById('allocation-target');
+  if(!selectedSubmissionIds().length) return showAllocationMessage('Select at least one editable submission first.');
+  if(![...select.options].some(option => Number(option.value) === CURRENT_USER_ID)) return showAllocationMessage('Your account is not eligible for this Unit.');
+  select.value = String(CURRENT_USER_ID);
+  updateAllocationActions();
+  previewManualAllocation();
+}
+function previewManualAllocation(){
+  const submissionIds = selectedSubmissionIds();
+  const staffUserId = Number(document.getElementById('allocation-target').value);
+  if(!submissionIds.length) return showAllocationMessage('Select at least one editable submission.');
+  if(!staffUserId) return showAllocationMessage('Choose one responsible Staff member.');
+  openAllocationPreview({mode:'manual', submission_attempt_ids:submissionIds, staff_user_id:staffUserId});
+}
+function previewEqualAllocation(){
+  const submissionIds = selectedSubmissionIds();
+  const staffIds = selectedStaffIds();
+  if(!submissionIds.length) return showAllocationMessage('Select at least one editable submission.');
+  if(!staffIds.length) return showAllocationMessage('Choose at least one participating Staff member.');
+  openAllocationPreview({mode:'equal', submission_attempt_ids:submissionIds, staff_user_ids:staffIds});
+}
+function previewTutorialAllocation(){
+  openAllocationPreview({mode:'tutorial_groups'});
+}
+
+function modelValue(provider, model){
+  return provider + '::' + model;
+}
+
+function renderFeedbackModel(){
+  const assessment = data.assessment;
+  const summary = data.feedback_model_summary || {};
+  const history = data.feedback_model_history || [];
+  const selected = (data.feedback_models || []).find(item =>
+    item.provider === assessment.default_llm_provider &&
+    item.model === assessment.default_llm_model
+  );
+  document.getElementById('feedback-model-name').textContent = selected
+    ? selected.label
+    : `${assessment.default_llm_provider} · ${assessment.default_llm_model}`;
+  document.getElementById('feedback-model-counts').textContent =
+    `${summary.generated_feedback_count || 0} submissions have generated feedback · ` +
+    `${summary.reviewed_feedback_count || 0} are Reviewed`;
+  const historyBox = document.getElementById('feedback-model-history');
+  if(history.length){
+    historyBox.classList.remove('hidden');
+    historyBox.innerHTML = '<strong>Model change history</strong>' + history.map(item => {
+      const oldValue = `${item.old.provider || '-'} · ${item.old.model || '-'}`;
+      const newValue = `${item.new.provider || '-'} · ${item.new.model || '-'}`;
+      return `<div class="model-history-item">${escapeHtml(item.created_at || '')} · ${escapeHtml(item.changed_by || '')}: ${escapeHtml(oldValue)} → ${escapeHtml(newValue)}</div>`;
+    }).join('');
+  }else{
+    historyBox.classList.add('hidden');
+    historyBox.innerHTML = '';
+  }
+}
+
+function openFeedbackModelEditor(){
+  const assessment = data.assessment;
+  const summary = data.feedback_model_summary || {};
+  const select = document.getElementById('feedback-model-select');
+  select.innerHTML = (data.feedback_models || []).map(item =>
+    `<option value="${escapeHtml(modelValue(item.provider, item.model))}">${escapeHtml(item.label)}</option>`
+  ).join('');
+  select.value = modelValue(
+    assessment.default_llm_provider,
+    assessment.default_llm_model
+  );
+  document.getElementById('feedback-model-warning').textContent =
+    `${summary.generated_feedback_count || 0} existing generated feedback items, including ` +
+    `${summary.reviewed_feedback_count || 0} Reviewed items, will remain unchanged. ` +
+    'Tutors will not be forced to regenerate them.';
+  document.getElementById('feedback-model-dialog').showModal();
+}
+
+async function saveFeedbackModel(event){
+  event.preventDefault();
+  const parts = document.getElementById('feedback-model-select').value.split('::');
+  if(parts.length !== 2) return;
+  try{
+    const result = await api(`/api/admin/assessments/${PLAN_ID}/feedback-model`, {
+      method:'PATCH',
+      body:JSON.stringify({provider:parts[0], model:parts[1]})
+    });
+    document.getElementById('feedback-model-dialog').close();
+    showMessage(
+      'message',
+      result.changed
+        ? 'Default model updated. Existing feedback was not changed.'
+        : 'The selected model is already the current default.'
+    );
+    await load();
+  }catch(error){
+    showMessage('message', error.message, true);
+  }
+}
+
+async function openAllocationPreview(payload){
+  clearAllocationMessage();
+  allocationBusy = true;
+  updateAllocationActions();
+  try{
+    const preview = await api(`/api/admin/assessments/${PLAN_ID}/allocation/preview`, {method:'POST', body:JSON.stringify(payload)});
+    pendingAllocationPayload = {...payload, preview_hash:preview.preview_hash};
+    const modeLabels = {manual:'Manual', equal:'Equal distribution', tutorial_groups:'Tutorial Groups'};
+    document.getElementById('allocation-preview-mode').textContent = modeLabels[preview.mode] || preview.mode;
+    document.getElementById('allocation-preview-note').textContent = `${preview.change_count} assignment change${preview.change_count === 1 ? '' : 's'}`;
+    document.getElementById('allocation-preview-summary').innerHTML = preview.summary.length ? preview.summary.map(person => `<tr>
+      <td><strong>${escapeHtml(person.display_name || person.email)}</strong><br><span class="muted">${escapeHtml(person.email)}</span></td>
+      <td>${person.current_count}</td><td>${person.assigned_count}</td><td>${person.reassigned_away_count}</td><td><strong>${person.final_count}</strong></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">No Staff totals changed.</td></tr>';
+    const exceptionBox = document.getElementById('allocation-preview-exceptions');
+    const exceptions = preview.exceptions || [];
+    exceptionBox.classList.toggle('hidden', !exceptions.length);
+    exceptionBox.innerHTML = exceptions.length ? `<div class="message error"><strong>Configuration required before confirmation</strong>${exceptions.map(item => `<p>${item.group_code ? '<strong>' + escapeHtml(item.group_code) + ':</strong> ' : ''}${escapeHtml(item.message)} ${item.submission_count || 0} affected Submission${item.submission_count === 1 ? '' : 's'}.</p>`).join('')}</div>` : '';
+    const groupPreview = (preview.group_summary || []).map(group => `
+      <div class="allocation-preview-group">
+        <div class="allocation-preview-group-header"><strong>Tutorial ${escapeHtml(group.group_code)}</strong><span class="muted">${group.submission_count} new assignment${group.submission_count === 1 ? '' : 's'}</span></div>
+        <ul class="allocation-preview-list">${group.staff.map(person => `<li>${escapeHtml(person.display_name || person.email)}: ${person.current_count} current + ${person.assigned_count} new = <strong>${person.final_count}</strong></li>`).join('')}</ul>
+      </div>`).join('');
+    const staffPreview = preview.summary.filter(person => person.submissions.length).map(person => `
+      <div class="allocation-preview-group">
+        <div class="allocation-preview-group-header"><strong>${escapeHtml(person.display_name || person.email)}</strong><span class="muted">${person.submissions.length} submission${person.submissions.length === 1 ? '' : 's'}</span></div>
+        <ul class="allocation-preview-list">${person.submissions.map(item => `<li>${escapeHtml(item.student_name || item.student_identifier)} <span class="muted">(${escapeHtml(item.student_identifier)}${item.tutorial_group_code ? ' · ' + escapeHtml(item.tutorial_group_code) : ''})</span> · <span class="allocation-change-label">${item.change_type === 'reassigned' ? 'REASSIGNED' : item.change_type === 'assigned' ? 'NEW' : 'UNCHANGED'}</span></li>`).join('')}</ul>
+      </div>`).join('');
+    document.getElementById('allocation-preview-students').innerHTML = groupPreview || staffPreview || '<p class="muted">No current assignments need to change.</p>';
+    const enableOnly = preview.mode === 'tutorial_groups' && preview.change_count === 0 && !preview.tutorial_group_scope?.policy_active;
+    document.getElementById('confirm-allocation-btn').disabled = preview.can_confirm === false || (!preview.change_count && !enableOnly);
+    document.getElementById('confirm-allocation-btn').textContent = exceptions.length ? 'Resolve configuration first' : preview.change_count ? `Confirm ${preview.change_count} change${preview.change_count === 1 ? '' : 's'}` : enableOnly ? 'Enable for new Submissions' : 'Already enabled';
+    document.getElementById('allocation-dialog').showModal();
+  }catch(error){
+    showAllocationMessage(error.message, true);
+    document.getElementById('allocation-card').scrollIntoView({behavior:'smooth', block:'start'});
+  }finally{
+    allocationBusy = false;
+    updateAllocationActions();
+  }
+}
+
+function closeAllocationDialog(){
+  pendingAllocationPayload = null;
+  document.getElementById('allocation-dialog').close();
+}
+
+async function confirmAllocation(){
+  if(!pendingAllocationPayload) return;
+  const button = document.getElementById('confirm-allocation-btn');
+  button.disabled = true;
+  try{
+    await api(`/api/admin/assessments/${PLAN_ID}/allocation/confirm`, {method:'POST', body:JSON.stringify(pendingAllocationPayload)});
+    document.getElementById('allocation-dialog').close();
+    pendingAllocationPayload = null;
+    clearAllocationSelection();
+    showMessage('message', 'Staff allocation confirmed.');
+    await load();
+  }catch(error){
+    document.getElementById('allocation-dialog').close();
+    pendingAllocationPayload = null;
+    if(error.code === 'allocation_preview_stale') await load();
+    showAllocationMessage(error.message, true);
+    document.getElementById('allocation-card').scrollIntoView({behavior:'smooth', block:'start'});
+  }finally{
+    button.disabled = false;
+  }
+}
+
+async function reopenSubmission(attemptId){
+  if(!confirm('Return this confirmed feedback to an editable state? The existing AI draft will be kept.')) return;
+  try{
+    await api(`/api/admin/assessments/${PLAN_ID}/submissions/${attemptId}/reopen`, {method:'POST', body:'{}'});
+    showMessage('message', 'Feedback returned for editing. It can now be reassigned.');
+    await load();
+  }catch(error){ showMessage('message', error.message, true); }
 }
 
 function openAssessmentEditor(){
@@ -225,7 +765,7 @@ function resolveItem(item, batch, current){
 
 async function submitResolution(){
   const studentId = document.getElementById('resolution-student').value;
-  if(!studentId) return alert('Choose a roster student.');
+  if(!studentId) return alert('Choose an enrolled student.');
   const form = new FormData();
   form.append('student_id', studentId);
   const file = document.getElementById('resolution-file').files[0];
@@ -246,6 +786,8 @@ async function ignoreItem(item, batch){
   try{ await api('/api/admin/submission-batch-items/' + item + '/resolve', {method:'POST', body:form}); openBatch(batch); load(); }
   catch(error){ alert(error.message); }
 }
+document.querySelectorAll('.allocation-mode-tab').forEach(tab => tab.addEventListener('keydown', handleAllocationTabKeydown));
+document.getElementById('allocation-dialog').addEventListener('close', () => { pendingAllocationPayload = null; });
 load();
 </script>
 {% endblock %}

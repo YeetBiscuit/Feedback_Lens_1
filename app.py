@@ -7,7 +7,6 @@ from werkzeug.security import check_password_hash
 
 from feedback_lens.db.connection import connect_db
 from feedback_lens.feedback.pipeline import (
-    DEFAULT_FEEDBACK_PROVIDER,
     generate_feedback_for_submission,
     regenerate_feedback_for_criterion,
 )
@@ -16,6 +15,18 @@ from feedback_lens.feedback.review import fetch_generation_review, parse_json_te
 from feedback_lens.web import feature_blueprint
 from feedback_lens.web.config import get_secret_key, get_web_settings
 from feedback_lens.web.jobs import run_worker_forever
+from feedback_lens.web.security import can_access_admin_workspace, csrf_token
+from feedback_lens.web.staff_portal_service import (
+    assignment_feedback_model,
+    fetch_authorised_generation,
+    fetch_authorised_submission,
+    generation_workflow,
+    get_unit_dashboard_data,
+    get_unit_submissions_data,
+    list_staff_units,
+    record_generated_feedback,
+    update_feedback_workflow,
+)
 from feedback_lens.web.embedded_evaluation import (
     EVALUATION_QUESTIONS,
     MAX_COMMENT_LENGTH,
@@ -58,6 +69,19 @@ def login_required(role):
         return wrapped
 
     return decorator
+
+
+def staff_portal_required(view):
+    @wraps(view)
+    def wrapped(*args, **kwargs):
+        with connect_db() as conn:
+            user = fetch_session_user(conn)
+        if user is None or user["role"] == "student":
+            session.clear()
+            return redirect("/login")
+        return view(*args, **kwargs)
+
+    return wrapped
 
 
 def fetch_session_user(conn):
@@ -168,39 +192,13 @@ def _resolve_feedback_modifier_payload(data):
     )
 
 
-def _fetch_authorised_submission(conn, submission_id, tutor_id):
-    return conn.execute(
-        """
-        SELECT
-            ss.submission_id,
-            ss.assignment_id,
-            a.unit_id
-        FROM student_submissions AS ss
-        JOIN assignments AS a ON a.assignment_id = ss.assignment_id
-        JOIN unit_tutors AS ut ON ut.unit_id = a.unit_id
-        WHERE ss.submission_id = ?
-          AND ut.tutor_id = ?
-        """,
-        (submission_id, tutor_id),
-    ).fetchone()
-
-
-def _fetch_authorised_generation(conn, generation_id, tutor_id):
-    return conn.execute(
-        """
-        SELECT
-            gr.generation_id,
-            gr.submission_id,
-            gr.assignment_id,
-            a.unit_id
-        FROM generation_runs AS gr
-        JOIN assignments AS a ON a.assignment_id = gr.assignment_id
-        JOIN unit_tutors AS ut ON ut.unit_id = a.unit_id
-        WHERE gr.generation_id = ?
-          AND ut.tutor_id = ?
-        """,
-        (generation_id, tutor_id),
-    ).fetchone()
+def _staff_api_user():
+    user, error = api_session_user()
+    if error:
+        return None, error
+    if user["role"] == "student":
+        return None, (jsonify({"error": "Forbidden"}), 403)
+    return user, None
 
 @app.route('/')
 def index():
@@ -291,9 +289,9 @@ def lead_dashboard_data():
 
 
 @app.route('/educator')
-@login_required('educator')
+@staff_portal_required
 def educator():
-    return render_template("educator.html")
+    return render_template("educator.html", csrf_token=csrf_token())
 
 @app.route('/student')
 @login_required('student')
@@ -872,12 +870,12 @@ def student_feedback_detail_data(generation_id):
     })
 
 @app.route('/educator/feedback-review')
-@login_required('educator')
+@staff_portal_required
 def feedback_review():
     return render_template('feedback_review.html')
 
 @app.route('/educator/general-feedback')
-@login_required('educator')
+@staff_portal_required
 def general_feedback():
     return render_template('general_feedback.html')
 
@@ -890,167 +888,71 @@ def logout():
 
 
 @app.route('/educator/unit/<int:unit_id>')
-@login_required('educator')
+@staff_portal_required
 def unit_dashboard(unit_id):
     return render_template('unit_dashboard.html', unit_id=unit_id)
 
 
 @app.route('/educator/unit/<int:unit_id>/ai-performance')
-@login_required('educator')
+@staff_portal_required
 def unit_ai_performance(unit_id):
     return render_template('ai_performance.html', unit_id=unit_id)
 
 @app.route('/educator/unit/<int:unit_id>/export')
-@login_required('educator')
+@staff_portal_required
 def unit_export(unit_id):
     return render_template('export.html', unit_id=unit_id)
 
 @app.route('/api/educator/unit/<int:unit_id>/dashboard')
 def unit_dashboard_data(unit_id):
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
-    if user.get('tutor_id') is None:
-        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     with connect_db() as conn:
-        unit = conn.execute(
-            """
-            SELECT u.unit_id, u.unit_code, u.unit_name, u.semester, u.year
-            FROM units u
-            JOIN unit_tutors ut ON ut.unit_id = u.unit_id
-            WHERE u.unit_id = ? AND ut.tutor_id = ?
-            """,
-            (unit_id, user['tutor_id']),
-        ).fetchone()
-        if unit is None:
+        result = get_unit_dashboard_data(conn, user['user_id'], unit_id)
+        if result is None:
             return jsonify({'error': 'Unit not found or not authorised'}), 404
-
-        
-        counts = conn.execute(
-            """
-            SELECT
-                COUNT(DISTINCT ss.submission_id) AS total_submissions,
-                COUNT(DISTINCT CASE WHEN gr.status = 'completed' AND hr.review_id IS NULL THEN ss.submission_id END) AS ai_generated_count,
-                COUNT(DISTINCT CASE WHEN hr.review_id IS NOT NULL THEN ss.submission_id END) AS reviewed_count,
-                COUNT(DISTINCT CASE WHEN gr.generation_id IS NULL OR gr.status != 'completed' THEN ss.submission_id END) AS pending_count
-            FROM student_submissions ss
-            JOIN assignments a ON a.assignment_id = ss.assignment_id
-            LEFT JOIN generation_runs gr
-                ON gr.submission_id = ss.submission_id
-                AND gr.generation_id = (
-                    SELECT MAX(generation_id)
-                    FROM generation_runs
-                    WHERE submission_id = ss.submission_id
-                )
-            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
-            WHERE a.unit_id = ?
-            """,
-            (unit_id,),
-        ).fetchone()
-
-
-    return jsonify({
-        'unit': dict(unit),
-        'counts': dict(counts) if counts else {},
-    })
+    return jsonify(result)
 
 @app.route('/educator/unit/<int:unit_id>/submissions')
-@login_required('educator')
+@staff_portal_required
 def submissions_list(unit_id):
     return render_template('submissions_list.html', unit_id=unit_id)
 
 
 @app.route('/api/educator/unit/<int:unit_id>/submissions')
 def unit_submissions_data(unit_id):
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
-    if user.get('tutor_id') is None:
-        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     with connect_db() as conn:
-        unit = conn.execute(
-            """
-            SELECT u.unit_id, u.unit_code, u.unit_name, u.semester, u.year
-            FROM units u
-            JOIN unit_tutors ut ON ut.unit_id = u.unit_id
-            WHERE u.unit_id = ? AND ut.tutor_id = ?
-            """,
-            (unit_id, user['tutor_id']),
-        ).fetchone()
-        if unit is None:
+        result = get_unit_submissions_data(conn, user['user_id'], unit_id)
+        if result is None:
             return jsonify({'error': 'Unit not found or not authorised'}), 404
-
-        rows = conn.execute(
-            """
-            SELECT
-                ss.submission_id,
-                ss.student_identifier,
-                ss.submitted_at,
-                a.assignment_name,
-                a.assignment_id,
-                gr.generation_id,
-                gr.status AS generation_status,
-                of.overall_grade_band,
-                of.final_mark,
-                CASE
-                    WHEN hr.review_id IS NOT NULL THEN 'reviewed'
-                    WHEN gr.status = 'completed' THEN 'ai_generated'
-                    ELSE 'pending'
-                END AS review_status
-            FROM student_submissions ss
-            JOIN assignments a ON a.assignment_id = ss.assignment_id
-            LEFT JOIN generation_runs gr
-                ON gr.submission_id = ss.submission_id
-                AND gr.generation_id = (
-                    SELECT MAX(generation_id)
-                    FROM generation_runs
-                    WHERE submission_id = ss.submission_id
-                    AND status = 'completed'
-                )
-            LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
-            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
-            WHERE a.unit_id = ?
-            ORDER BY ss.submission_id
-            """,
-            (unit_id,),
-        ).fetchall()
-
-    return jsonify({
-        'unit': dict(unit),
-        'submissions': [dict(r) for r in rows],
-    })
+    return jsonify(result)
 
 @app.route('/api/educator/dashboard')
 def educator_dashboard_data():
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
-    if user.get('tutor_id') is None:
-        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     with connect_db() as conn:
-        units = conn.execute("""
-            SELECT u.unit_id, u.unit_code, u.unit_name, u.semester, u.year,
-                   COUNT(DISTINCT ss.submission_id) as student_count,
-                   COUNT(DISTINCT CASE WHEN gr.status='completed' THEN ss.submission_id END) as completed_count,
-                   COUNT(DISTINCT ss.submission_id)
-                     - COUNT(DISTINCT CASE WHEN gr.status='completed' THEN ss.submission_id END) as pending_count
-            FROM units u
-            JOIN unit_tutors ut ON ut.unit_id = u.unit_id
-            LEFT JOIN assignments a ON a.unit_id = u.unit_id
-            LEFT JOIN student_submissions ss ON ss.assignment_id = a.assignment_id
-            LEFT JOIN generation_runs gr ON gr.submission_id = ss.submission_id
-            WHERE ut.tutor_id = ?
-            GROUP BY u.unit_id
-        """, (user['tutor_id'],)).fetchall()
+        units = list_staff_units(conn, user['user_id'])
+        can_access_admin = can_access_admin_workspace(
+            conn,
+            user['user_id'],
+        )
     return jsonify({
         'user': {
             'name': user.get('display_name') or user.get('tutor_full_name') or user['email'],
+            'email': user['email'],
             'role': user['role'],
         },
-        'units': [dict(u) for u in units]
+        'units': units,
+        'can_access_admin': can_access_admin,
     })
 
 @app.route('/leadLecture/units')
@@ -1277,11 +1179,20 @@ def lead_unit_detail(unit_id):
 
 @app.route('/api/feedback/<int:generation_id>')
 def get_feedback(generation_id):
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
 
     with connect_db() as conn:
+        authorised = fetch_authorised_generation(
+            conn,
+            generation_id,
+            user['user_id'],
+            user.get('tutor_id'),
+            allow_admin_view=True,
+        )
+        if authorised is None:
+            return jsonify({'error': 'Generation not found or not authorised'}), 404
         try:
             data = fetch_generation_review(conn, generation_id)
         except ValueError as err:
@@ -1305,6 +1216,23 @@ def get_feedback(generation_id):
             """,
             (generation_id,),
         ).fetchone()
+        current_provider, current_model = assignment_feedback_model(
+            conn,
+            int(data['run']['assignment_id']),
+        )
+        previous_generation = conn.execute(
+            """
+            SELECT generation_id, llm_provider, llm_model, completed_at
+            FROM generation_runs
+            WHERE submission_id = ?
+              AND generation_id < ?
+              AND status = 'completed'
+            ORDER BY generation_id DESC
+            LIMIT 1
+            """,
+            (data['run']['submission_id'], generation_id),
+        ).fetchone()
+        workflow = generation_workflow(conn, authorised)
     run = dict(data['run'])
     overall = dict(data['overall_feedback']) if data['overall_feedback'] else {}
     criteria = [dict(r) for r in data['criterion_feedback']]
@@ -1324,19 +1252,38 @@ def get_feedback(generation_id):
         run['review_status'] = 'ai_generated'
     else:
         run['review_status'] = 'pending'
+    run['assignment_default_provider'] = current_provider
+    run['assignment_default_model'] = current_model
+    run['uses_current_assignment_model'] = bool(
+        run.get('llm_provider') == current_provider
+        and run.get('llm_model') == current_model
+    )
+    run['is_current_generation'] = bool(
+        workflow is None
+        or workflow['current_generation_id'] is None
+        or int(workflow['current_generation_id']) == generation_id
+    )
+    run['can_regenerate_all'] = bool(
+        run['is_current_generation']
+        and not (
+            workflow is not None
+            and workflow['marking_status'] == 'marker_confirmed'
+        )
+    )
     return jsonify({
         'run': run,
         'overall_feedback': overall,
         'criterion_feedback': criteria,
+        'previous_generation': (
+            dict(previous_generation) if previous_generation else None
+        ),
     })
 
 @app.route('/api/feedback/generate', methods=['POST'])
 def generate_feedback():
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
-    if user.get('tutor_id') is None:
-        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     data = request.get_json(silent=True) or {}
     try:
@@ -1369,20 +1316,51 @@ def generate_feedback():
     )
 
     with connect_db() as conn:
-        submission = _fetch_authorised_submission(
+        submission = fetch_authorised_submission(
             conn,
             submission_id,
-            user['tutor_id'],
+            user['user_id'],
+            user.get('tutor_id'),
         )
         if submission is None:
             return jsonify({'error': 'Submission not found or not authorised'}), 404
+
+        if "submission_attempt_id" in submission.keys():
+            workflow = conn.execute(
+                """
+                SELECT marking_status
+                FROM submission_workflow_states
+                WHERE submission_attempt_id = ?
+                """,
+                (submission["submission_attempt_id"],),
+            ).fetchone()
+            if workflow is not None and workflow["marking_status"] == "marker_confirmed":
+                return jsonify({
+                    'error': (
+                        'Reviewed feedback must be returned by a Unit Admin '
+                        'before it can be regenerated.'
+                    )
+                }), 409
+
+        provider, model = assignment_feedback_model(
+            conn,
+            int(submission["assignment_id"]),
+        )
+        generation_floor = conn.execute(
+            """
+            SELECT COALESCE(MAX(generation_id), 0)
+            FROM generation_runs
+            WHERE submission_id = ?
+            """,
+            (submission_id,),
+        ).fetchone()[0]
 
         try:
             result = generate_feedback_for_submission(
                 conn,
                 submission_id=submission_id,
-                provider=data.get('provider') or DEFAULT_FEEDBACK_PROVIDER,
-                model=data.get('model'),
+                provider=provider,
+                model=model,
                 per_cue_top_k=per_cue_top_k,
                 max_final_chunks=max_final_chunks,
                 temperature=temperature if temperature is not None else 0.2,
@@ -1393,10 +1371,51 @@ def generate_feedback():
                 feedback_length=feedback_length,
                 feedback_tone=feedback_tone,
             )
-        except ValueError as err:
-            return jsonify({'error': str(err)}), 400
-        except RuntimeError as err:
+        except Exception as err:
+            failed = conn.execute(
+                """
+                SELECT
+                    generation_id,
+                    llm_provider,
+                    llm_model,
+                    error_message,
+                    provider_error_code,
+                    provider_http_status,
+                    provider_request_id,
+                    completed_at
+                FROM generation_runs
+                WHERE submission_id = ?
+                  AND generation_id > ?
+                  AND status = 'failed'
+                ORDER BY generation_id DESC
+                LIMIT 1
+                """,
+                (submission_id, generation_floor),
+            ).fetchone()
+            if failed is not None:
+                return jsonify({
+                    'error': failed['error_message'] or str(err),
+                    'generation_error': {
+                        'generation_id': failed['generation_id'],
+                        'provider': failed['llm_provider'],
+                        'model': failed['llm_model'],
+                        'code': failed['provider_error_code'],
+                        'http_status': failed['provider_http_status'],
+                        'request_id': failed['provider_request_id'],
+                        'message': failed['error_message'] or str(err),
+                        'occurred_at': failed['completed_at'],
+                    },
+                }), 502
+            if isinstance(err, ValueError):
+                return jsonify({'error': str(err)}), 400
             return jsonify({'error': str(err)}), 502
+
+        record_generated_feedback(
+            conn,
+            submission,
+            user['user_id'],
+            result.generation_id,
+        )
 
     return jsonify({
         'status': 'ok',
@@ -1425,24 +1444,32 @@ def generate_feedback():
     methods=['POST'],
 )
 def regenerate_criterion_feedback(generation_id, criterion_id):
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
-    if user.get('tutor_id') is None:
-        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     data = request.get_json(silent=True) or {}
     feedback_modifier_mode, feedback_length, feedback_tone = (
         _resolve_feedback_modifier_payload(data)
     )
     with connect_db() as conn:
-        generation = _fetch_authorised_generation(
+        generation = fetch_authorised_generation(
             conn,
             generation_id,
-            user['tutor_id'],
+            user['user_id'],
+            user.get('tutor_id'),
         )
         if generation is None:
             return jsonify({'error': 'Generation not found or not authorised'}), 404
+        workflow = generation_workflow(conn, generation)
+        if (
+            workflow is not None
+            and workflow['current_generation_id'] is not None
+            and int(workflow['current_generation_id']) != generation_id
+        ):
+            return jsonify({
+                'error': 'Previous generated versions are read-only.'
+            }), 409
 
         try:
             criterion_feedback = regenerate_feedback_for_criterion(
@@ -1471,14 +1498,29 @@ def regenerate_criterion_feedback(generation_id, criterion_id):
 
 @app.route('/api/feedback/<int:generation_id>/save', methods=['POST'])
 def save_feedback(generation_id):
-    user, error = api_session_user(required_role='educator')
+    user, error = _staff_api_user()
     if error:
         return error
-    if user.get('tutor_id') is None:
-        return jsonify({'error': 'Educator account is not linked to a tutor'}), 403
 
     data = request.get_json(silent=True) or {}
     with connect_db() as conn:
+        generation = fetch_authorised_generation(
+            conn,
+            generation_id,
+            user['user_id'],
+            user.get('tutor_id'),
+        )
+        if generation is None:
+            return jsonify({'error': 'Generation not found or not authorised'}), 404
+        workflow = generation_workflow(conn, generation)
+        if (
+            workflow is not None
+            and workflow['current_generation_id'] is not None
+            and int(workflow['current_generation_id']) != generation_id
+        ):
+            return jsonify({
+                'error': 'Previous generated versions are read-only.'
+            }), 409
         for item in data.get('criteria', []):
             conn.execute("""
                 UPDATE criterion_feedback
@@ -1507,7 +1549,16 @@ def save_feedback(generation_id):
 
         review_status = data.get('review_status') or data.get('status')
 
-        if review_status == 'reviewed':
+        if (
+            workflow is not None
+            and workflow['marking_status'] == 'marker_confirmed'
+            and review_status in ('pending', 'ai_generated')
+        ):
+            return jsonify({
+                'error': 'Confirmed feedback must be returned by a Unit Admin before editing.'
+            }), 409
+
+        if review_status == 'reviewed' and user.get('tutor_id') is not None:
             review = conn.execute(
                 """
                 SELECT review_id
@@ -1536,7 +1587,7 @@ def save_feedback(generation_id):
                     """,
                     (generation_id, user['tutor_id'], overall_comment),
                 )
-        elif review_status in ('pending', 'ai_generated'):
+        elif review_status in ('pending', 'ai_generated') and user.get('tutor_id') is not None:
             conn.execute(
                 """
                 DELETE FROM human_reviews
@@ -1544,6 +1595,13 @@ def save_feedback(generation_id):
                 """,
                 (generation_id, user['tutor_id']),
             )
+
+        update_feedback_workflow(
+            conn,
+            generation,
+            user['user_id'],
+            review_status,
+        )
 
         conn.commit()
     return jsonify({'status': 'ok', 'review_status': review_status})
@@ -1558,7 +1616,7 @@ def login():
                 """
                 SELECT
                     user_id, email, password_hash, role,
-                    session_version
+                    session_version, account_status
                 FROM users
                 WHERE lower(email)=lower(?)
                 """,
@@ -1581,7 +1639,11 @@ def login():
                     """,
                     (user["user_id"], user["user_id"]),
                 ).fetchone() is not None
-        if user and check_password_hash(user['password_hash'], password):
+        if (
+            user
+            and user['account_status'] == 'active'
+            and check_password_hash(user['password_hash'], password)
+        ):
             session.clear()
             session['user_id'] = user['user_id']
             session['email'] = user['email']
