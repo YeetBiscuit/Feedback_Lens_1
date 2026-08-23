@@ -1001,16 +1001,9 @@ def lead_reporting_data():
                 t.tutor_id AS educator_id,
                 of.overall_grade_band,
                 of.final_mark,
-                (SELECT MIN(dim_avg) FROM (
-                    SELECT AVG(je.score) AS dim_avg
-                    FROM judge_evaluations je
-                    WHERE je.generation_id = gr.generation_id
-                      AND je.accepted = 1
-                      AND je.score IS NOT NULL
-                    GROUP BY je.dimension
-                )) AS judge_min_score,
-                (SELECT MAX(je2.attempt_number) FROM judge_evaluations je2
-                 WHERE je2.generation_id = gr.generation_id) AS judge_attempts,
+                gqv.verdict AS quality_flag,
+                gqv.min_dimension_score AS judge_min_score,
+                gqv.attempts AS judge_attempts,
                 CASE
                     WHEN hr.review_id IS NOT NULL THEN 'reviewed'
                     WHEN gr.status = 'completed' THEN 'ai_generated'
@@ -1021,6 +1014,7 @@ def lead_reporting_data():
             JOIN assignments a ON a.assignment_id = gr.assignment_id
             JOIN units u ON u.unit_id = a.unit_id
             LEFT JOIN unit_tutors ut ON ut.unit_id = u.unit_id
+            LEFT JOIN generation_quality_verdicts gqv ON gqv.generation_id = gr.generation_id
             LEFT JOIN tutors t ON t.tutor_id = ut.tutor_id
             LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
             LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
@@ -1032,16 +1026,6 @@ def lead_reporting_data():
         """).fetchall()
 
     rows = [dict(r) for r in rows]
-    for r in rows:
-        min_score = r.get("judge_min_score")
-        if min_score is None:
-            r["quality_flag"] = None
-        elif min_score >= 4:
-            r["quality_flag"] = (
-                "passed_after_revision" if (r.get("judge_attempts") or 1) > 1 else "passed"
-            )
-        else:
-            r["quality_flag"] = "needs_review"
 
     return jsonify({'submissions': rows})
 
@@ -1292,6 +1276,18 @@ def get_feedback(generation_id):
             and workflow['marking_status'] == 'marker_confirmed'
         )
     )
+
+    with connect_db() as conn:
+        verdict = conn.execute(
+            """
+            SELECT verdict, min_dimension_score, attempts, threshold
+            FROM generation_quality_verdicts
+            WHERE generation_id = ?
+            """,
+            (generation_id,),
+        ).fetchone()
+    run['quality_verdict'] = dict(verdict) if verdict else None
+
     return jsonify({
         'run': run,
         'overall_feedback': overall,
@@ -1674,7 +1670,9 @@ def login():
             session['email'] = user['email']
             session['role'] = user['role']
             session['session_version'] = user['session_version']
-            if has_admin_scope:
+            if user['role'] == 'lead_lecturer':
+                return redirect('/leadLecture')
+            elif has_admin_scope:
                 return redirect('/admin/units')
             elif user['role'] == 'educator':
                 return redirect('/educator')

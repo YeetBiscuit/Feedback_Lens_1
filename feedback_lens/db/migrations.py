@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-CURRENT_SCHEMA_VERSION = 9
+CURRENT_SCHEMA_VERSION = 10
 MIGRATIONS_DIR = Path(__file__).resolve().parents[1] / "setup" / "migrations"
 
 
@@ -1836,6 +1836,9 @@ def _migration_checksum(version: int) -> str:
     elif version == 9:
         migration_path = MIGRATIONS_DIR / "009_organization_memberships.sql"
         content = migration_bytes(migration_path)
+    elif version == 10:
+        migration_path = MIGRATIONS_DIR / "010_generation_quality_verdicts.sql"
+        content = migration_path.read_bytes()
     else:
         raise ValueError(f"Unknown migration version: {version}")
 
@@ -1926,6 +1929,16 @@ MIGRATIONS = (
         lambda conn: _execute_sql_script(
             conn,
             (MIGRATIONS_DIR / "009_organization_memberships.sql").read_text(
+                encoding="utf-8"
+            ),
+        ),
+    ),
+        (
+        10,
+        "generation_quality_verdicts",
+        lambda conn: _execute_sql_script(
+            conn,
+            (MIGRATIONS_DIR / "010_generation_quality_verdicts.sql").read_text(
                 encoding="utf-8"
             ),
         ),

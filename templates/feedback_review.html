@@ -105,6 +105,11 @@ input[type=number]{width:100%;padding:.5rem .7rem;border:1px solid #d1d5db;borde
 .btn-save{background:#fff;border:1px solid #d1d5db;color:#374151}
 .btn-save:hover{background:#f9fafb}
 
+.quality-banner{margin:0 0 1rem;padding:.85rem 1.1rem;border-radius:10px;border:1px solid;font-size:.875rem;line-height:1.55}
+.quality-banner.warn{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.quality-banner.revised{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.quality-banner strong{display:block;margin-bottom:.25rem;font-size:.9375rem}
+
 .loading{text-align:center;padding:3rem;color:#888}
 </style>
 </head>
@@ -436,6 +441,8 @@ function loadFeedback(){
       var n = parseInt(c) - 1;
       if(n >= 0 && n < total) idx = n;
     }
+    
+    renderQualityBanner(d.run.quality_verdict);
 
     drawPage();
   });
@@ -618,6 +625,38 @@ function goBack(){
       location.href = '/educator';
     }
   }
+}
+
+function renderQualityBanner(verdict){
+  var existing = document.getElementById('quality-banner');
+  if(existing) existing.remove();
+  if(!verdict) return;
+
+  var cls = 'warn';
+  var text = null;
+
+  if(verdict.verdict === 'needs_review'){
+    text = '<strong>This feedback did not meet the quality standard.</strong>'
+      + 'An automated check scored it below the acceptable level, and regenerating it did not resolve the issue. '
+      + 'Treat it as a draft for reference only: read it closely and revise before passing it on.';
+  } else if(verdict.verdict === 'judge_failed'){
+    text = '<strong>The automated quality check could not run.</strong>'
+      + 'This feedback has not been checked. Please review it as carefully as you would an unchecked draft.';
+  } else if(verdict.verdict === 'passed_after_revision'){
+    cls = 'revised';
+    text = '<strong>This feedback was revised before it met the standard.</strong>'
+      + 'The first draft fell short and was automatically regenerated. A closer read is worthwhile.';
+  }
+
+  if(!text) return;
+
+  var banner = document.createElement('div');
+  banner.id = 'quality-banner';
+  banner.className = 'quality-banner ' + cls;
+  banner.innerHTML = text;
+
+  var content = document.getElementById('content');
+  content.parentNode.insertBefore(banner, content);
 }
 </script>
 </body>
