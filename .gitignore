@@ -38,3 +38,10 @@ test_gate.py
 test_models.py
 probe_lowq.py
 probe_repeat.py
+test_consistency.py
+test_judge_candidates.py
+test_similarity_baseline.py
+test_consistency.py
+probe_lowq.py
+probe_repeat.py
+test_gate.py

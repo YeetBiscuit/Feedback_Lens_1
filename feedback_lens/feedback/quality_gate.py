@@ -24,7 +24,7 @@ QUALITY_THRESHOLD = 4
 MAX_ATTEMPTS = 3
 
 GATE_JUDGES = [
-    ("nvidia", "meta/llama-3.3-70b-instruct", "llama-3.3-70b"),
+    ("nvidia", "moonshotai/kimi-k3", "kimi-k3"),
     ("nvidia", "nvidia/nemotron-3-super-120b-a12b", "nemotron-3-super"),
 ]
 
