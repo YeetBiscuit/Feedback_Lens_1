@@ -7,7 +7,7 @@ Judge results are recorded for evaluation but are not surfaced to educators.
 """
 
 REVISION_PROVIDER = "nvidia"
-REVISION_MODEL = "openai/gpt-oss-120b"
+REVISION_MODEL = "minimaxai/minimax-m3"
 
 import json
 import sqlite3
