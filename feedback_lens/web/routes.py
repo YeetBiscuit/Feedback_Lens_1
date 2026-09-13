@@ -1563,3 +1563,25 @@ def password_reset_page(token_value: str):
         action_url=request.path,
         error=None,
     )
+
+
+@feature_blueprint.get("/admin/ai-quality")
+def admin_ai_quality_page():
+    user = _page_admin_user()
+    if user is None:
+        return redirect("/login")
+    return render_template(
+        "admin_ai_quality.html",
+        csrf_token=csrf_token(),
+        user=user,
+    )
+
+
+@feature_blueprint.get("/api/admin/judge-quality")
+@require_json_user
+def api_admin_judge_quality():
+    from feedback_lens.web.judge_quality_service import get_judge_quality_overview
+
+    with connect_db() as conn:
+        _json_user(conn)
+        return jsonify(get_judge_quality_overview(conn))

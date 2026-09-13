@@ -1,0 +1,478 @@
+{
+  "cohort_submissions": 20000,
+  "attempt_factors": [
+    1.0,
+    1.3,
+    1.5,
+    2.0
+  ],
+  "averages": {
+    "n_measured": 12,
+    "n_judges": 2,
+    "gen_input": 10962.416666666666,
+    "gen_output": 1269.8333333333333,
+    "gen_cacheable_now": 1869,
+    "gen_cacheable_reordered": 2796,
+    "judge_materials_fulltext": 9325.333333333334,
+    "judge_materials_chunks": 4138.916666666667,
+    "judge_split_fulltext": 41349.75,
+    "judge_merged_fulltext": 14272.916666666666,
+    "judge_split_chunks": 25792,
+    "judge_merged_chunks": 9087,
+    "judge_cacheable_prefix": 1478.5
+  },
+  "per_submission_per_attempt": {
+    "S0_current": 93661.91666666667,
+    "S1_chunk_materials": 62546.416666666664,
+    "S2_merge_dimensions": 39508.25,
+    "S3_both": 29136.416666666664
+  },
+  "cohort_projection": {
+    "S0_current": {
+      "attempts_1.0": 1873238333,
+      "attempts_1.3": 2435209833,
+      "attempts_1.5": 2809857500,
+      "attempts_2.0": 3746476667
+    },
+    "S1_chunk_materials": {
+      "attempts_1.0": 1250928333,
+      "attempts_1.3": 1626206833,
+      "attempts_1.5": 1876392500,
+      "attempts_2.0": 2501856667
+    },
+    "S2_merge_dimensions": {
+      "attempts_1.0": 790165000,
+      "attempts_1.3": 1027214500,
+      "attempts_1.5": 1185247500,
+      "attempts_2.0": 1580330000
+    },
+    "S3_both": {
+      "attempts_1.0": 582728333,
+      "attempts_1.3": 757546833,
+      "attempts_1.5": 874092500,
+      "attempts_2.0": 1165456667
+    }
+  },
+  "records": [
+    {
+      "generation_id": 91,
+      "gen_input": 11401,
+      "gen_output": 1859,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6618,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 1446,
+      "judge_materials_fulltext": 8377,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13472,
+          "specificity": 13451,
+          "actionability": 13440
+        },
+        "split_total": 40363,
+        "merged_total": 13944,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4353,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 9448,
+          "specificity": 9427,
+          "actionability": 9416
+        },
+        "split_total": 28291,
+        "merged_total": 9920,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 90,
+      "gen_input": 10883,
+      "gen_output": 1257,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6100,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 888,
+      "judge_materials_fulltext": 9599,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 14136,
+          "specificity": 14115,
+          "actionability": 14104
+        },
+        "split_total": 42355,
+        "merged_total": 14608,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4244,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8781,
+          "specificity": 8760,
+          "actionability": 8749
+        },
+        "split_total": 26290,
+        "merged_total": 9253,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 88,
+      "gen_input": 11067,
+      "gen_output": 2089,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6284,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 1660,
+      "judge_materials_fulltext": 9361,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 14670,
+          "specificity": 14649,
+          "actionability": 14638
+        },
+        "split_total": 43957,
+        "merged_total": 15142,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 3999,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 9309,
+          "specificity": 9288,
+          "actionability": 9277
+        },
+        "split_total": 27874,
+        "merged_total": 9781,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 87,
+      "gen_input": 10748,
+      "gen_output": 1245,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 5965,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 854,
+      "judge_materials_fulltext": 9599,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 14102,
+          "specificity": 14081,
+          "actionability": 14070
+        },
+        "split_total": 42253,
+        "merged_total": 14574,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4012,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8516,
+          "specificity": 8495,
+          "actionability": 8484
+        },
+        "split_total": 25495,
+        "merged_total": 8988,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 86,
+      "gen_input": 11100,
+      "gen_output": 2100,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6317,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 1697,
+      "judge_materials_fulltext": 8217,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13563,
+          "specificity": 13542,
+          "actionability": 13531
+        },
+        "split_total": 40636,
+        "merged_total": 14035,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4008,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 9355,
+          "specificity": 9334,
+          "actionability": 9323
+        },
+        "split_total": 28012,
+        "merged_total": 9827,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 85,
+      "gen_input": 11350,
+      "gen_output": 0,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6567,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 0,
+      "judge_materials_fulltext": 9599,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13214,
+          "specificity": 13193,
+          "actionability": 13182
+        },
+        "split_total": 39589,
+        "merged_total": 13686,
+        "cacheable_prefix": 1451,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4293,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 7909,
+          "specificity": 7888,
+          "actionability": 7877
+        },
+        "split_total": 23674,
+        "merged_total": 8381,
+        "cacheable_prefix": 1451,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 84,
+      "gen_input": 11313,
+      "gen_output": 1805,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6530,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 0,
+      "judge_materials_fulltext": 10945,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 14560,
+          "specificity": 14539,
+          "actionability": 14528
+        },
+        "split_total": 43627,
+        "merged_total": 15032,
+        "cacheable_prefix": 1451,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4277,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 7893,
+          "specificity": 7872,
+          "actionability": 7861
+        },
+        "split_total": 23626,
+        "merged_total": 8365,
+        "cacheable_prefix": 1451,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 83,
+      "gen_input": 10743,
+      "gen_output": 955,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 5960,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 638,
+      "judge_materials_fulltext": 9551,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13838,
+          "specificity": 13817,
+          "actionability": 13806
+        },
+        "split_total": 41461,
+        "merged_total": 14310,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4010,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8298,
+          "specificity": 8277,
+          "actionability": 8266
+        },
+        "split_total": 24841,
+        "merged_total": 8770,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 82,
+      "gen_input": 10805,
+      "gen_output": 996,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6022,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 707,
+      "judge_materials_fulltext": 8196,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 12552,
+          "specificity": 12531,
+          "actionability": 12520
+        },
+        "split_total": 37603,
+        "merged_total": 13024,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4030,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8386,
+          "specificity": 8365,
+          "actionability": 8354
+        },
+        "split_total": 25105,
+        "merged_total": 8858,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 81,
+      "gen_input": 10858,
+      "gen_output": 982,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6075,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 714,
+      "judge_materials_fulltext": 9599,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13962,
+          "specificity": 13941,
+          "actionability": 13930
+        },
+        "split_total": 41833,
+        "merged_total": 14434,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4501,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8864,
+          "specificity": 8843,
+          "actionability": 8832
+        },
+        "split_total": 26539,
+        "merged_total": 9336,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 80,
+      "gen_input": 10789,
+      "gen_output": 1015,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 6006,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 732,
+      "judge_materials_fulltext": 9521,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13902,
+          "specificity": 13881,
+          "actionability": 13870
+        },
+        "split_total": 41653,
+        "merged_total": 14374,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 4030,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8411,
+          "specificity": 8390,
+          "actionability": 8379
+        },
+        "split_total": 25180,
+        "merged_total": 8883,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    },
+    {
+      "generation_id": 79,
+      "gen_input": 10492,
+      "gen_output": 935,
+      "gen_cacheable_now": 1869,
+      "gen_cacheable_reordered": 2796,
+      "gen_retrieved": 5709,
+      "gen_spec": 927,
+      "gen_dynamic_tail": 1987,
+      "feedback_tokens": 651,
+      "judge_materials_fulltext": 9340,
+      "judge_fulltext": {
+        "per_dimension": {
+          "grounding": 13640,
+          "specificity": 13619,
+          "actionability": 13608
+        },
+        "split_total": 40867,
+        "merged_total": 14112,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      },
+      "judge_materials_chunks": 3910,
+      "judge_chunks": {
+        "per_dimension": {
+          "grounding": 8210,
+          "specificity": 8189,
+          "actionability": 8178
+        },
+        "split_total": 24577,
+        "merged_total": 8682,
+        "cacheable_prefix": 1484,
+        "protocol_tokens": 219
+      }
+    }
+  ]
+}

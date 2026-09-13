@@ -1,0 +1,186 @@
+{% extends "admin_base.html" %}
+{% block title %}AI Quality - FeedbackLens Admin{% endblock %}
+
+{% block content %}
+<style>
+  .aiq-head { margin-bottom: 24px; }
+  .aiq-head h1 { margin: 0 0 6px; font-size: 22px; }
+  .aiq-head p { margin: 0; color: #666; font-size: 14px; max-width: 720px; }
+  .aiq-cards { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+  .aiq-card { background: #fff; border: 1px solid #e4e4e4; border-radius: 10px;
+              padding: 16px 20px; min-width: 150px; }
+  .aiq-card .val { font-size: 26px; font-weight: 600; }
+  .aiq-card .lbl { font-size: 12px; color: #777; text-transform: uppercase;
+                   letter-spacing: .04em; margin-top: 4px; }
+  .aiq-judge { background: #fff; border: 1px solid #e4e4e4; border-radius: 10px;
+               padding: 18px 20px; margin-bottom: 18px; }
+  .aiq-judge-name { font-weight: 600; font-size: 15px; }
+  .aiq-judge-meta { font-size: 12px; color: #777; margin-top: 2px; }
+  .aiq-dims { display: flex; gap: 28px; margin-top: 18px; flex-wrap: wrap; }
+  .aiq-dim { flex: 1; min-width: 190px; }
+  .aiq-dim-name { font-size: 12px; text-transform: uppercase; color: #777;
+                  letter-spacing: .04em; margin-bottom: 10px; }
+  .aiq-bars { display: flex; align-items: flex-end; gap: 8px; height: 96px; }
+  .aiq-bar-col { flex: 1; display: flex; flex-direction: column;
+                 align-items: center; justify-content: flex-end; height: 100%; }
+  .aiq-bar { width: 100%; background: #4a7ebb; border-radius: 3px 3px 0 0;
+             min-height: 2px; }
+  .aiq-bar.empty { background: #ededed; }
+  .aiq-bar-n { font-size: 11px; color: #555; margin-bottom: 3px; }
+  .aiq-axis { display: flex; gap: 8px; margin-top: 6px; }
+  .aiq-axis span { flex: 1; text-align: center; font-size: 11px; color: #888; }
+  .aiq-flag { margin-top: 14px; padding: 9px 12px; background: #fdf5e6;
+              border-left: 3px solid #d9a441; font-size: 13px; color: #5c4413; }
+  .aiq-table { width: 100%; border-collapse: collapse; background: #fff;
+               border: 1px solid #e4e4e4; border-radius: 10px; overflow: hidden; }
+  .aiq-table th, .aiq-table td { padding: 10px 14px; text-align: left;
+                                 font-size: 13px; border-bottom: 1px solid #f0f0f0; }
+  .aiq-table th { background: #fafafa; font-weight: 600; color: #555;
+                  font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .aiq-section { font-size: 15px; font-weight: 600; margin: 30px 0 12px; }
+  .aiq-empty { color: #888; font-size: 14px; padding: 30px 0; }
+</style>
+
+<div class="aiq-head">
+  <h1>AI Quality</h1>
+  <p>Judge scores recorded by the quality gate. These are internal evaluation
+     figures and are not shown to educators or lead lecturers.</p>
+</div>
+
+<div id="aiq-body"><div class="aiq-empty">Loading...</div></div>
+
+<script>
+const DIM_LABEL = {
+  grounding: 'Grounding',
+  specificity: 'Specificity',
+  actionability: 'Actionability'
+};
+
+function esc(value) {
+  const d = document.createElement('div');
+  d.textContent = value == null ? '' : value;
+  return d.innerHTML;
+}
+
+function barsFor(counts, range, peak) {
+  let cols = '';
+  let axis = '';
+  range.forEach(function (score) {
+    const n = counts[score] || 0;
+    const pct = peak > 0 ? Math.round((n / peak) * 100) : 0;
+    cols += '<div class="aiq-bar-col">'
+          + '<div class="aiq-bar-n">' + (n || '') + '</div>'
+          + '<div class="aiq-bar' + (n === 0 ? ' empty' : '') + '" '
+          + 'style="height:' + (n === 0 ? 2 : Math.max(pct, 4)) + '%"></div>'
+          + '</div>';
+    axis += '<span>' + score + '</span>';
+  });
+  return '<div class="aiq-bars">' + cols + '</div>'
+       + '<div class="aiq-axis">' + axis + '</div>';
+}
+
+function renderJudge(judge, data) {
+  const dist = data.distribution[judge.judge_model] || {};
+  let peak = 0;
+  data.dimensions.forEach(function (dim) {
+    const counts = dist[dim] || {};
+    data.score_range.forEach(function (s) {
+      if ((counts[s] || 0) > peak) peak = counts[s];
+    });
+  });
+
+  let dims = '';
+  data.dimensions.forEach(function (dim) {
+    dims += '<div class="aiq-dim">'
+          + '<div class="aiq-dim-name">' + (DIM_LABEL[dim] || dim) + '</div>'
+          + barsFor(dist[dim] || {}, data.score_range, peak)
+          + '</div>';
+  });
+
+  let flag = '';
+  if (judge.judgements >= 20 && judge.highest < 5) {
+    flag = '<div class="aiq-flag">Never awarded 5 across '
+         + judge.judgements + ' judgements. This judge is using a compressed '
+         + 'range, so its scores are not directly comparable with a judge that '
+         + 'uses the full scale.</div>';
+  }
+
+  return '<div class="aiq-judge">'
+       + '<div class="aiq-judge-name">' + esc(judge.judge_model) + '</div>'
+       + '<div class="aiq-judge-meta">' + esc(judge.providers)
+       + ' &middot; ' + judge.judgements + ' judgements &middot; range '
+       + judge.lowest + '-' + judge.highest + ' &middot; mean '
+       + judge.mean_score + ' &middot; ' + esc(judge.first_used) + ' to '
+       + esc(judge.last_used) + '</div>'
+       + '<div class="aiq-dims">' + dims + '</div>'
+       + flag
+       + '</div>';
+}
+
+function render(data) {
+  const body = document.getElementById('aiq-body');
+
+  if (!data.judges.length) {
+    body.innerHTML = '<div class="aiq-empty">No judge evaluations recorded yet.</div>';
+    return;
+  }
+
+  const verdictTotal = data.verdicts.reduce(function (sum, v) { return sum + v.n; }, 0);
+  const passed = data.verdicts
+    .filter(function (v) { return v.verdict.indexOf('passed') === 0; })
+    .reduce(function (sum, v) { return sum + v.n; }, 0);
+
+  let html = '<div class="aiq-cards">'
+    + '<div class="aiq-card"><div class="val">' + data.total_judgements
+    + '</div><div class="lbl">Judgements</div></div>'
+    + '<div class="aiq-card"><div class="val">' + data.judges.length
+    + '</div><div class="lbl">Judges used</div></div>'
+    + '<div class="aiq-card"><div class="val">' + verdictTotal
+    + '</div><div class="lbl">Generations gated</div></div>'
+    + '<div class="aiq-card"><div class="val">'
+    + (verdictTotal ? Math.round((passed / verdictTotal) * 100) + '%' : '-')
+    + '</div><div class="lbl">Passed</div></div>'
+    + '</div>';
+
+  html += '<div class="aiq-section">Score distribution by judge</div>';
+  data.judges.forEach(function (judge) {
+    html += renderJudge(judge, data);
+  });
+
+  html += '<div class="aiq-section">Verdicts</div>'
+    + '<table class="aiq-table"><thead><tr>'
+    + '<th>Verdict</th><th>Count</th><th>Mean attempts</th>'
+    + '</tr></thead><tbody>';
+  data.verdicts.forEach(function (v) {
+    html += '<tr><td>' + esc(v.verdict) + '</td><td>' + v.n
+          + '</td><td>' + v.mean_attempts + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  html += '<div class="aiq-section">Per dimension</div>'
+    + '<table class="aiq-table"><thead><tr>'
+    + '<th>Judge</th><th>Dimension</th><th>N</th><th>Mean</th><th>Range</th>'
+    + '</tr></thead><tbody>';
+  data.by_dimension.forEach(function (row) {
+    html += '<tr><td>' + esc(row.judge_model) + '</td><td>'
+          + (DIM_LABEL[row.dimension] || esc(row.dimension)) + '</td><td>'
+          + row.judgements + '</td><td>' + row.mean_score + '</td><td>'
+          + row.lowest + '-' + row.highest + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  body.innerHTML = html;
+}
+
+fetch('/api/admin/judge-quality')
+  .then(function (r) {
+    if (!r.ok) throw new Error('Request failed: ' + r.status);
+    return r.json();
+  })
+  .then(render)
+  .catch(function (err) {
+    document.getElementById('aiq-body').innerHTML =
+      '<div class="aiq-empty">Could not load judge data. ' + esc(err.message) + '</div>';
+  });
+</script>
+{% endblock %}

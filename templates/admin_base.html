@@ -15,6 +15,7 @@
   <div class="nav-center">
     <a class="nav-link" data-admin-nav="dashboard" href="/admin">Dashboard</a>
     <a class="nav-link" data-admin-nav="units" href="/admin/units">Units</a>
+    <a class="nav-link" data-admin-nav="ai-quality" href="/admin/ai-quality">AI Quality</a>
   </div>
   <div class="nav-right">
     <div class="font-toggle">
@@ -82,7 +83,10 @@ userMenu.addEventListener('click', event => event.stopPropagation());
 const unitsRoute = location.pathname.startsWith('/admin/unit') ||
   location.pathname.startsWith('/admin/assessment') ||
   location.pathname === '/admin/units';
-document.querySelector('[data-admin-nav="' + (unitsRoute ? 'units' : 'dashboard') + '"]').classList.add('active');
+const navKey = location.pathname.indexOf('/admin/ai-quality') === 0 ? 'ai-quality'
+             : (unitsRoute ? 'units' : 'dashboard');
+const navEl = document.querySelector('[data-admin-nav="' + navKey + '"]');
+if (navEl) navEl.classList.add('active');
 
 function setAdminRole(role){
   document.getElementById('nav-role').textContent = role || '';
