@@ -352,7 +352,7 @@ def _student_identifier_or_error():
     return user, sid, None
 
 
-def _can_evaluate_feedback(conn, user, generation_id):
+def _feedback_evaluation_participant_role(conn, user, generation_id):
     if user["role"] == "student":
         student = conn.execute(
             """
@@ -363,8 +363,8 @@ def _can_evaluate_feedback(conn, user, generation_id):
             (user["user_id"],),
         ).fetchone()
         if student is None or not student["student_identifier"]:
-            return False
-        return (
+            return None
+        can_evaluate = (
             conn.execute(
                 """
                 SELECT 1
@@ -384,26 +384,17 @@ def _can_evaluate_feedback(conn, user, generation_id):
             ).fetchone()
             is not None
         )
+        return "student" if can_evaluate else None
 
-    if user["role"] == "educator" and user.get("tutor_id") is not None:
-        return (
-            conn.execute(
-                """
-                SELECT 1
-                FROM generation_runs AS gr
-                JOIN assignments AS a
-                  ON a.assignment_id = gr.assignment_id
-                JOIN unit_tutors AS ut
-                  ON ut.unit_id = a.unit_id
-                WHERE gr.generation_id = ?
-                  AND ut.tutor_id = ?
-                """,
-                (generation_id, user["tutor_id"]),
-            ).fetchone()
-            is not None
-        )
+    generation = fetch_authorised_generation(
+        conn,
+        generation_id,
+        user["user_id"],
+    )
+    if generation is not None:
+        return "educator"
 
-    return False
+    return None
 
 
 @app.route(
@@ -414,16 +405,20 @@ def embedded_feedback_evaluation(generation_id):
     user, error = api_session_user()
     if error:
         return error
-    participant_role = user.get("role")
-    if participant_role not in EVALUATION_QUESTIONS:
-        return jsonify({"error": "Forbidden"}), 403
     rater_key_hash = pseudonymous_rater_key(
         user["user_id"],
         app.secret_key,
     )
 
     with connect_db() as conn:
-        if not _can_evaluate_feedback(conn, user, generation_id):
+        participant_role = _feedback_evaluation_participant_role(
+            conn,
+            user,
+            generation_id,
+        )
+        if participant_role is None:
+            if user.get("role") not in EVALUATION_QUESTIONS:
+                return jsonify({"error": "Forbidden"}), 403
             return jsonify({"error": "Feedback not found"}), 404
 
         if request.method == "POST":
@@ -1210,8 +1205,6 @@ def get_feedback(generation_id):
             conn,
             generation_id,
             user['user_id'],
-            user.get('tutor_id'),
-            allow_admin_view=True,
         )
         if authorised is None:
             return jsonify({'error': 'Generation not found or not authorised'}), 404
@@ -1342,7 +1335,6 @@ def generate_feedback():
             conn,
             submission_id,
             user['user_id'],
-            user.get('tutor_id'),
         )
         if submission is None:
             return jsonify({'error': 'Submission not found or not authorised'}), 404
@@ -1482,7 +1474,6 @@ def regenerate_criterion_feedback(generation_id, criterion_id):
             conn,
             generation_id,
             user['user_id'],
-            user.get('tutor_id'),
         )
         if generation is None:
             return jsonify({'error': 'Generation not found or not authorised'}), 404
@@ -1533,7 +1524,6 @@ def save_feedback(generation_id):
             conn,
             generation_id,
             user['user_id'],
-            user.get('tutor_id'),
         )
         if generation is None:
             return jsonify({'error': 'Generation not found or not authorised'}), 404

@@ -55,9 +55,8 @@ def fetch_authorised_submission(
     conn: sqlite3.Connection,
     submission_id: int,
     user_id: int,
-    tutor_id: int | None = None,
 ) -> sqlite3.Row | None:
-    v2 = conn.execute(
+    return conn.execute(
         """
         SELECT
             submission.submission_id,
@@ -72,33 +71,14 @@ def fetch_authorised_submission(
           ON attempt.legacy_submission_id = submission.submission_id
         JOIN current_summative_attempts AS current
           ON current.submission_attempt_id = attempt.submission_attempt_id
-        LEFT JOIN marker_assignments AS marker
+        JOIN marker_assignments AS marker
           ON marker.submission_attempt_id = attempt.submission_attempt_id
          AND marker.active = 1
+         AND marker.marker_user_id = ?
         WHERE submission.submission_id = ?
           AND attempt.validity_status = 'valid'
         """,
-        (submission_id,),
-    ).fetchone()
-    if v2 is not None:
-        return v2 if v2["marker_user_id"] == user_id else None
-    if tutor_id is None:
-        return None
-    return conn.execute(
-        """
-        SELECT
-            submission.submission_id,
-            submission.assignment_id,
-            assignment.unit_id
-        FROM student_submissions AS submission
-        JOIN assignments AS assignment
-          ON assignment.assignment_id = submission.assignment_id
-        JOIN unit_tutors AS unit_tutor
-          ON unit_tutor.unit_id = assignment.unit_id
-        WHERE submission.submission_id = ?
-          AND unit_tutor.tutor_id = ?
-        """,
-        (submission_id, tutor_id),
+        (user_id, submission_id),
     ).fetchone()
 
 
@@ -129,11 +109,8 @@ def fetch_authorised_generation(
     conn: sqlite3.Connection,
     generation_id: int,
     user_id: int,
-    tutor_id: int | None = None,
-    *,
-    allow_admin_view: bool = False,
 ) -> sqlite3.Row | None:
-    v2 = conn.execute(
+    return conn.execute(
         """
         SELECT
             generation.generation_id,
@@ -165,42 +142,14 @@ def fetch_authorised_generation(
           ON plan.assessment_plan_id = version.assessment_plan_id
         JOIN unit_offerings AS offering
           ON offering.unit_offering_id = plan.unit_offering_id
-        LEFT JOIN marker_assignments AS marker
+        JOIN marker_assignments AS marker
           ON marker.submission_attempt_id = attempt.submission_attempt_id
          AND marker.active = 1
+         AND marker.marker_user_id = ?
         WHERE generation.generation_id = ?
           AND attempt.validity_status = 'valid'
         """,
-        (generation_id,),
-    ).fetchone()
-    if v2 is not None:
-        if v2["marker_user_id"] == user_id:
-            return v2
-        if allow_admin_view and can_administer_unit(
-            conn,
-            user_id,
-            int(v2["unit_offering_id"]),
-        ):
-            return v2
-        return None
-    if tutor_id is None:
-        return None
-    return conn.execute(
-        """
-        SELECT
-            generation.generation_id,
-            generation.submission_id,
-            generation.assignment_id,
-            assignment.unit_id
-        FROM generation_runs AS generation
-        JOIN assignments AS assignment
-          ON assignment.assignment_id = generation.assignment_id
-        JOIN unit_tutors AS unit_tutor
-          ON unit_tutor.unit_id = assignment.unit_id
-        WHERE generation.generation_id = ?
-          AND unit_tutor.tutor_id = ?
-        """,
-        (generation_id, tutor_id),
+        (user_id, generation_id),
     ).fetchone()
 
 
@@ -243,13 +192,9 @@ def get_unit_dashboard_data(
           ON workflow.submission_attempt_id = attempt.submission_attempt_id
         WHERE plan.unit_offering_id = ?
           AND attempt.validity_status = 'valid'
-          AND (? = 1 OR marker.marker_user_id = ?)
+          AND marker.marker_user_id = ?
         """,
-        (
-            unit["unit_offering_id"],
-            1 if unit["is_admin"] else 0,
-            user_id,
-        ),
+        (unit["unit_offering_id"], user_id),
     ).fetchone()
     return {"unit": unit, "counts": dict(counts) if counts else {}}
 
@@ -360,14 +305,13 @@ def get_unit_submissions_data(
         WHERE plan.unit_offering_id = ?
           AND attempt.validity_status = 'valid'
           AND attempt.status IN ('ready', 'imported', 'processing', 'completed')
-          AND (? = 1 OR marker.marker_user_id = ?)
+          AND marker.marker_user_id = ?
         ORDER BY lower(student.institution_student_identifier),
                  attempt.submission_attempt_id
         """,
         (
             user_id,
             unit["unit_offering_id"],
-            1 if unit["is_admin"] else 0,
             user_id,
         ),
     ).fetchall()

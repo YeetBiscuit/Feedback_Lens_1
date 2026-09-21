@@ -13,7 +13,6 @@ def _connect_app_feedback_db() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON;")
     conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
-    migrate_database(conn)
 
     conn.execute(
         """
@@ -66,6 +65,18 @@ def _connect_app_feedback_db() -> sqlite3.Connection:
         """
     )
     conn.commit()
+    migrate_database(conn)
+    conn.execute(
+        """
+        INSERT INTO marker_assignments
+            (submission_attempt_id, marker_user_id, assigned_by_user_id,
+             assignment_reason)
+        SELECT submission_attempt_id, 1, 1, 'test fixture assignment'
+        FROM submission_attempts
+        WHERE legacy_submission_id = 1
+        """
+    )
+    conn.commit()
     return conn
 
 
@@ -114,6 +125,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
 
         with (
             patch("app.connect_db", return_value=conn),
+            patch("app.record_generated_feedback"),
             patch(
                 "app.generate_feedback_with_quality_gate",
                 return_value=(_generation_result(), {"passed": True}),
@@ -153,6 +165,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
 
         with (
             patch("app.connect_db", return_value=conn),
+            patch("app.record_generated_feedback"),
             patch(
                 "app.generate_feedback_with_quality_gate",
                 return_value=(_generation_result(
@@ -199,6 +212,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
 
         with (
             patch("app.connect_db", return_value=conn),
+            patch("app.record_generated_feedback"),
             patch(
                 "app.generate_feedback_with_quality_gate",
                 return_value=(_generation_result(

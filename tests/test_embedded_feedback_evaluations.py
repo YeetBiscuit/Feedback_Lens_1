@@ -26,6 +26,17 @@ class EmbeddedFeedbackEvaluationRouteTests(unittest.TestCase):
             migrate_database(source)
             source.execute(
                 """
+                INSERT INTO marker_assignments
+                    (submission_attempt_id, marker_user_id,
+                     assigned_by_user_id, assignment_reason)
+                SELECT submission_attempt_id, 2, 1,
+                       'test fixture assignment'
+                FROM submission_attempts
+                WHERE legacy_submission_id = 1
+                """
+            )
+            source.execute(
+                """
                 INSERT INTO users
                     (
                         user_id,
@@ -91,6 +102,33 @@ class EmbeddedFeedbackEvaluationRouteTests(unittest.TestCase):
             )
             source.execute(
                 """
+                INSERT INTO users
+                    (
+                        user_id,
+                        email,
+                        password_hash,
+                        role,
+                        display_name
+                    )
+                VALUES
+                    (
+                        6,
+                        'lead-marker@example.test',
+                        'unused',
+                        'lead_lecturer',
+                        'Lead Marker'
+                    ),
+                    (
+                        7,
+                        'admin-marker@example.test',
+                        'unused',
+                        'admin',
+                        'Admin Marker'
+                    )
+                """
+            )
+            source.execute(
+                """
                 INSERT INTO unit_tutors(unit_id, tutor_id, role)
                 VALUES (1, 2, 'educator')
                 """
@@ -137,6 +175,34 @@ class EmbeddedFeedbackEvaluationRouteTests(unittest.TestCase):
             flask_session["email"] = user["email"]
             flask_session["role"] = user["role"]
             flask_session["session_version"] = user["session_version"]
+
+    def _reassign_marker(self, user_id: int) -> None:
+        with open_database(self.database_path) as conn:
+            attempt = conn.execute(
+                """
+                SELECT submission_attempt_id
+                FROM generation_runs
+                WHERE generation_id = 1
+                """
+            ).fetchone()
+            conn.execute(
+                """
+                UPDATE marker_assignments
+                SET active = 0, ended_at = CURRENT_TIMESTAMP
+                WHERE submission_attempt_id = ? AND active = 1
+                """,
+                (attempt["submission_attempt_id"],),
+            )
+            conn.execute(
+                """
+                INSERT INTO marker_assignments
+                    (submission_attempt_id, marker_user_id,
+                     assigned_by_user_id, assignment_reason)
+                VALUES (?, ?, 1, 'test reassignment')
+                """,
+                (attempt["submission_attempt_id"], user_id),
+            )
+            conn.commit()
 
     def test_student_can_create_update_read_and_withdraw_evaluation(
         self,
@@ -251,6 +317,50 @@ class EmbeddedFeedbackEvaluationRouteTests(unittest.TestCase):
             [("educator", 3), ("student", 4)],
         )
 
+    def test_assigned_lead_lecturer_evaluates_as_educator(self) -> None:
+        self._reassign_marker(6)
+        self._authenticate(6)
+
+        response = self.client.post(
+            "/api/feedback/1/embedded-evaluation",
+            json={
+                "rating_usefulness": 4,
+                "consent_confirmed": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["participant_role"], "educator")
+
+    def test_assigned_admin_evaluates_as_educator(self) -> None:
+        self._reassign_marker(7)
+        self._authenticate(7)
+
+        response = self.client.post(
+            "/api/feedback/1/embedded-evaluation",
+            json={
+                "rating_usefulness": 5,
+                "consent_confirmed": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["participant_role"], "educator")
+
+    def test_unassigned_lead_lecturer_remains_forbidden(self) -> None:
+        self._authenticate(6)
+
+        response = self.client.post(
+            "/api/feedback/1/embedded-evaluation",
+            json={
+                "rating_usefulness": 4,
+                "consent_confirmed": True,
+            },
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "Forbidden")
+
     def test_multiple_educators_do_not_overwrite_each_other(self) -> None:
         endpoint = "/api/feedback/1/embedded-evaluation"
         self._authenticate(2)
@@ -264,6 +374,32 @@ class EmbeddedFeedbackEvaluationRouteTests(unittest.TestCase):
         self.assertEqual(first.status_code, 200)
 
         self.client.get("/logout")
+        with open_database(self.database_path) as conn:
+            current = conn.execute(
+                """
+                SELECT submission_attempt_id
+                FROM marker_assignments
+                WHERE marker_user_id = 2 AND active = 1
+                """
+            ).fetchone()
+            conn.execute(
+                """
+                UPDATE marker_assignments
+                SET active = 0, ended_at = CURRENT_TIMESTAMP
+                WHERE submission_attempt_id = ? AND active = 1
+                """,
+                (current["submission_attempt_id"],),
+            )
+            conn.execute(
+                """
+                INSERT INTO marker_assignments
+                    (submission_attempt_id, marker_user_id,
+                     assigned_by_user_id, assignment_reason)
+                VALUES (?, 5, 1, 'test reassignment')
+                """,
+                (current["submission_attempt_id"],),
+            )
+            conn.commit()
         self._authenticate(5)
         second = self.client.post(
             endpoint,

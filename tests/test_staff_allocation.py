@@ -269,6 +269,144 @@ class StaffAllocationRouteTests(unittest.TestCase):
         self.assertEqual(other.status_code, 200)
         self.assertEqual(other.get_json()["submissions"], [])
 
+    def test_unit_admin_privileges_do_not_expand_staff_workspace_visibility(self):
+        conn = _allocation_connection()
+        attempt_ids = _attempt_ids(conn)
+        payload = {
+            "mode": "manual",
+            "submission_attempt_ids": [attempt_ids[0]],
+            "staff_user_id": 2,
+        }
+        preview = preview_allocation(conn, 1, 1, payload)
+        payload["preview_hash"] = preview["preview_hash"]
+        confirm_allocation(conn, 1, 1, payload)
+        conn.execute(
+            """
+            INSERT INTO unit_role_assignments
+                (unit_offering_id, user_id, role, assigned_by_user_id)
+            VALUES (1, 2, 'unit_admin', 1)
+            """
+        )
+        conn.commit()
+
+        client = self._client(2, "marker@example.test")
+        with (
+            patch("app.connect_db", return_value=conn),
+            patch(
+                "feedback_lens.web.routes.connect_db",
+                return_value=conn,
+            ),
+            patch(
+                "feedback_lens.web.security.connect_db",
+                return_value=conn,
+            ),
+        ):
+            submissions = client.get("/api/educator/unit/1/submissions")
+            dashboard = client.get("/api/educator/unit/1/dashboard")
+            admin_allocation = client.get(
+                "/api/admin/assessments/1/allocation"
+            )
+
+        self.assertEqual(submissions.status_code, 200)
+        self.assertEqual(len(submissions.get_json()["submissions"]), 1)
+        self.assertEqual(
+            submissions.get_json()["submissions"][0]["submission_attempt_id"],
+            attempt_ids[0],
+        )
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.get_json()["counts"]["total_submissions"], 1)
+        self.assertEqual(admin_allocation.status_code, 200)
+        self.assertEqual(len(admin_allocation.get_json()["submissions"]), 5)
+
+    def test_staff_feedback_apis_reject_unit_admins_unassigned_submission(self):
+        conn = _allocation_connection()
+        attempt_ids = _attempt_ids(conn)
+        payload = {
+            "mode": "manual",
+            "submission_attempt_ids": [attempt_ids[0]],
+            "staff_user_id": 2,
+        }
+        preview = preview_allocation(conn, 1, 1, payload)
+        payload["preview_hash"] = preview["preview_hash"]
+        confirm_allocation(conn, 1, 1, payload)
+        conn.execute(
+            """
+            INSERT INTO unit_role_assignments
+                (unit_offering_id, user_id, role, assigned_by_user_id)
+            VALUES (1, 2, 'unit_admin', 1)
+            """
+        )
+        unassigned = conn.execute(
+            """
+            SELECT submission_attempt_id, legacy_submission_id
+            FROM submission_attempts
+            WHERE submission_attempt_id != ?
+            ORDER BY submission_attempt_id
+            LIMIT 1
+            """,
+            (attempt_ids[0],),
+        ).fetchone()
+        conn.execute(
+            """
+            INSERT INTO generation_runs
+                (generation_id, submission_id, assignment_id, rubric_id,
+                 pipeline_version, llm_model, prompt_template_version,
+                 retrieval_strategy, status, completed_at,
+                 submission_attempt_id)
+            VALUES
+                (2, ?, 1, 1, 'baseline_direct_v1', 'sample-model',
+                 'baseline_direct_feedback_json_v1', 'none_direct_v1',
+                 'completed', CURRENT_TIMESTAMP, ?)
+            """,
+            (
+                unassigned["legacy_submission_id"],
+                unassigned["submission_attempt_id"],
+            ),
+        )
+        conn.commit()
+
+        client = self._client(2, "marker@example.test")
+        with (
+            patch("app.connect_db", return_value=conn),
+            patch("app.generate_feedback_with_quality_gate") as generate,
+            patch("app.regenerate_feedback_for_criterion") as regenerate,
+        ):
+            opened = client.get("/api/feedback/2")
+            generated = client.post(
+                "/api/feedback/generate",
+                json={"submission_id": unassigned["legacy_submission_id"]},
+            )
+            retried = client.post(
+                "/api/feedback/2/criterion/1/regenerate",
+                json={},
+            )
+            saved = client.post(
+                "/api/feedback/2/save",
+                json={"final_mark": 75, "review_status": "reviewed"},
+            )
+            evaluated = client.get(
+                "/api/feedback/2/embedded-evaluation"
+            )
+
+        for response in (opened, generated, retried, saved, evaluated):
+            self.assertEqual(response.status_code, 404)
+        generate.assert_not_called()
+        regenerate.assert_not_called()
+
+    def test_chief_admin_without_assignments_has_empty_staff_workspace(self):
+        conn = _allocation_connection()
+        client = self._client(1, "chief@example.test", "admin")
+        with patch("app.connect_db", return_value=conn):
+            submissions = client.get("/api/educator/unit/1/submissions")
+            dashboard = client.get("/api/educator/unit/1/dashboard")
+            opened = client.get("/api/feedback/1")
+
+        self.assertEqual(submissions.status_code, 200)
+        self.assertEqual(submissions.get_json()["submissions"], [])
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertEqual(dashboard.get_json()["counts"]["total_submissions"], 0)
+        self.assertEqual(opened.status_code, 404)
+
     def test_staff_dashboard_identifies_admin_workspace_access(self):
         conn = _allocation_connection()
         chief_client = self._client(1, "chief@example.test", "admin")
