@@ -7,7 +7,7 @@ Judge results are recorded for evaluation but are not surfaced to educators.
 """
 
 REVISION_PROVIDER = "nvidia"
-REVISION_MODEL = "openai/gpt-oss-120b"
+REVISION_MODEL = "minimaxai/minimax-m3"
 
 import json
 import sqlite3
@@ -24,7 +24,7 @@ QUALITY_THRESHOLD = 4
 MAX_ATTEMPTS = 3
 
 GATE_JUDGES = [
-    ("nvidia", "meta/llama-3.3-70b-instruct", "llama-3.3-70b"),
+    ("nvidia", "moonshotai/kimi-k3", "kimi-k3"),
     ("nvidia", "nvidia/nemotron-3-super-120b-a12b", "nemotron-3-super"),
 ]
 
@@ -262,6 +262,46 @@ def _build_revision_notes(judge_results: list[dict], previous_feedback: str) -> 
         + "\n\n".join(blocks)
     )
 
+def _record_verdict(
+    conn: sqlite3.Connection,
+    generation_id: int,
+    verdict: str,
+    min_score: float | None,
+    attempts: int,
+    note: str | None = None,
+) -> None:
+    """Persist the gate's decision.
+
+    The verdict is stored rather than derived on read so that later changes to
+    the threshold or judge lineup cannot silently rewrite past decisions.
+    """
+    conn.execute(
+        """
+        INSERT INTO generation_quality_verdicts
+            (generation_id, verdict, threshold, min_dimension_score,
+             attempts, judge_config, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(generation_id) DO UPDATE SET
+            verdict = excluded.verdict,
+            threshold = excluded.threshold,
+            min_dimension_score = excluded.min_dimension_score,
+            attempts = excluded.attempts,
+            judge_config = excluded.judge_config,
+            note = excluded.note,
+            decided_at = CURRENT_TIMESTAMP
+        """,
+        (
+            generation_id,
+            verdict,
+            QUALITY_THRESHOLD,
+            min_score,
+            attempts,
+            json.dumps([{"provider": p, "model": m} for p, m, _ in GATE_JUDGES]),
+            note,
+        ),
+    )
+    conn.commit()
+
 
 def generate_feedback_with_quality_gate(
     conn: sqlite3.Connection,
@@ -308,6 +348,9 @@ def generate_feedback_with_quality_gate(
                 {"attempt": attempt, "error": str(err), "generation_id": result.generation_id}
             )
             gate_report["judge_failed"] = True
+            _record_verdict(
+                conn, result.generation_id, "judge_failed", None, attempt, str(err)[:500]
+            )
             return result, gate_report
 
         passed = _passes_threshold(judge_results)
@@ -327,14 +370,26 @@ def generate_feedback_with_quality_gate(
 
         if passed:
             gate_report["passed"] = True
+            _record_verdict(
+                conn,
+                result.generation_id,
+                "passed" if attempt == 1 else "passed_after_revision",
+                min(_aggregate_scores(judge_results).values()),
+                attempt,
+            )
             break
 
         if attempt < MAX_ATTEMPTS:
             revision_notes = _build_revision_notes(judge_results, feedback_text)
             gate_report["regenerated"] = True
         else:
-            # Retries exhausted. The feedback still reaches the educator; it is
-            # surfaced to the lead lecturer for review rather than blocked.
             gate_report["escalated"] = True
+            _record_verdict(
+                conn,
+                result.generation_id,
+                "needs_review",
+                min(_aggregate_scores(judge_results).values()),
+                attempt,
+            )
 
     return result, gate_report

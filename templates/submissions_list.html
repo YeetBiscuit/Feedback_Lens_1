@@ -88,6 +88,10 @@ input[type=checkbox]{width:1rem;height:1rem;cursor:pointer}
 .grade-P{color:#d97706}
 .grade-N{color:#dc2626}
 
+.quality-tag{display:inline-block;margin-left:.4rem;padding:.1rem .45rem;border-radius:8px;font-size:.6875rem;font-weight:600;vertical-align:middle}
+.quality-tag.warn{background:#fee2e2;color:#991b1b}
+.quality-tag.revised{background:#fef3c7;color:#92400e}
+
 .status-select-inline{padding:.25rem .6rem;border-radius:12px;font-size:.75rem;font-weight:500;cursor:pointer;border:none;font-family:inherit;appearance:none}
 .status-select-inline.pending{background-color:#fef3c7;color:#92400e}
 .status-select-inline.ai{background-color:#dbeafe;color:#1e40af}
@@ -295,6 +299,19 @@ function getVisible(){
   });
 }
 
+function qualityTag(r){
+  if(r.quality_verdict === 'needs_review'){
+    return '<span class="quality-tag warn" title="Did not meet the quality standard">Below standard</span>';
+  }
+  if(r.quality_verdict === 'judge_failed'){
+    return '<span class="quality-tag warn" title="Automated quality check did not run">Unchecked</span>';
+  }
+  if(r.quality_verdict === 'passed_after_revision'){
+    return '<span class="quality-tag revised" title="Regenerated before it met the standard">Revised</span>';
+  }
+  return '';
+}
+
 function render(){
   var visible = getVisible();
   var body = document.getElementById('table-body');
@@ -348,7 +365,7 @@ function render(){
       + '<td>' + formatDate(r.submitted_at) + '</td>'
       + '<td><span class="' + gradeCls + '">' + grade + '</span></td>'
       + '<td>' + mark + '</td>'
-      + '<td>' + statusCell + '</td>'
+      + '<td>' + statusCell + qualityTag(r) + '</td>'
       + '<td class="action-cell">' + action + '</td>'
       + '</tr>';
   }).join('');

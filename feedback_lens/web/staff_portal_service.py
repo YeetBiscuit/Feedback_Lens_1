@@ -248,7 +248,8 @@ def get_unit_submissions_data(
                     THEN 'reviewed'
                 WHEN generation.status = 'completed' THEN 'ai_generated'
                 ELSE 'pending'
-            END AS review_status
+            END AS review_status,
+            verdict.verdict AS quality_verdict
         FROM current_summative_attempts AS current
         JOIN submission_attempts AS attempt
           ON attempt.submission_attempt_id = current.submission_attempt_id
@@ -287,6 +288,8 @@ def get_unit_submissions_data(
           )
         LEFT JOIN overall_feedback AS overall
           ON overall.generation_id = generation.generation_id
+        LEFT JOIN generation_quality_verdicts AS verdict
+          ON verdict.generation_id = generation.generation_id
         LEFT JOIN generation_runs AS failure
           ON failure.generation_id = (
               SELECT MAX(candidate.generation_id)
