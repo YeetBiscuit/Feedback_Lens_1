@@ -18,12 +18,17 @@ from feedback_lens.file_management.importers import (
     import_assignment_spec,
     import_rubric,
 )
-from feedback_lens.file_management.ingestion import ingest_material
+from feedback_lens.file_management.ingestion import (
+    ingest_material,
+    record_index_build,
+)
 from feedback_lens.file_management.indexing.embedding import (
-    MODEL_NAME,
     build_collection_name,
-    embed_and_store,
+    encode_chunks,
     get_chroma_client,
+    require_writable_unit_embedding_config,
+    store_chunk_embeddings,
+    unit_has_legacy_embeddings,
 )
 from feedback_lens.paths import PROJECT_ROOT
 from feedback_lens.web.admin_service import get_assessment_detail
@@ -251,6 +256,10 @@ def _handle_scoping_note_restore(
     ).fetchone()
     if row is None:
         raise RuntimeError("The scoping material no longer exists.")
+    embedding_config = require_writable_unit_embedding_config(
+        conn,
+        int(row["unit_id"]),
+    )
     if row["is_active"]:
         raise RuntimeError("The scoping material is already active.")
     if row["material_type"] == "deleted_scoping_note":
@@ -292,7 +301,18 @@ def _handle_scoping_note_restore(
         row["unit_code"],
         row["year"],
         row["semester"],
+        embedding_config,
     )
+    prepared_chunks = [
+        {
+            "text": old_chunk["chunk_text"],
+            "page_start": old_chunk["page_number_start"],
+            "page_end": old_chunk["page_number_end"],
+        }
+        for old_chunk in old_chunks
+    ]
+    # Avoid holding the SQLite write lock while the model is encoding text.
+    embeddings = encode_chunks(prepared_chunks, embedding_config)
     new_chunks = []
     vector_ids = []
     try:
@@ -319,7 +339,7 @@ def _handle_scoping_note_restore(
                 ),
             ).lastrowid
         )
-        for old_chunk in old_chunks:
+        for old_chunk, prepared_chunk in zip(old_chunks, prepared_chunks):
             chunk_id = int(
                 conn.execute(
                     """
@@ -344,28 +364,41 @@ def _handle_scoping_note_restore(
             )
             new_chunks.append(
                 {
+                    **prepared_chunk,
                     "chunk_id": chunk_id,
-                    "text": old_chunk["chunk_text"],
-                    "page_start": old_chunk["page_number_start"],
-                    "page_end": old_chunk["page_number_end"],
                 }
             )
-        vector_ids = embed_and_store(new_chunks, collection_name)
+        vector_ids = store_chunk_embeddings(
+            new_chunks,
+            embeddings,
+            collection_name,
+            embedding_config=embedding_config,
+        )
         for chunk, vector_id in zip(new_chunks, vector_ids):
             conn.execute(
                 """
                 INSERT INTO chunk_embedding_map
-                    (chunk_id, embedding_model, vector_store_name,
-                     vector_id)
-                VALUES (?, ?, ?, ?)
+                    (chunk_id, embedding_model, embedding_version,
+                     vector_store_name, vector_id)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 (
                     chunk["chunk_id"],
-                    MODEL_NAME,
+                    embedding_config.model_name,
+                    embedding_config.model_version,
                     collection_name,
                     vector_id,
                 ),
             )
+        record_index_build(
+            conn,
+            int(row["unit_id"]),
+            collection_name,
+            embedding_config,
+            new_chunks,
+            vector_ids,
+            str(old_chunks[0]["chunking_strategy"] or "naive_sliding_window"),
+        )
         record_audit_event(
             conn,
             "scoping_note.restored",
@@ -807,19 +840,20 @@ def deactivate_scoping_note(
             "Provide a reason for deactivation.",
             422,
         )
-    vector_ids = [
-        str(vector["vector_id"])
-        for vector in conn.execute(
-            """
-            SELECT map.vector_id
-            FROM chunk_embedding_map AS map
-            JOIN material_chunks AS chunk
-              ON chunk.chunk_id = map.chunk_id
-            WHERE chunk.material_id = ?
-            """,
-            (material_id,),
-        )
-    ]
+    vectors_by_collection: dict[str, list[str]] = {}
+    for vector in conn.execute(
+        """
+        SELECT map.vector_store_name, map.vector_id
+        FROM chunk_embedding_map AS map
+        JOIN material_chunks AS chunk ON chunk.chunk_id = map.chunk_id
+        WHERE chunk.material_id = ?
+        """,
+        (material_id,),
+    ):
+        vectors_by_collection.setdefault(
+            str(vector["vector_store_name"]),
+            [],
+        ).append(str(vector["vector_id"]))
     conn.execute(
         """
         UPDATE unit_materials
@@ -843,16 +877,12 @@ def deactivate_scoping_note(
         },
     )
     conn.commit()
-    if vector_ids:
-        collection_name = build_collection_name(
-            row["unit_code"],
-            row["year"],
-            row["semester"],
-        )
+    if vectors_by_collection:
         client = get_chroma_client()
-        existing = [collection.name for collection in client.list_collections()]
-        if collection_name in existing:
-            client.get_collection(collection_name).delete(ids=vector_ids)
+        existing = {collection.name for collection in client.list_collections()}
+        for collection_name, vector_ids in vectors_by_collection.items():
+            if collection_name in existing:
+                client.get_collection(collection_name).delete(ids=vector_ids)
 
 
 def enqueue_scoping_note_restore(
@@ -895,6 +925,15 @@ def enqueue_scoping_note_restore(
         raise ApiError(
             "scoping_material_active",
             "The scoping material is already active.",
+            409,
+        )
+    if unit_has_legacy_embeddings(conn, int(row["unit_id"])):
+        raise ApiError(
+            "legacy_unit_materials_read_only",
+            (
+                "This legacy Unit uses MiniLM retrieval. Its scoping "
+                "materials are read-only and cannot be restored."
+            ),
             409,
         )
     restored = conn.execute(
@@ -1036,31 +1075,26 @@ def delete_scoping_note(
             409,
         )
 
-    vector_ids = [
-        str(vector["vector_id"])
-        for vector in conn.execute(
-            """
-            SELECT map.vector_id
-            FROM chunk_embedding_map AS map
-            JOIN material_chunks AS chunk
-              ON chunk.chunk_id = map.chunk_id
-            WHERE chunk.material_id = ?
-            """,
-            (material_id,),
-        )
-    ]
-    collection_name = build_collection_name(
-        row["unit_code"],
-        row["year"],
-        row["semester"],
-    )
-    if vector_ids:
+    vectors_by_collection: dict[str, list[str]] = {}
+    for vector in conn.execute(
+        """
+        SELECT map.vector_store_name, map.vector_id
+        FROM chunk_embedding_map AS map
+        JOIN material_chunks AS chunk ON chunk.chunk_id = map.chunk_id
+        WHERE chunk.material_id = ?
+        """,
+        (material_id,),
+    ):
+        vectors_by_collection.setdefault(
+            str(vector["vector_store_name"]),
+            [],
+        ).append(str(vector["vector_id"]))
+    if vectors_by_collection:
         client = get_chroma_client()
-        existing = [
-            collection.name for collection in client.list_collections()
-        ]
-        if collection_name in existing:
-            client.get_collection(collection_name).delete(ids=vector_ids)
+        existing = {collection.name for collection in client.list_collections()}
+        for collection_name, vector_ids in vectors_by_collection.items():
+            if collection_name in existing:
+                client.get_collection(collection_name).delete(ids=vector_ids)
 
     source_path = row["source_file_path"]
     if source_path:

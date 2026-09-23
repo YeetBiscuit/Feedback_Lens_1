@@ -4,6 +4,7 @@ import sqlite3
 from feedback_lens.file_management.indexing.embedding import (
     build_collection_name,
     query_collection,
+    resolve_unit_embedding_config,
 )
 
 DEFAULT_PER_CUE_TOP_K = 5
@@ -112,6 +113,8 @@ def load_assignment_spec_cues(assignment_spec_row: sqlite3.Row) -> list[dict]:
 def _fetch_rows_by_vector_id(
     conn: sqlite3.Connection,
     collection_name: str,
+    embedding_model: str,
+    embedding_version: str | None,
     vector_ids: list[str],
 ) -> dict[str, sqlite3.Row]:
     if not vector_ids:
@@ -134,10 +137,17 @@ def _fetch_rows_by_vector_id(
         JOIN material_chunks AS mc ON mc.chunk_id = cem.chunk_id
         JOIN unit_materials AS um ON um.material_id = mc.material_id
         WHERE cem.vector_store_name = ?
+          AND cem.embedding_model = ?
+          AND cem.embedding_version IS ?
           AND cem.vector_id IN ({placeholders})
           AND um.is_active = 1
         """,
-        (collection_name, *vector_ids),
+        (
+            collection_name,
+            embedding_model,
+            embedding_version,
+            *vector_ids,
+        ),
     ).fetchall()
     return {row["vector_id"]: row for row in rows}
 
@@ -161,10 +171,15 @@ def retrieve_relevant_chunks(
     else:
         resolved_per_cue_top_k = DEFAULT_PER_CUE_TOP_K
 
+    embedding_config = resolve_unit_embedding_config(
+        conn,
+        int(unit_row["unit_id"]),
+    )
     collection_name = build_collection_name(
         unit_row["unit_code"],
         unit_row["year"],
         unit_row["semester"],
+        embedding_config,
     )
 
     raw_hits: list[dict] = []
@@ -176,8 +191,16 @@ def retrieve_relevant_chunks(
             cue_query_text,
             collection_name,
             n_results=max(resolved_per_cue_top_k, 1),
+            embedding_config=embedding_config,
         )
         for rank_position, result in enumerate(query_results, start=1):
+            distance = result["distance"]
+            if distance is None:
+                similarity_score = None
+            elif embedding_config.distance_metric == "cosine":
+                similarity_score = round(1 - distance, 6)
+            else:
+                similarity_score = round(1 / (1 + distance), 6)
             raw_hits.append(
                 {
                     "cue_order": cue["order"],
@@ -185,10 +208,8 @@ def retrieve_relevant_chunks(
                     "query_text": cue_query_text,
                     "rank_position": rank_position,
                     "vector_id": result["vector_id"],
-                    "distance": result["distance"],
-                    "similarity_score": None
-                    if result["distance"] is None
-                    else round(1 / (1 + result["distance"]), 6),
+                    "distance": distance,
+                    "similarity_score": similarity_score,
                 }
             )
             all_vector_ids.append(result["vector_id"])
@@ -199,6 +220,8 @@ def retrieve_relevant_chunks(
     row_by_vector_id = _fetch_rows_by_vector_id(
         conn,
         collection_name,
+        embedding_config.model_name,
+        embedding_config.model_version,
         sorted(set(all_vector_ids)),
     )
 

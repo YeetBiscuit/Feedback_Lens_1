@@ -230,6 +230,10 @@ This means feedback generation works from database records even if the original 
 
 Only unit materials are embedded into ChromaDB.
 
+New units use pinned `BAAI/bge-m3` dense embeddings in model-versioned cosine
+collections. Units that already have `all-MiniLM-L6-v2` vectors continue using
+their existing collections; those legacy unit-material indexes are read-only.
+
 The vector store contains:
 
 - chunk text

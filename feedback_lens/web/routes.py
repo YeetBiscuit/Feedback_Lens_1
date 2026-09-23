@@ -16,6 +16,9 @@ from flask import (
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from feedback_lens.db.connection import connect_db
+from feedback_lens.file_management.indexing.embedding import (
+    unit_has_legacy_embeddings,
+)
 from feedback_lens.web.account_service import (
     GENERIC_ACCOUNT_MESSAGE,
     complete_activation,
@@ -712,6 +715,28 @@ def api_upload_scoping_note(unit_offering_id: int):
             unit_offering_id,
         ):
             raise ApiError("unit_forbidden", "Not authorised.", 403)
+        offering = conn.execute(
+            """
+            SELECT legacy_unit_id
+            FROM unit_offerings
+            WHERE unit_offering_id = ?
+            """,
+            (unit_offering_id,),
+        ).fetchone()
+        if offering is None or offering["legacy_unit_id"] is None:
+            raise ApiError("unit_not_found", "Unit not found.", 404)
+        if unit_has_legacy_embeddings(
+            conn,
+            int(offering["legacy_unit_id"]),
+        ):
+            raise ApiError(
+                "legacy_unit_materials_read_only",
+                (
+                    "This legacy Unit uses MiniLM retrieval. Its scoping "
+                    "materials are read-only."
+                ),
+                409,
+            )
         files = request.files.getlist("files")
         if not files:
             files = [request.files.get("file")]

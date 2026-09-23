@@ -14,6 +14,11 @@ from feedback_lens.feedback.llm.providers import (
     list_feedback_models,
     validate_feedback_model,
 )
+from feedback_lens.file_management.indexing.embedding import (
+    DEFAULT_MODEL_NAME,
+    LEGACY_MODEL_NAME,
+    unit_has_legacy_embeddings,
+)
 from feedback_lens.paths import PROJECT_ROOT
 from feedback_lens.web.allocation_service import list_unit_staff
 from feedback_lens.web.common import record_audit_event, student_import_is_ready
@@ -838,6 +843,13 @@ def get_unit_detail(
         """,
         (unit_offering_id,),
     ).fetchall()
+    scoping_materials_read_only = bool(
+        unit["legacy_unit_id"] is not None
+        and unit_has_legacy_embeddings(
+            conn,
+            int(unit["legacy_unit_id"]),
+        )
+    )
     return {
         "unit": dict(unit),
         "assessments": [dict(row) for row in assessments],
@@ -849,6 +861,12 @@ def get_unit_detail(
             upload_jobs,
         ),
         "is_chief_admin": is_chief_admin(conn, user_id),
+        "scoping_materials_read_only": scoping_materials_read_only,
+        "embedding_model": (
+            LEGACY_MODEL_NAME
+            if scoping_materials_read_only
+            else DEFAULT_MODEL_NAME
+        ),
         "unit_code_editable": not any(
             material["material_type"] != "deleted_scoping_note"
             for material in notes

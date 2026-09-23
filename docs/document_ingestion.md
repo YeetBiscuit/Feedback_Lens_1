@@ -57,7 +57,7 @@ When you run `ingest.py`, the system:
 1. extracts pages from the source file
 2. stores the document in `unit_materials`
 3. chunks the extracted text into `material_chunks`
-4. embeds the chunks with `all-MiniLM-L6-v2`
+4. embeds the chunks with the unit's assigned embedding model
 5. stores vectors in the local `chromadb/` directory
 6. stores vector-to-chunk links in `chunk_embedding_map`
 
@@ -77,11 +77,21 @@ Embedding is handled in `feedback_lens/file_management/indexing/embedding.py`.
 
 Current defaults:
 
-- embedding model: `all-MiniLM-L6-v2`
+- embedding model for new units: `BAAI/bge-m3`
+- pinned revision: `5617a9f61b028005a4858fdac845db406aefb181`
+- mode: dense embeddings only
+- vector dimension and distance: 1024-dimensional normalized vectors with
+  cosine distance
 - vector store: local persistent ChromaDB in `chromadb/`
 - collection name: derived from `unit_code`, `year`, and `semester`
 
 Materials for the same unit accumulate in the same Chroma collection.
+
+Existing units with MiniLM embeddings keep their original model and collection
+name. Those units are read-only for unit materials and are not re-embedded.
+Units without embeddings are assigned BGE-M3 on their first material import;
+their collection name includes `_bge_m3_5617a9f` so 1024-dimensional BGE
+vectors can never be mixed with 384-dimensional MiniLM vectors.
 
 ## Assignment Specifications
 

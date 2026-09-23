@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import time
 import uuid
+from contextlib import closing
 from datetime import datetime, timezone
 
 from feedback_lens.db.connection import connect_db
 from feedback_lens.web.config import get_web_settings
+
+
+LOGGER = logging.getLogger(__name__)
+MAX_LOCK_RETRY_SECONDS = 10.0
 
 
 def enqueue_job(
@@ -51,6 +57,21 @@ def enqueue_job(
 
 def recover_stale_jobs(conn: sqlite3.Connection) -> int:
     stale_seconds = get_web_settings().job_stale_seconds
+    stale_modifier = f"-{stale_seconds} seconds"
+    stale_job = conn.execute(
+        """
+        SELECT 1
+        FROM processing_jobs
+        WHERE status = 'running'
+          AND datetime(COALESCE(heartbeat_at, locked_at))
+              <= datetime('now', ?)
+        LIMIT 1
+        """,
+        (stale_modifier,),
+    ).fetchone()
+    if stale_job is None:
+        return 0
+
     cursor = conn.execute(
         """
         UPDATE processing_jobs
@@ -75,7 +96,7 @@ def recover_stale_jobs(conn: sqlite3.Connection) -> int:
           AND datetime(COALESCE(heartbeat_at, locked_at))
               <= datetime('now', ?)
         """,
-        (f"-{stale_seconds} seconds",),
+        (stale_modifier,),
     )
     return int(cursor.rowcount)
 
@@ -84,6 +105,20 @@ def claim_next_job(
     conn: sqlite3.Connection,
     worker_id: str,
 ) -> sqlite3.Row | None:
+    candidate = conn.execute(
+        """
+        SELECT processing_job_id
+        FROM processing_jobs
+        WHERE status = 'queued'
+          AND datetime(available_at) <= datetime('now')
+          AND attempt_count < max_attempts
+        ORDER BY priority DESC, processing_job_id
+        LIMIT 1
+        """
+    ).fetchone()
+    if candidate is None:
+        return None
+
     conn.execute("BEGIN IMMEDIATE")
     try:
         row = conn.execute(
@@ -165,7 +200,7 @@ def _dispatch_job(
 
 def run_worker_once(worker_id: str | None = None) -> bool:
     resolved_worker_id = worker_id or f"worker-{uuid.uuid4().hex[:12]}"
-    with connect_db() as conn:
+    with closing(connect_db()) as conn:
         recover_stale_jobs(conn)
         conn.commit()
         job = claim_next_job(conn, resolved_worker_id)
@@ -174,7 +209,7 @@ def run_worker_once(worker_id: str | None = None) -> bool:
 
     job_id = int(job["processing_job_id"])
     try:
-        with connect_db() as conn:
+        with closing(connect_db()) as conn:
             result = _dispatch_job(conn, job)
             conn.execute(
                 """
@@ -196,7 +231,7 @@ def run_worker_once(worker_id: str | None = None) -> bool:
             )
             conn.commit()
     except Exception as exc:
-        with connect_db() as conn:
+        with closing(connect_db()) as conn:
             current = conn.execute(
                 """
                 SELECT attempt_count, max_attempts
@@ -241,7 +276,24 @@ def run_worker_once(worker_id: str | None = None) -> bool:
 
 def run_worker_forever(poll_seconds: float = 1.0) -> None:
     worker_id = f"worker-{uuid.uuid4().hex[:12]}"
+    lock_retry_seconds = max(float(poll_seconds), 0.1)
     while True:
-        worked = run_worker_once(worker_id)
+        try:
+            worked = run_worker_once(worker_id)
+        except sqlite3.OperationalError as exc:
+            if "locked" not in str(exc).casefold():
+                raise
+            LOGGER.warning(
+                "SQLite is temporarily locked; worker %s will retry in %.1fs.",
+                worker_id,
+                lock_retry_seconds,
+            )
+            time.sleep(lock_retry_seconds)
+            lock_retry_seconds = min(
+                lock_retry_seconds * 2,
+                MAX_LOCK_RETRY_SECONDS,
+            )
+            continue
+        lock_retry_seconds = max(float(poll_seconds), 0.1)
         if not worked:
             time.sleep(poll_seconds)

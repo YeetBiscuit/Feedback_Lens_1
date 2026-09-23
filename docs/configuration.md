@@ -281,8 +281,18 @@ Embedding is configured in `feedback_lens/file_management/indexing/embedding.py`
 
 Current defaults:
 
-- model: `all-MiniLM-L6-v2`
+- model for new units: `BAAI/bge-m3`
+- pinned revision: `5617a9f61b028005a4858fdac845db406aefb181`
+- embedding mode: dense, 1024 dimensions, normalized
+- Chroma distance metric: cosine
 - persistence directory: `chromadb/`
+
+Units that already contain `all-MiniLM-L6-v2` embeddings remain on their
+existing 384-dimensional MiniLM collections. Their unit-material collection is
+read-only: existing material can still be retrieved, deactivated, or deleted,
+but new material cannot be ingested and deactivated material cannot be
+restored. A unit without existing embeddings uses the pinned BGE-M3 model when
+its first material is ingested.
 
 Unit-material collections are named from:
 
@@ -291,6 +301,10 @@ Unit-material collections are named from:
 - `semester`
 
 The name is normalised into a Chroma-safe collection string.
+
+BGE-M3 collection names also include the model and short revision suffix, for
+example `comp3001_2027_s1_bge_m3_5617a9f`. Legacy MiniLM collection names are
+unchanged.
 
 ## Adding Another Provider
 
