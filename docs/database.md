@@ -237,7 +237,7 @@ their existing collections; those legacy unit-material indexes are read-only.
 The vector store contains:
 
 - chunk text
-- chunk metadata such as page range
+- chunk metadata such as page range or processed-slide range
 - vector IDs linked back to `material_chunks` through `chunk_embedding_map`
 
 Assignment specs, rubrics, and student submissions are stored in SQLite but are not currently embedded into ChromaDB.

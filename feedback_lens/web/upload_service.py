@@ -20,6 +20,7 @@ from feedback_lens.file_management.importers import (
 )
 from feedback_lens.file_management.ingestion import (
     ingest_material,
+    ingest_processed_slides,
     record_index_build,
 )
 from feedback_lens.file_management.indexing.embedding import (
@@ -201,7 +202,9 @@ def _handle_scoping_note(
             int(restore_material_id),
         )
     path = str(job["source_file_path"])
-    _require_text_document(path)
+    is_processed_slides = Path(path).suffix.lower() == ".json"
+    if not is_processed_slides:
+        _require_text_document(path)
     offering = conn.execute(
         """
         SELECT
@@ -217,13 +220,22 @@ def _handle_scoping_note(
     ).fetchone()
     if offering is None or offering["legacy_unit_id"] is None:
         raise ValueError("The Unit no longer exists.")
-    material_id = ingest_material(
-        conn,
-        path,
-        int(offering["legacy_unit_id"]),
-        "scoping_note",
-        str(payload.get("title") or Path(path).stem),
-    )
+    title = str(payload.get("title") or Path(path).stem)
+    if is_processed_slides:
+        material_id = ingest_processed_slides(
+            conn,
+            path,
+            int(offering["legacy_unit_id"]),
+            title,
+        )
+    else:
+        material_id = ingest_material(
+            conn,
+            path,
+            int(offering["legacy_unit_id"]),
+            "scoping_note",
+            title,
+        )
     record_audit_event(
         conn,
         "scoping_note.ingested",

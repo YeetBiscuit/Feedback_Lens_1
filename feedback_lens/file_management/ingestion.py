@@ -16,6 +16,12 @@ from feedback_lens.file_management.indexing.embedding import (
     require_writable_unit_embedding_config,
     store_chunk_embeddings,
 )
+from feedback_lens.file_management.processed_slides import (
+    SLIDE_CHUNKING_STRATEGY,
+    chunk_processed_slides,
+    load_processed_slides,
+    render_processed_slide_document,
+)
 
 
 DEFAULT_CHUNKING_STRATEGY = "naive_sliding_window"
@@ -275,6 +281,56 @@ def ingest_material(
         collection_name,
         week_number,
         assignment_id,
+    )
+
+
+def ingest_processed_slides(
+    conn: sqlite3.Connection,
+    file_path: str | Path,
+    unit_id: int,
+    title: str,
+    week_number: int | None = None,
+) -> int:
+    """Validate, chunk, and index an AI-assisted slide JSON document."""
+    path = Path(file_path)
+    embedding_config, collection_name = _unit_index_target(conn, unit_id)
+    source_hash = hash_file(path)
+    duplicate = conn.execute(
+        """
+        SELECT material_id
+        FROM unit_materials
+        WHERE unit_id = ?
+          AND source_content_hash = ?
+          AND is_active = 1
+        LIMIT 1
+        """,
+        (unit_id, source_hash),
+    ).fetchone()
+    if duplicate is not None:
+        raise ValueError(
+            "This processed slide file has already been imported "
+            f"as material_id={duplicate['material_id']}."
+        )
+
+    print(f"Reading processed slides from '{path.name}'...")
+    document = load_processed_slides(path)
+    raw_text = path.read_text(encoding="utf-8-sig")
+    cleaned_text = render_processed_slide_document(document)
+    chunks = chunk_processed_slides(document)
+    print(f"Produced {len(chunks)} slide chunk(s).")
+    return _store_material_chunks(
+        conn,
+        path,
+        unit_id,
+        "lecture_slide",
+        title,
+        raw_text,
+        cleaned_text,
+        chunks,
+        SLIDE_CHUNKING_STRATEGY,
+        embedding_config,
+        collection_name,
+        week_number,
     )
 
 

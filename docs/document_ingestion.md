@@ -15,7 +15,7 @@ These directories are local working data and are not intended to be shared throu
 
 ## Supported File Types
 
-- unit materials: `.pdf` and `.txt`
+- unit materials: `.pdf`, `.txt`, and processed lecture-slide `.json`
 - assignment specifications: `.pdf` and `.txt`
 - rubric imports: `.pdf`
 - student submissions: `.pdf` and `.txt`
@@ -63,13 +63,30 @@ When you run `ingest.py`, the system:
 
 ### Chunking Behavior
 
-The current chunker is a naive sliding-window chunker:
+PDF and TXT materials use a naive sliding-window chunker:
 
 - default chunk size: `500` words
 - default overlap: `100` words
 - page ranges are preserved per chunk
 
 Chunking happens in `feedback_lens/file_management/indexing/chunking.py` through `chunk_pages()`, which currently delegates to `naive_chunking()`.
+
+AI-assisted visual-to-text slide JSON uses its own validated schema and
+chunking path in `feedback_lens/file_management/processed_slides.py`:
+
+- every slide remains an independent JSON record
+- slides with `has_instructional_content: false` are preserved in the source
+  JSON but excluded from chunking and embedding
+- each chunk contains five instructional slides
+- adjacent chunks overlap by one instructional slide
+- original slide start and end numbers are stored as the chunk page range
+- text, visual descriptions, and preprocessing uncertainty remain explicitly
+  separated in the rendered embedding text
+- the recorded strategy is `ai_visual_to_text_slides_5_overlap_1`
+
+The upload interface accepts this JSON format for Unit scoping materials. It is
+stored as a `lecture_slide` material and embedded into the same model-specific
+collection as the Unit's other active materials.
 
 ### Embedding Behavior
 

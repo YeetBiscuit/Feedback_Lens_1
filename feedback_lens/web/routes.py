@@ -752,7 +752,7 @@ def api_upload_scoping_note(unit_offering_id: int):
                 upload = store_upload(
                     file_storage,
                     "scoping-notes",
-                    {".pdf", ".txt"},
+                    {".json", ".pdf", ".txt"},
                 )
             except UploadValidationError as exc:
                 results.append(
