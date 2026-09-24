@@ -44,6 +44,55 @@ Each entry should include, where relevant:
 
 ---
 
+## 2026-09-24 — Retrieval Query Semantics and Aggregation Ranking
+
+**Status:** Complete
+
+### Purpose
+
+Separate descriptive cue metadata from retrieval semantics and make final chunk
+ranking less sensitive to the number and overlap of retrieval queries.
+
+### Decision
+
+- Retrieval embedding input now uses `cue.text` only; `cue.label` is retained
+  as metadata for logging, matched-cue reporting, interfaces, debugging, and
+  traceability.
+- The fixed repeated-hit ranking bonus was removed from the default aggregation
+  score.
+- Final chunk ranking is based primarily on the best similarity score, with
+  best per-query local rank and `chunk_id` used as deterministic tie-breakers.
+- `hit_count`, matched cues, and matched query texts remain available as
+  diagnostic metadata but do not affect ranking.
+
+### Rationale
+
+- Separate cue metadata from the content that defines retrieval semantics.
+- Improve transparency and interpretability of the retrieval pipeline.
+- Reduce ranking sensitivity to the number and overlap of retrieval queries.
+- Avoid relying on an unvalidated fixed repeated-hit bonus.
+- Preserve repeated-hit and matched-cue information for diagnostics and
+  possible future evaluation of retrieval-fusion strategies.
+- This design also provides a cleaner basis for controlled evaluation of
+  alternative retrieval strategies.
+
+### Data Impact and Compatibility
+
+- No schema migration or vector re-indexing is required.
+- Existing cue labels, raw retrieval records, and diagnostic metadata remain
+  compatible.
+- Future retrieval runs may select or order final prompt chunks differently;
+  previously stored generation and retrieval records are unchanged.
+
+### Verification
+
+- Added regression coverage for cue-text-only vector queries, retained label
+  metadata, exact chunk deduplication, repeated-hit diagnostics, similarity-led
+  ordering, deterministic tie-breakers, final truncation, and raw-hit
+  persistence with prompt-use markers.
+
+---
+
 ## 2026-09-23 — BGE-M3 Embedding Rollout
 
 **Status:** Complete

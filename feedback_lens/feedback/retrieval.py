@@ -153,7 +153,7 @@ def _fetch_rows_by_vector_id(
 
 
 def _build_chunk_query_text(cue: dict) -> str:
-    return f"{cue['label']}\n{cue['text']}".strip()
+    return cue["text"].strip()
 
 
 def retrieve_relevant_chunks(
@@ -273,13 +273,11 @@ def retrieve_relevant_chunks(
     ranked_chunks = []
     for state in aggregated_by_chunk_id.values():
         best_score = state["best_similarity_score"] or 0.0
-        aggregate_score = round(best_score + 0.05 * (state["hit_count"] - 1), 6)
-        ranked_chunks.append({**state, "similarity_score": aggregate_score})
+        ranked_chunks.append({**state, "similarity_score": best_score})
 
     ranked_chunks.sort(
         key=lambda chunk: (
-            -(chunk["similarity_score"] or 0.0),
-            -chunk["hit_count"],
+            -(chunk["best_similarity_score"] or 0.0),
             chunk["best_rank_position"],
             chunk["chunk_id"],
         )
