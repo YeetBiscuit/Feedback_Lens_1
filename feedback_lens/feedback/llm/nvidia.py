@@ -7,7 +7,7 @@ from feedback_lens.feedback.llm.base import LLMProvider
 NVIDIA_PROVIDER = "nvidia"
 NVIDIA_API_KEY_ENV = "NVIDIA_API_KEY"
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-NVIDIA_MODEL = "minimaxai/minimax-m3"
+NVIDIA_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 
 
 class NvidiaProvider(LLMProvider):

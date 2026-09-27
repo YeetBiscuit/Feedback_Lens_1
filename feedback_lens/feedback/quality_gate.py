@@ -7,7 +7,7 @@ Judge results are recorded for evaluation but are not surfaced to educators.
 """
 
 REVISION_PROVIDER = "nvidia"
-REVISION_MODEL = "minimaxai/minimax-m3"
+REVISION_MODEL = "deepseek-ai/deepseek-v4.1-flash"
 
 import json
 import sqlite3
