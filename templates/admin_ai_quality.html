@@ -38,6 +38,10 @@
   .aiq-table th { background: #fafafa; font-weight: 600; color: #555;
                   font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
   .aiq-section { font-size: 15px; font-weight: 600; margin: 30px 0 12px; }
+  .aiq-scroll { overflow-x: auto; }
+  .aiq-matrix th { text-transform: none; letter-spacing: 0; }
+  .aiq-caption { font-size: 12px; color: #777; margin: -6px 0 10px; }
+  .aiq-n { color: #999; font-size: 11px; }
   .aiq-empty { color: #888; font-size: 14px; padding: 30px 0; }
 </style>
 
@@ -117,6 +121,61 @@ function renderJudge(judge, data) {
        + '</div>';
 }
 
+function scoreCell(value) {
+  return value == null ? '-' : value;
+}
+
+function renderGenerators(data) {
+  const rows = data.generators || [];
+  if (!rows.length) return '';
+  let html = '<div class="aiq-section">Generation models</div>'
+    + '<div class="aiq-scroll"><table class="aiq-table"><thead><tr>'
+    + '<th>Model</th><th>Runs</th><th>Completed</th><th>Final verdicts</th>'
+    + '<th>Passed</th><th>Grounding</th><th>Specificity</th>'
+    + '<th>Actionability</th><th>Used</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach(function (g) {
+    const m = g.mean_scores || {};
+    html += '<tr><td>' + esc(g.llm_model) + '</td><td>' + g.runs
+          + '</td><td>' + g.completed + '</td><td>' + g.gated
+          + '</td><td>' + (g.gated ? g.passed : '-')
+          + '</td><td>' + scoreCell(m.grounding)
+          + '</td><td>' + scoreCell(m.specificity)
+          + '</td><td>' + scoreCell(m.actionability)
+          + '</td><td>' + esc(g.first_used) + ' to ' + esc(g.last_used)
+          + '</td></tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
+function renderMatrix(data) {
+  const cells = data.judge_generator || [];
+  if (!cells.length) return '';
+  const judges = [];
+  const generators = [];
+  const lookup = {};
+  cells.forEach(function (c) {
+    if (judges.indexOf(c.judge_model) < 0) judges.push(c.judge_model);
+    if (generators.indexOf(c.generator_model) < 0) generators.push(c.generator_model);
+    lookup[c.judge_model + '|' + c.generator_model] = c;
+  });
+  let html = '<div class="aiq-section">Judge by generation model</div>'
+    + '<div class="aiq-caption">Mean score across all three dimensions, '
+    + 'number of judgements in brackets.</div>'
+    + '<div class="aiq-scroll"><table class="aiq-table aiq-matrix"><thead><tr><th>Judge</th>';
+  generators.forEach(function (g) { html += '<th>' + esc(g) + '</th>'; });
+  html += '</tr></thead><tbody>';
+  judges.forEach(function (j) {
+    html += '<tr><td>' + esc(j) + '</td>';
+    generators.forEach(function (g) {
+      const c = lookup[j + '|' + g];
+      html += '<td>' + (c ? c.mean_score + ' <span class="aiq-n">(' + c.n + ')</span>' : '-') + '</td>';
+    });
+    html += '</tr>';
+  });
+  return html + '</tbody></table></div>';
+}
+
 function render(data) {
   const body = document.getElementById('aiq-body');
 
@@ -168,6 +227,9 @@ function render(data) {
           + row.lowest + '-' + row.highest + '</td></tr>';
   });
   html += '</tbody></table>';
+
+  html += renderGenerators(data);
+  html += renderMatrix(data);
 
   body.innerHTML = html;
 }
