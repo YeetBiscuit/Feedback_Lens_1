@@ -1,0 +1,612 @@
+[
+  {
+    "input_file": "synthetic_low_1",
+    "student_identifier": "synthetic_low_1",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback does not reference the assignment specification, rubric, or any course materials. It offers generic statements such as \"The student did an okay job\" and \"Good effort\" without linking them to specific criteria or evidence from the student’s submission. This lack of concrete grounding in the assessment context and course content places it at the very poor level.",
+            "evidence": "Overall comment: The student did an okay job on this assignment. There are some areas that could be improved. Overall a decent submission.\nCriterion: Context and Methodological Framework\nStrengths: The student described the app.\nCriterion: Usability Issue Analysis and Evidence\nStrengths: Issues were identified.\nCriterion: Design Recommendations and Theory Application\nStrengths: Recommendations were provided.\nCriterion: Academic Structure and Referencing\nStrengths: The report has structure.",
+            "defects": [
+              "No reference to the rubric or specific assessment criteria.",
+              "No mention of the assignment specification or learning outcomes.",
+              "No citation of course materials (e.g., lecture transcript, tutorial sheet).",
+              "No evidence from the student’s submission to justify the comments."
+            ],
+            "missing_evidence": [
+              "Explicit linkage to rubric criterion 1 (Context and Methodological Framework) and its performance levels.",
+              "Evidence of mapping issues to Nielsen’s Ten Heuristics as required by the rubric.",
+              "Reference to ISO 9241 or week‑two cognition concepts mentioned in the assignment.",
+              "Specific examples from the student’s report that illustrate strengths or weaknesses."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 2,
+            "reason": "The feedback identifies broad categories of strengths and weaknesses (e.g., \"Good effort\", \"Issues were identified\") but does not provide concrete, student‑specific details or evidence from the submission. It lacks references to particular issues, severity ratings, or contextual analysis that would demonstrate a tailored assessment. Therefore, it meets the criteria for a Poor score.",
+            "evidence": "\"Good effort\"\n\"Completed the assignment\"\n\"Issues were identified\"\n\"Recommendations were provided\"\n\"Could add more context\"\n\"Be more specific\"",
+            "defects": [
+              "Generic language that could apply to any student submission",
+              "No mention of specific usability issues or heuristic violations",
+              "No reference to the student’s severity ratings or visual evidence",
+              "No linkage between identified problems and the user context described in the report"
+            ],
+            "missing_evidence": [
+              "Concrete examples of identified issues (e.g., search bar visibility, navigation problems)",
+              "Severity ratings and justification for each issue",
+              "Specific recommendations tied to Nielsen’s heuristics",
+              "Evidence of how the student’s analysis aligns with the rubric criteria"
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback offers improvement suggestions, but they are vague and lack concrete, actionable steps. The student would not know how to revise the report based on these comments.",
+            "evidence": "\"Could be better\", \"Needs more detail\", \"Add more detail\", \"Be more specific\", \"Use more theory\", \"Fix references\"",
+            "defects": [
+              "Generic improvement suggestions that do not specify what to change or how to change it"
+            ],
+            "missing_evidence": [
+              "Specific references to rubric criteria, concrete examples from the student's submission, or prioritised steps for improvement"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_low_2",
+    "student_identifier": "synthetic_low_2",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 2,
+            "reason": "The feedback shows limited connection to the assignment specification or rubric. It references the student’s choice of a food app and mentions ISO 9241 and Week 2 cognition, but these references are not tied to specific rubric criteria or the course learning outcomes. The comments are largely generic and do not demonstrate that the feedback is grounded in the assignment’s stated requirements or the unit’s taught concepts.",
+            "evidence": "• \"The student picked a food app which is a common choice.\"  \n• \"Drop the ISO reference.\"  \n• \"Delete the references to Week 2 cognition since it distracts from usability\"",
+            "defects": [
+              "Generic advice without linking to rubric criteria or assignment specification.",
+              "No explicit reference to the rubric’s performance levels or the course learning outcomes.",
+              "Lacks evidence from the student’s submission that justifies the suggested changes."
+            ],
+            "missing_evidence": [
+              "Specific references to rubric criteria (e.g., Criterion 1: Context and Methodological Framework, Criterion 2: Usability Issue Analysis and Evidence).",
+              "Direct links to the assignment specification (e.g., requirement to apply Nielsen’s Ten Heuristics, provide severity ratings, and include visual evidence).",
+              "Connections to relevant course materials (e.g., Week 1 ISO 9241 discussion, Week 2 cognition concepts, Week 4 heuristic evaluation lecture)."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 2,
+            "reason": "The feedback offers broad, generic comments that could apply to many reports. It mentions overall length, number of issues, and references, but it does not tie these observations to specific content in the student’s submission (e.g., the search bar visibility issue, severity ratings, or mapping to Nielsen’s heuristics). It also fails to reference the rubric or assessment specification. Consequently, the feedback lacks the concrete, student‑specific analysis required for a higher score.",
+            "evidence": "\"The student wrote too much and included too many things.\" \"The report would be stronger if it were shorter and simpler.\" \"Cut down to three issues instead of five.\" \"Remove the appendices to make the report cleaner.\" \"Delete the references to Week 2 cognition since it distracts from usability.\" \"Drop the ISO reference.\" \"Remove the ISO and Shneiderman references and keep only Nielsen.\"",
+            "defects": [
+              "Generic comments not linked to specific issues identified in the report.",
+              "No mention of the student’s specific findings (e.g., search bar visibility, button style).",
+              "No reference to rubric criteria or assessment specification.",
+              "No evidence of mapping issues to heuristics or severity ratings."
+            ],
+            "missing_evidence": [
+              "Specific references to the student’s identified issues (e.g., search bar visibility, button style).",
+              "Evidence of how the issues map to Nielsen’s Ten Heuristics.",
+              "Severity ratings or justification for each issue.",
+              "Links to the rubric criteria or learning outcomes.",
+              "Contextual analysis of the target user base and primary tasks."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 4,
+            "reason": "The feedback provides concrete, prioritised actions that a student could realistically implement (e.g., cut down to three issues, remove appendices, delete references to Week 2 cognition, rewrite recommendations as single sentences). These suggestions are specific and directly address the student’s work. However, the feedback lacks detailed explanations of why each change matters, how it aligns with the rubric’s severity ratings or heuristic mapping, and how to practically rewrite the recommendations. The absence of such contextual grounding prevents the feedback from reaching the highest level of actionability.",
+            "evidence": "\"Cut down to three issues instead of five\"; \"Remove the appendices to make the report cleaner\"; \"Delete the references to Week 2 cognition\"; \"Rewrite each recommendation as a single sentence without any theory citations\"; \"Remove the ISO and Shneiderman references and keep only Nielsen\".",
+            "defects": [
+              "No explanation of why reducing issues or removing references improves the report.",
+              "No guidance on how to rewrite recommendations or align them with the rubric.",
+              "Lacks connection to severity ratings or heuristic mapping."
+            ],
+            "missing_evidence": [
+              "Evidence from the rubric or assignment specification linking the suggested changes to required outcomes.",
+              "Specific examples of how to rewrite a recommendation in a single sentence.",
+              "Justification for the severity rating approach or how to apply it."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_low_3",
+    "student_identifier": "synthetic_low_3",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback does not reference the assignment specification, rubric, or any course materials. It provides generic comments about database queries, test coverage, and architecture that are unrelated to the heuristic evaluation report task. There is no evidence that the feedback is grounded in the specific learning outcomes, assignment requirements, or the Nielsen heuristics framework required by the task.",
+            "evidence": "\"Overall comment: The submission shows reasonable technical implementation. Database queries appear well structured and the user interface follows standard design patterns. Test coverage could be improved and the software architecture should be documented more clearly.\"",
+            "defects": [
+              "No mention of the assignment’s focus on heuristic evaluation or Nielsen’s Ten Heuristics.",
+              "No reference to the rubric criteria such as Context and Methodological Framework or Usability Issue Analysis.",
+              "No alignment with the course learning outcomes (LO1, LO2) or the early-week concepts on human cognition."
+            ],
+            "missing_evidence": [
+              "Explicit reference to the assignment specification (e.g., requirement to evaluate QuickEats using Nielsen’s heuristics).",
+              "Connection to rubric criteria (e.g., mapping issues to specific heuristics, severity ratings).",
+              "Citation of course materials (e.g., lecture transcript on heuristic evaluation, tutorial sheet)."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is entirely generic and does not reference any specific content from the student’s submission. It offers broad statements about technical implementation, test coverage, and architecture that could apply to any software project, not to a heuristic evaluation report. No concrete strengths, weaknesses, or performance gaps are identified in relation to the QuickEats app, the heuristics applied, or the rubric criteria.",
+            "evidence": "\"The submission shows reasonable technical implementation. Database queries appear well structured and the user interface follows standard design patterns. Test coverage could be improved and the software architecture should be documented more clearly.\"",
+            "defects": [
+              "Generic comments that could apply to any student submission.",
+              "No mention of the QuickEats app or its interface.",
+              "No reference to the five identified issues or their mapping to Nielsen’s heuristics.",
+              "No linkage to rubric criteria or assessment expectations."
+            ],
+            "missing_evidence": [
+              "Specific references to the student’s identified issues (e.g., Search Bar Visibility, heuristic violations).",
+              "Evidence of how the feedback aligns with the rubric’s performance levels.",
+              "Concrete examples from the student’s report that illustrate strengths or weaknesses."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback offers improvement suggestions, but they are largely generic and lack concrete, actionable steps that tie directly to the student’s work or the rubric. While it mentions areas such as test coverage, architecture diagrams, and prioritisation frameworks, it does not explain why these matters, how to implement them, or which specific issues in the submission they address. Consequently, a student would not receive clear guidance on what to revise next.",
+            "evidence": "\"Improve test coverage using unit tests\"; \"Add architecture diagrams\"; \"Consider using a design pattern such as MVC or repository pattern\"; \"Add a section on non‑functional requirements and quality attributes such as scalability and maintainability\"; \"Include performance benchmarks and A/B testing results\"; \"Prioritise the recommendations using RICE scoring or WSJF and present them in a product backlog format\"; \"Convert all citations to IEEE format and add a systematic literature review section\"",
+            "defects": [
+              "Generic suggestions that do not specify which parts of the submission to target",
+              "No explanation of why each recommendation matters or how it aligns with rubric criteria",
+              "Lack of prioritisation or step‑by‑step guidance for implementation"
+            ],
+            "missing_evidence": [
+              "Specific references to the student’s identified issues (e.g., search bar visibility, navigation problems)",
+              "Alignment with rubric criteria such as severity ratings or evidence of heuristic mapping",
+              "Concrete examples of how to add unit tests (e.g., test cases for search functionality)",
+              "Guidance on creating architecture diagrams (e.g., showing UI → controller → repository flow)",
+              "Instructions for applying RICE or WSJF scoring to the listed recommendations",
+              "Details on measuring performance benchmarks (e.g., time‑on‑task for checkout)"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_1",
+    "student_identifier": "synthetic_medium_1",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 3,
+            "reason": "The feedback demonstrates a general alignment with the assignment specification and rubric by noting that five issues were identified, severity ratings were provided, and the heuristic framework was mentioned. However, it lacks specific references to the rubric criteria, the assignment specification details, and the course materials (e.g., ISO 9241, week‑2 cognition concepts, week‑4 lecture). It also does not quote or directly reference the student’s submission to justify the comments. These gaps prevent a higher score.",
+            "evidence": "\"Five issues identified and mapped to heuristics\"; \"Severity ratings provided with basic justification\"; \"Nielsen heuristics stated as framework\"; \"Primary tasks not explicitly listed\"; \"Issue 1 mapping to Visibility of System Status is inaccurate\"; \"Cognitive theory connections are surface level\"",
+            "defects": [
+              "Generic references to assignment requirements without citing rubric criteria or performance levels",
+              "No direct quotes or evidence from the student’s report to support the comments",
+              "No explicit mention of course materials (ISO 9241, week‑2 cognition, week‑4 lecture) to ground the critique"
+            ],
+            "missing_evidence": [
+              "Explicit reference to rubric criterion names and performance levels (e.g., Criterion 1, Criterion 2)",
+              "Direct citations from the student’s submission (e.g., excerpts of the QuickEats context or issue descriptions)",
+              "Specific course material references (e.g., ISO 9241 standard, week‑2 memory and attention concepts, week‑4 heuristic evaluation lecture)"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 4,
+            "reason": "The feedback clearly identifies concrete strengths and weaknesses that are directly tied to the student’s submission, such as the identification of five issues, the mapping to heuristics, the mention of severity ratings, and the description of the QuickEats context. It also points out specific gaps, e.g., the incorrect mapping of Issue 1 to the wrong heuristic, the omission of primary tasks, and the superficial use of cognitive theory. These comments are tailored to the student’s work and reference particular elements of the report. However, the feedback could be strengthened by citing direct excerpts from the student’s text, linking more explicitly to rubric criteria, and providing more detailed evidence for the severity justifications, which prevents a perfect score.",
+            "evidence": "- \"Five issues identified and mapped to heuristics\" – concrete strength\n- \"Issue 1 mapping to Visibility of System Status is inaccurate\" – specific weakness\n- \"Primary tasks not explicitly listed as required by methodology section\" – specific gap\n- \"Remap Issue 1 to Recognition rather than Recall\" – concrete suggestion\n- \"Specify how recommendations reduce cognitive load\" – targeted improvement",
+            "defects": [
+              "Lacks direct quotations from the student’s report to ground the critique.",
+              "Does not explicitly reference rubric performance levels or criteria.",
+              "Severity justifications are described only as \"basic\" without detailed evidence."
+            ],
+            "missing_evidence": [
+              "Specific excerpts from the student’s findings section.",
+              "Explicit mapping of each issue to the corresponding heuristic with severity rationale.",
+              "Reference to the rubric’s performance level descriptors for each criterion."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 3,
+            "reason": "The feedback offers several improvement suggestions that are partially specific, such as defining primary tasks, remapping an issue, and clarifying how recommendations reduce cognitive load. However, these suggestions lack concrete, step‑by‑step guidance, prioritisation, and direct links to rubric criteria or unit theory. Consequently, the student receives a partial understanding of how to improve but not a fully actionable plan.",
+            "evidence": "\"Explicitly define three primary tasks before evaluation\"; \"Remap Issue 1 to Recognition rather than Recall\"; \"Specify how recommendations reduce cognitive load\"",
+            "defects": [
+              "Suggestions are not fully concrete or prioritised",
+              "No detailed steps on how to implement the recommendations",
+              "Missing direct reference to rubric or unit expectations"
+            ],
+            "missing_evidence": [
+              "Specific rubric criteria or unit material references that justify the suggested improvements",
+              "Concrete examples or templates for how to rewrite recommendations",
+              "Prioritisation of issues based on severity or impact"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_2",
+    "student_identifier": "synthetic_medium_2",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 3,
+            "reason": "The feedback explicitly references the assignment specification and rubric criteria (e.g., \"Context is described and the heuristic framework is stated\", \"Multiple issues are identified with heuristic mappings and severity ratings\", and the overall structure). However, it does not provide concrete evidence from the student’s submission, nor does it cite specific course materials such as ISO 9241, week‑2 cognition concepts, or the severity scale. The grounding is therefore adequate but uneven, lacking the depth and specificity required for a higher score.",
+            "evidence": "\"The report addresses the assignment requirements.\"\n\"Context is described and the heuristic framework is stated.\"\n\"Multiple issues are identified with heuristic mappings and severity ratings.\"\n\"Recommendations are provided for the identified issues.\"",
+            "defects": [
+              "Generic statements that do not reference specific content from the student’s report.",
+              "No citation of course concepts (ISO 9241, week‑2 cognition, severity scale).",
+              "Lack of direct linkage to rubric performance levels."
+            ],
+            "missing_evidence": [
+              "Specific examples from the student’s report (e.g., issue descriptions, severity ratings).",
+              "Explicit reference to ISO 9241 or week‑2 learning outcomes.",
+              "Direct mapping of feedback to rubric criterion IDs and performance levels."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is highly generic and does not identify concrete strengths, weaknesses, or performance gaps in the student’s submission. It offers broad statements that could apply to any report and fails to reference specific parts of the student work, rubric criteria, or evidence from the assignment specification.",
+            "evidence": "\"The report follows the required structure\"; \"Heuristic framework is applied\"; \"Recommendations are included for each issue\"; \"Strengthen the methodological framing\"; \"Deepen the theory application\"; \"Improve the depth of usability analysis\"; \"The interface context is described and the heuristic framework is stated\".",
+            "defects": [
+              "No specific reference to the student’s identified issues or severity ratings.",
+              "No mention of particular interface elements or screenshots from the QuickEats app.",
+              "No linkage to the rubric criteria or assignment specification.",
+              "Generic praise and improvement suggestions that could apply to any report."
+            ],
+            "missing_evidence": [
+              "Concrete examples of strengths or weaknesses from the student’s report.",
+              "Evidence of how the student’s work aligns or misaligns with the rubric.",
+              "Specific references to the student’s analysis of the QuickEats app."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback offers improvement suggestions, but they are vague and lack concrete, actionable steps that a student could realistically apply. The comments such as \"Strengthen the methodological framing\" or \"Deepen the theory application\" do not specify what changes to make or how to implement them, making it difficult for the student to know exactly what to revise.",
+            "evidence": "\"Strengthen the methodological framing\", \"Deepen the theory application\", \"Improve the depth of usability analysis\", \"Expand the methodology to strengthen the link between the target audience context and the evaluation framework\", \"Provide stronger justification for each heuristic mapping and severity rating decision\", \"Ground each recommendation more explicitly in relevant usability theory\"",
+            "defects": [
+              "Lack of specific, step‑by‑step guidance for revisions",
+              "No concrete examples or references to the rubric or assignment specification",
+              "No prioritisation of which issues to address first"
+            ],
+            "missing_evidence": [
+              "Concrete suggestions such as \"Add a table of severity ratings with justification for each issue\"",
+              "Explicit links to the rubric criteria (e.g., mapping severity ratings to the 40% weighting of the Usability Issue Analysis criterion)",
+              "Practical recommendations tied to the student’s actual findings (e.g., \"Reposition the search bar to the top of the screen to improve visibility\")"
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_3",
+    "student_identifier": "synthetic_medium_3",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 4,
+            "reason": "The feedback explicitly references the assignment specification (e.g., five usability issues, recommendations, use of Nielsen's Ten Heuristics) and the rubric criteria (Context and Methodological Framework, Usability Issue Analysis and Evidence, Design Recommendations and Theory Application, Academic Structure and Referencing). It also alludes to course concepts such as human cognition and cognitive load. However, it lacks direct citations of specific course materials (e.g., ISO 9241, Week 2 memory/attention concepts, visual evidence requirement) and does not fully justify how each point maps to the rubric or assignment expectations. These omissions prevent a perfect score.",
+            "evidence": "- \"The QuickEats app is described as a food delivery service for young adults and busy professionals in distracted contexts. Nielsen's Ten Heuristics is stated as the framework.\" \n- \"Criterion: Context and Methodological Framework\" \n- \"Criterion: Usability Issue Analysis and Evidence\" \n- \"The connections to human cognition are stated in passing but not developed. The mention of cognitive load in the Issue 2 recommendation is not explained.\"",
+            "defects": [
+              "No explicit reference to ISO 9241 or the three core metrics of usability.",
+              "No mention of Week 2 concepts such as memory and attention in the grounding.",
+              "No reference to the rubric requirement for visual evidence of issues."
+            ],
+            "missing_evidence": [
+              "ISO 9241 standard and its metrics (effectiveness, efficiency, satisfaction).",
+              "Week 2 lecture/reading on memory and attention.",
+              "Rubric requirement for visual evidence accompanying each identified issue."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback explicitly references concrete elements of the student’s submission, such as the five identified issues, the specific heuristics mapped, severity ratings, and the student’s description of target users and tasks. It identifies strengths and weaknesses in a detailed, issue‑by‑issue manner, and offers precise, actionable suggestions that directly relate to the student’s work and the rubric criteria. No generic or unsupported comments are present, and the feedback consistently ties observations back to the student’s report.",
+            "evidence": "\"The QuickEats evaluation identifies five usability issues in the app and provides recommendations for each.\"; \"Issue 1 (Search Bar Visibility) … Issue 2 (unclear error message on the payment screen) … Issue 5 (no confirmation before order) …\"; \"Severity ratings from 2 to 4 are reasonably justified\"; \"Reconsider the Issue 1 heuristic mapping\"; \"Present the three tasks as a numbered list in the introduction\"; \"The recommendation for Issue 2 (move error message next to the field and name the invalid field) is specific and directly resolves the violation.\"",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides concrete, prioritised, and assessment‑relevant improvement steps that directly address the student’s submission and rubric expectations. It specifies which heuristic mapping to reconsider, how to add detail to a particular issue, and how to strengthen justification for severity ratings. It also gives a clear structural suggestion (numbered tasks list) and a precise instruction on explaining cognitive load. These actionable recommendations are specific, aligned with the rubric, and give the student a clear path for revision.",
+            "evidence": "\"Reconsider the Issue 1 heuristic mapping\"; \"Provide more detail on the Issue 3 checkout flow analysis\"; \"Strengthen the justification for the Severity 4 rating on Issue 5\"; \"Present the three tasks as a numbered list in the introduction so the evaluation scope is clear before the findings begin\"; \"Consider remapping Issue 1 to a heuristic that better fits hidden interface elements\"; \"When cognitive load is mentioned, briefly explain which type of load is reduced and why the design change reduces it.\"",
+            "defects": [],
+            "missing_evidence": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_4",
+    "student_identifier": "synthetic_medium_4",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 3,
+            "reason": "The feedback demonstrates a general awareness of the assignment’s structure and the rubric’s broad expectations (e.g., noting that all required sections are present, five issues are identified, and recommendations are provided). However, it does not explicitly reference the assignment specification, rubric criteria, or specific course materials to justify its judgments. The grounding is therefore adequate but uneven, lacking concrete links to the rubric’s performance levels or the unit’s taught concepts.",
+            "evidence": "\"All required sections are present, the framework is stated, five issues are identified with severity ratings, and recommendations follow.\"; \"Five issues identified with heuristic mappings and severity ratings, and visual evidence is referenced in the appendices.\"",
+            "defects": [
+              "No explicit reference to the rubric’s performance levels or the assignment specification.",
+              "No mention of specific course concepts (e.g., ISO 9241, human cognition from week two) to justify the analysis.",
+              "Generic statements about ‘basic requirements’ without tying them to rubric criteria."
+            ],
+            "missing_evidence": [
+              "Direct citations of rubric criteria (e.g., Criterion 1: Context and Methodological Framework, Criterion 2: Usability Issue Analysis and Evidence).",
+              "Links to the assignment specification (e.g., requirement to apply Nielsen’s Ten Heuristics, link to early weeks’ content).",
+              "Evidence of alignment with course materials such as the lecture transcript on heuristic evaluation or the tutorial sheet."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 2,
+            "reason": "The feedback identifies broad strengths and weaknesses (e.g., \"Complete report structure\", \"Five issues identified\", \"Recommendations for each issue\") but does not provide concrete, student‑specific details such as which issues were found, how they map to heuristics, or specific contextual insights. The comments remain generic and could apply to any similar report, lacking direct evidence from the student’s submission or rubric.",
+            "evidence": "\"Complete report structure\", \"Five issues identified\", \"Recommendations for each issue\", \"Context and methodology are described\", \"Depth of contextual analysis could be increased\", \"Depth of analysis for each issue could be increased\", \"Theory application could be strengthened\", \"Referencing could be more thorough\"",
+            "defects": [
+              "No specific issues or heuristic mappings are named or described.",
+              "No reference to the student’s identified severity ratings or visual evidence.",
+              "No mention of the target audience details (young adults, busy professionals) or user context.",
+              "No linkage to rubric criteria or assessment expectations."
+            ],
+            "missing_evidence": [
+              "Specific issue descriptions (e.g., Issue 1: Search Bar Visibility).",
+              "Severity ratings and justification for each issue.",
+              "Concrete examples of visual evidence or screenshots.",
+              "Detailed user context and task analysis from the student’s report."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback offers improvement suggestions, but they are generic and lack concrete, prioritised, assessment‑relevant steps. It tells the student to \"add more detail on the target audience\" and \"provide more detailed analysis for each issue,\" yet it does not specify what details to add, how to structure the analysis, or how these changes align with the rubric or unit expectations. The suggestions are therefore vague and difficult to apply directly, meeting the definition of a Poor score.",
+            "evidence": "\"Add more detail on the target audience and their usability requirements.\"; \"Provide more detailed analysis for each issue.\"; \"Include more theoretical grounding in the recommendations.\"",
+            "defects": [
+              "Suggestions are not specific or actionable (e.g., no guidance on what details to add or how to structure the analysis).",
+              "No prioritisation of which issues to tackle first.",
+              "No linkage to rubric criteria or unit learning outcomes."
+            ],
+            "missing_evidence": [
+              "No reference to the rubric's requirement for severity ratings or mapping issues to heuristics.",
+              "No direct mention of the student's identified issues or how to improve them.",
+              "No concrete examples or steps that align with the assignment specification."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_high_1",
+    "student_identifier": "synthetic_high_1",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback consistently references the assignment specification, rubric criteria, and relevant course materials (Week 4 lecture, Week 2 cognition, A1 Worksheet, Sample Answer Guide). It uses these references to justify each critique and recommendation, demonstrating a clear alignment with the assessment context and unit scope. No generic or unsupported claims are present, and the feedback does not introduce out‑of‑scope expectations.",
+            "evidence": [
+              "\"The report demonstrates solid grasp of heuristic evaluation as an expert-review method, correctly establishing Nielsen's Ten Heuristics as the framework and grounding usability in ISO 9241's effectiveness, efficiency, and satisfaction.\"",
+              "\"On the rubric, this sits at the boundary between C and D: the structure and evidence are D-level, but the theoretical depth in Criterion 3 currently reads as C-level.\"",
+              "\"Criterion: Context and Methodological Framework\" and subsequent rubric references.",
+              "\"The main gap is that some heuristic mappings could be sharper, and the Week 2 cognition link is stated but under-developed.\"",
+              "\"The A1 Worksheet Task 1 requires a numbered list of primary tasks\" and the feedback notes this omission."
+            ],
+            "defects": [],
+            "missing_evidence": []
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback is highly specific to the student’s submission, rubric, and course materials. It identifies concrete strengths and weaknesses, references the student’s own recommendations and issues, and gives precise, actionable improvement steps that directly relate to the rubric criteria and the student’s work.",
+            "evidence": [
+              "\"The report demonstrates solid grasp of heuristic evaluation as an expert-review method, correctly establishing Nielsen's Ten Heuristics as the framework and grounding usability in ISO 9241's effectiveness, efficiency, and satisfaction.\"",
+              "\"The five-issue set covers a reasonable spread of Nielsen principles and severity ratings are justified using frequency and impact, matching the criteria taught in Week 4 and the Sample Answer Guide.\"",
+              "\"The main gap is that some heuristic mappings could be sharper, and the Week 2 cognition link is stated but under-developed.\"",
+              "\"First, revise the Issue 1 heuristic mapping: the student's own recommendation cites 'recognition over recall', which is a stronger fit than 'Visibility of System Status' for a hidden search element.\"",
+              "\"Second, develop the Week 2 cognition connection with a specific mechanism: for Issue 2, name the type of cognitive load (extraneous) that the vague error message imposes, and explain why field-adjacent, specific error messages reduce it.\"",
+              "\"Third, explicitly list the three primary tasks as a numbered set in the Methodology, as the A1 Worksheet Task 1 requires, so the evaluation scope is visible before Findings.\""
+            ],
+            "defects": [],
+            "missing_evidence": []
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides concrete, prioritised, and assessment‑relevant improvement steps. It explicitly tells the student what to revise (e.g., remap Issue 1 to the correct heuristic, add a numbered list of primary tasks, specify cognitive load types for each issue) and why these changes matter, directly linking to rubric expectations and unit theory. The suggestions are clear, actionable, and tailored to the student’s submission, with no evident gaps in guidance.",
+            "evidence": [
+              "\"First, revise the Issue 1 heuristic mapping: the student's own recommendation cites 'recognition over recall', which is a stronger fit than 'Visibility of System Status' for a hidden search element.\"",
+              "\"Second, develop the Week 2 cognition connection with a specific mechanism: for Issue 2, name the type of cognitive load (extraneous) that the vague error message imposes, and explain why field‑adjacent, specific error messages reduce it.\"",
+              "\"Third, explicitly list the three primary tasks as a numbered set in the Methodology, as the A1 Worksheet Task 1 requires, so the evaluation scope is visible before Findings.\"",
+              "\"In the Methodology, add a short numbered list of the three primary tasks before describing the evaluation process.\"",
+              "\"Remap Issue 1 to Recognition Rather Than Recall and update the justification paragraph to describe the recognition‑versus‑recall trade‑off.\"",
+              "\"Add one sentence per recommendation identifying which specific cognitive limit the design change addresses.\""
+            ],
+            "defects": [],
+            "missing_evidence": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_high_2",
+    "student_identifier": "synthetic_high_2",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 4,
+            "reason": "The feedback consistently references the assignment specification, rubric criteria, and relevant course materials, demonstrating a clear alignment with the task requirements and unit content. It cites the assignment title, the use of Nielsen's Ten Heuristics, the Week 4 lecture, Week 2 cognition concepts, and the A1 Worksheet Task 1, all of which are directly drawn from the provided course resources. The feedback also refers to the student’s own work (e.g., the student’s recommendation for Issue 1) and the rubric performance levels (e.g., suggesting a D or C). These connections show that the feedback is grounded in the assessment context and course materials. Minor gaps exist, such as not explicitly citing the rubric performance level descriptions or the assignment’s learning outcomes, but these do not undermine the overall grounding.",
+            "evidence": [
+              "\"The framework, severity method, and recommendations are on target, but the Issue 1 heuristic mapping contradicts the student's own recommendation, the Week 2 cognition link is named without being developed, and the primary-task list required by the Worksheet is absent from the Methodology.\"",
+              "\"Key strengths: - Nielsen framework and expert-review method correctly framed, matching the Week 4 lecture.\"",
+              "\"Remap Issue 1 to Recognition Rather Than Recall (the student already cites this concept in their own recommendation).\"",
+              "\"Add a numbered three-task list to the Methodology as required by A1 Worksheet Task 1.\"",
+              "\"Criterion: Context and Methodological Framework\" and subsequent rubric references."
+            ],
+            "defects": [
+              "Does not explicitly cite the rubric performance level descriptions or the assignment’s learning outcomes.",
+              "Lacks direct mention of the assignment’s word‑count or weighting, though not critical for grounding."
+            ],
+            "missing_evidence": [
+              "Specific rubric performance level language (e.g., HD, D, C) could have been quoted.",
+              "Explicit reference to the assignment’s learning outcomes (LO1, LO2)."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 4,
+            "reason": "The feedback identifies concrete strengths and weaknesses that are clearly tied to the student’s work, such as the mis‑mapping of Issue 1, the lack of a primary‑task list, and the undeveloped Week 2 cognition reference. It also gives actionable, specific improvement steps. However, it does not provide direct quotations or explicit excerpts from the student’s report to ground these claims, and some comments (e.g., the Week 2 cognition link) remain vague about how they relate to the student’s text. This uneven evidence base prevents a perfect score.",
+            "evidence": "• \"Issue 1 heuristic mapping contradicts the student's own recommendation\" – points to a specific mismatch.\n• \"Add a numbered three‑task list to the Methodology as required by A1 Worksheet Task 1\" – references a missing element.\n• \"Name the specific cognitive load type for Issues 2 and 3 and explain the reduction mechanism\" – calls for detailed, student‑specific analysis.\n• \"Recommendations for Issues 2 and 5 are precise and directly resolve the violations\" – identifies concrete strengths.",
+            "defects": [
+              "No direct quotations from the student’s report to substantiate claims about Issue 1 mapping or the Week 2 cognition link.",
+              "The feedback mentions the Week 2 cognition link but does not explain which specific cognitive load type is referenced or how it applies to the student’s findings.",
+              "The primary‑task list is noted as missing, but the feedback does not show what the student actually wrote or omitted."
+            ],
+            "missing_evidence": [
+              "Direct excerpts from the student’s description of Issue 1 and the associated recommendation.",
+              "Specific text from the student’s report that references the Week 2 cognition concept.",
+              "The student’s current (or missing) primary‑task list as written in the Methodology section."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 4,
+            "reason": "The feedback gives clear, specific, and assessment‑aligned improvement steps. It identifies concrete actions such as remapping Issue 1 to the correct heuristic, naming and explaining specific cognitive load types for Issues 2 and 3, and adding a numbered task list to the methodology. These suggestions are directly tied to the student’s identified weaknesses and rubric requirements, enabling the student to realistically revise the report. Minor gaps remain in that the feedback does not walk through the exact wording or structure for the remapping or naming, but the guidance is still actionable and prioritised.",
+            "evidence": [
+              "\"Remap Issue 1 to Recognition Rather Than Recall and revise the justification paragraph to match.\"",
+              "\"Name the specific cognitive load type for Issues 2 and 3 and explain the reduction mechanism.\"",
+              "\"Add a numbered three‑task list to the Methodology as required by A1 Worksheet Task 1.\"",
+              "\"Recommendations for Issues 2 and 5 are precise and directly resolve the violations.\""
+            ],
+            "defects": [
+              "Does not provide a step‑by‑step example of how to remap Issue 1 or how to phrase the new justification.",
+              "Does not give a concrete example of the field‑adjacent message for Issue 2 or the working‑memory explanation for Issue 3."
+            ],
+            "missing_evidence": []
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_high_3",
+    "student_identifier": "synthetic_high_3",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_openai_gpt_oss_20b": {
+        "provider": "nvidia",
+        "model": "openai/gpt-oss-20b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback explicitly references the assignment specification, rubric criteria, and relevant course materials, consistently grounding its comments in the stated learning outcomes, task requirements, and unit content. It cites the rubric’s criterion names (e.g., Context and Methodological Framework, Usability Issue Analysis and Evidence, Design Recommendations and Theory Application), the assignment’s requirement for five distinct issues with severity ratings and visual evidence, and specific course resources such as the Week 4 lecture on heuristic evaluation, Week 2 cognition concepts, the ISO 9241 standard, and the worksheet’s frequency‑times‑impact criterion. The feedback avoids generic statements, instead tying each observation to concrete elements of the student’s submission and the unit’s taught concepts, thereby meeting the highest grounding standard.",
+            "evidence": "- \"Nielsen framework, ISO 9241 metrics, and Week 4 distinction between expert review and user testing are correctly applied.\" \n- \"Five distinct heuristics covered with 0‑4 severity justification following the Worksheet Task 3 method.\" \n- \"Remap Issue 1 to Recognition Rather Than Recall, and rewrite the Findings paragraph to describe the recall‑cost imposed by hiding the search bar below the fold.\" \n- \"For Issue 2, name extraneous cognitive load and explain why a specific, field‑adjacent error message reduces it.\" \n- \"For Issue 3, connect the five sequential checkout screens to working‑memory span and the checkout‑abandonment risk.\" \n- \"For Issue 5, expand the recommendation with confirmation‑dialog wording and a cancel path, explicitly grounding it in Nielsen’s Error Prevention principle from the Week 4 lecture.\"",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback is highly tailored to the student’s submission, pinpointing exact issues (e.g., Issue 1 mapping to the wrong heuristic, Issue 5’s brief recommendation) and linking them to rubric criteria and course materials. It offers concrete, actionable improvements that directly address the student’s work, rather than generic comments.",
+            "evidence": "\"Issue 1 is mapped to Visibility of System Status but the paired recommendation invokes 'recognition over recall'\"; \"Severity 4 rating on Issue 5 is well‑justified as a Usability Catastrophe under the Worksheet's frequency‑times‑impact criterion\"; \"First, resolve the Issue 1 mapping‑recommendation contradiction by remapping to Recognition Rather Than Recall\"; \"Second, expand the Issue 5 recommendation to match its Severity 4 weight\"; \"Third, develop the Week 2 cognition link on Issues 2 and 3 by naming the specific cognitive limit\"; \"Criterion: Context and Methodological Framework – Context of use, distracted‑mobile user model, Nielsen framework, and ISO 9241 effectiveness‑efficiency‑satisfaction are correctly established\".",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides highly concrete, prioritised, and assessment‑relevant improvement steps. It explicitly tells the student to remap Issue 1 to the correct heuristic, rewrite the Findings paragraph, expand the Issue 5 recommendation with specific confirmation‑dialog wording and cancel path, and add Week 2 cognition links for Issues 2 and 3. It also prioritises these actions (first, second, third) and aligns them with rubric expectations. The guidance is clear, realistic, and directly tied to the student’s work, meeting the criteria for an excellent score.",
+            "evidence": "\"First, resolve the Issue 1 mapping‑recommendation contradiction by remapping to Recognition Rather Than Recall.\" \"Second, expand the Issue 5 recommendation to match its Severity 4 weight: describe the confirmation‑dialog wording, the cancel path, and how it aligns with Nielsen's Error Prevention principle.\" \"Third, develop the Week 2 cognition link on Issues 2 and 3 by naming the specific cognitive limit.\" \"Introduce the three tasks as a short numbered list in the Methodology before the Findings begin.\"",
+            "defects": [],
+            "missing_evidence": []
+          }
+        }
+      }
+    }
+  }
+]

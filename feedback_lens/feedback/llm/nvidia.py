@@ -29,7 +29,7 @@ class NvidiaProvider(LLMProvider):
                 f"Missing API key. Please set environment variable {self.api_key_env}."
             )
 
-        return OpenAI(api_key=api_key, base_url=self.base_url)
+        return OpenAI(api_key=api_key, base_url=self.base_url, timeout=240.0, max_retries=2)
 
     def generate(
         self,

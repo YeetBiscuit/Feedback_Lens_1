@@ -24,7 +24,7 @@ QUALITY_THRESHOLD = 4
 MAX_ATTEMPTS = 3
 
 GATE_JUDGES = [
-    ("nvidia", "moonshotai/kimi-k3", "kimi-k3"),
+    ("nvidia", "openai/gpt-oss-20b", "gpt-oss-20b"),
     ("nvidia", "nvidia/nemotron-3-super-120b-a12b", "nemotron-3-super"),
 ]
 
@@ -350,6 +350,28 @@ def generate_feedback_with_quality_gate(
             gate_report["judge_failed"] = True
             _record_verdict(
                 conn, result.generation_id, "judge_failed", None, attempt, str(err)[:500]
+            )
+            return result, gate_report
+
+        missing = [
+            f"{j['label']}:{d}"
+            for j in judge_results
+            for d in DIMENSION_ORDER
+            if ((j.get("scores") or {}).get(d) or {}).get("score") is None
+        ]
+        if missing:
+            _record_judge_results(conn, result.generation_id, judge_results, attempt, False)
+            gate_report["attempts"].append(
+                {"attempt": attempt, "error": "incomplete judge scores", "generation_id": result.generation_id}
+            )
+            gate_report["judge_failed"] = True
+            _record_verdict(
+                conn,
+                result.generation_id,
+                "judge_failed",
+                None,
+                attempt,
+                "incomplete judge scores: " + ", ".join(missing),
             )
             return result, gate_report
 

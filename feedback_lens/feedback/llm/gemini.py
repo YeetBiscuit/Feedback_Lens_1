@@ -29,7 +29,7 @@ class GeminiProvider(LLMProvider):
                 f"Missing API key. Please set environment variable {self.api_key_env}."
             )
 
-        return OpenAI(api_key=api_key, base_url=self.base_url)
+        return OpenAI(api_key=api_key, base_url=self.base_url, timeout=120.0, max_retries=4)
 
     def generate(
         self,

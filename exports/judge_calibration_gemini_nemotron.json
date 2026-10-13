@@ -1,0 +1,1036 @@
+[
+  {
+    "input_file": "synthetic_low_1",
+    "student_identifier": "synthetic_low_1",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback is entirely generic and shows no meaningful connection to the assignment specification, rubric, or course materials. It relies on vague judgments like 'good effort' and 'could be better' without referencing any specific criteria, heuristics, or unit concepts.",
+            "evidence": "Overall comment: The student did an okay job on this assignment. There are some areas that could be improved. Overall a decent submission.\nKey strengths: - Good effort - Completed the assignment\nPriority improvements: - Could be better - Needs more detail\nOverall grade band: C\nCriterion: Context and Methodological Framework\nStrengths: The student described the app.\nAreas for improvement: Could add more context.\nImprovement suggestion: Add more detail.\nSuggested level: C\nCriterion: Usability Issue Analysis and Evidence\nStrengths: Issues were identified.\nAreas for improvement: The analysis could be deeper.\nImprovement suggestion: Be more specific.\nSuggested level: C\nCriterion: Design Recommendations and Theory Application\nStrengths: Recommendations were provided.\nAreas for improvement: Link to theory better.\nImprovement suggestion: Use more theory.\nSuggested level: C\nCriterion: Academic Structure and Referencing\nStrengths: The report has structure.\nAreas for improvement: References could be better.\nImprovement suggestion: Fix references.\nSuggested level: C",
+            "defects": [
+              "No reference to assignment specification (e.g., interface selection, target audience, primary tasks, Nielsen's Ten Heuristics).",
+              "No reference to rubric criteria (Context and Methodological Framework, Usability Issue Analysis and Evidence, Design Recommendations, Academic Structure).",
+              "No use of retrieved course materials (ISO 9241 definition, lecture transcript on heuristic evaluation, tutorial worksheet).",
+              "Feedback relies on unsupported, generic statements rather than evidence from the student submission or unit content.",
+              "No justification for any suggested improvement or grade band using specific criteria or concepts."
+            ],
+            "missing_evidence": [
+              "Assignment spec: need to analyze interface context, target audience, primary tasks, and apply Nielsen's heuristics.",
+              "Rubric: specific expectations for HD/D/C/P levels in each criterion (e.g., 'Five or more distinct issues expertly mapped to specific heuristics with justified severity ratings').",
+              "Course materials: ISO 9241-11 definition of usability (effectiveness, efficiency, satisfaction) from Week 1, lecture transcript detailing heuristic evaluation process, tutorial worksheet guiding user context identification.",
+              "Student submission: specific quotes such as 'The search bar is located at the bottom of the screen, below the fold' or severity rating scale description to ground feedback in actual work."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is highly generic and contains no concrete references to the student's actual submission (e.g., QuickEats app, specific issues like search bar visibility, severity ratings, or any details from the report). It uses vague statements that could apply to any student work, failing to identify specific strengths, weaknesses, or performance gaps tied to the submission or rubric criteria.",
+            "evidence": "Overall comment: \"The student did an okay job on this assignment. There are some areas that could be improved. Overall a decent submission.\"; Key strengths: \"- Good effort\\n- Completed the assignment\"; Priority improvements: \"- Could be better\\n- Needs more detail\"; Criterion feedback: \"Strengths: The student described the app.\"; \"Areas for improvement: Could add more context.\"; \"Improvement suggestion: Add more detail.\"",
+            "defects": [
+              "No mention of specific content from the student's submission (e.g., QuickEats, search bar placement, severity scale, five identified issues).",
+              "No linkage to rubric criteria with concrete evidence (e.g., referencing the student's mapping of issues to Nielsen's heuristics, severity ratings, or visual evidence).",
+              "Feedback relies on vague, unsupported judgments that could apply to any assignment."
+            ],
+            "missing_evidence": [
+              "Reference to the student's description of QuickEats as a food delivery app for young adults and busy professionals.",
+              "Reference to the identified Issue 1: Search Bar Visibility and its violation of Visibility of System Status.",
+              "Reference to the student's use of Nielsen's Ten Heuristics, severity ratings (0-4), and the five specific issues identified.",
+              "Reference to the student's methodology (expert review, task flow: search, add to cart, checkout) and consideration of human cognition concepts.",
+              "Connection to rubric criteria such as 'Usability Issue Analysis and Evidence' (e.g., noting that the student identified five issues with severity ratings but could improve visual evidence or justification)."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback provides only vague, generic suggestions such as 'Add more detail' and 'Be more specific' without explaining how the student should implement these improvements or linking them to specific parts of the submission or rubric. This leaves the student without clear, practical guidance for revision.",
+            "evidence": "\"Add more detail.\", \"Be more specific.\", \"Use more theory.\", \"Fix references.\"",
+            "defects": [
+              "Suggestions are vague and not actionable (e.g., 'Add more detail' without specifying what detail or where).",
+              "No connection to specific weaknesses identified in the student's submission (e.g., the search bar visibility issue).",
+              "No prioritization of improvements; all criteria receive the same generic advice.",
+              "No explanation of why the suggested changes matter or how they align with the assignment requirements or rubric."
+            ],
+            "missing_evidence": [
+              "Feedback should have referenced the student's specific issue (e.g., 'Search Bar Visibility') and suggested concrete actions like moving the search bar to the top of the home screen to improve visibility of system status.",
+              "Feedback should have linked improvement steps to the rubric criteria (e.g., for Usability Issue Analysis and Evidence: 'Provide at least five distinct issues, each mapped to a specific Nielsen heuristic with severity ratings and include screenshots as visual evidence').",
+              "Feedback should have used assignment specification details (e.g., need for five issues, visual evidence, severity ratings) to give targeted, prioritized guidance."
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback is almost completely disconnected from the actual student submission, course concepts, and specific rubric level descriptions. While it lists criterion headings from the rubric, the feedback content consists entirely of generic, vacuous judgements (e.g., 'Add more detail', 'Be more specific', 'Fix references') without citing any evidence from the student's work (such as QuickEats, ISO 9241, Nielsen's heuristics, or severity ratings) or taught unit materials.",
+            "evidence": "Statements across all criteria rely entirely on boilerplate generic comments: 'The student described the app', 'Could add more context', 'Issues were identified', 'The analysis could be deeper', 'Use more theory', and 'Fix references'.",
+            "defects": [
+              "Fails to reference any specific content from the student submission (e.g., the evaluated application QuickEats, specific heuristic violations, or severity ratings).",
+              "Fails to connect evaluations to taught unit concepts and course materials (such as Nielsen's 10 heuristics, ISO 9241 usability definitions, or cognitive principles).",
+              "Uses rubric criterion titles purely as empty placeholders without grounding judgements in the actual performance level indicators."
+            ],
+            "missing_evidence": [
+              "Direct references to the student's selected interface (QuickEats) and their specific methodology description.",
+              "Explicit evaluation of the student's heuristic mapping (e.g., their mapping of search bar visibility to 'Visibility of System Status') against course standards.",
+              "Substantiation for the 'C' grade band using the descriptive language of the rubric performance levels."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is entirely generic and could apply verbatim to virtually any student assignment. It does not reference a single concrete detail from Alex Johnson's submission, failing to mention the evaluated application (QuickEats), any of the specific heuristics used, the identified usability issues (such as the search bar placement), or specific rubric criteria.",
+            "evidence": "Examples of completely non-specific statements throughout the feedback include: 'Good effort', 'Completed the assignment', 'Could be better', 'Needs more detail', 'The student described the app', 'Could add more context', 'Issues were identified', 'Be more specific', and 'Fix references'.",
+            "defects": [
+              "Feedback contains zero specific references to the student's evaluated application (QuickEats) or user context.",
+              "Feedback makes vague statements like 'Issues were identified' and 'Be more specific' without naming or evaluating any of the actual findings or heuristics applied (e.g., misclassifying search bar visibility under Visibility of System Status).",
+              "Actionable guidance is entirely absent, relying on vacuous phrases such as 'Add more detail', 'Could be better', and 'Fix references'."
+            ],
+            "missing_evidence": [
+              "Mention of the selected interface: QuickEats food delivery application.",
+              "Analysis of student's methodology and framing: ISO 9241 usability definitions (effectiveness, efficiency, satisfaction) and Nielsen's heuristics.",
+              "Specific evaluation of the identified usability issues, such as Issue 1 (Search Bar Visibility) and its questionable mapping to Nielsen's 'Visibility of System Status'."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 1,
+            "reason": "The feedback provides virtually no usable guidance for improvement, leaving the student with no understanding of what to do next. While it includes headings for improvement suggestions, the advice consists entirely of generic, unelaborated directives ('Add more detail', 'Be more specific', 'Use more theory', 'Fix references') without explaining what specifically to revise, why it matters, or how to execute the changes. In accordance with the calibrated protocol, a score of 1 is assigned because the guidance is completely generic, unsupported, and not useful.",
+            "evidence": "Priority improvements: '- Could be better', '- Needs more detail'; Improvement suggestions across criteria: 'Add more detail.', 'Be more specific.', 'Use more theory.', 'Fix references.'",
+            "defects": [
+              "All improvement suggestions are generic platitudes with zero actionable steps or explanations of 'how' to revise.",
+              "Priority improvements offer no meaningful triage or actionable next steps ('Could be better', 'Needs more detail').",
+              "No alignment with rubric expectations or assignment requirements regarding heuristic mapping, severity ratings, or visual evidence.",
+              "Total absence of contextual grounding in the student's submission or evaluation of the QuickEats application."
+            ],
+            "missing_evidence": [
+              "Direct references to the student's submission, such as their analysis of Issue 1 (Search Bar Visibility) or their application of Nielsen's heuristics.",
+              "Actionable guidance on how to ground design recommendations in human cognition concepts (e.g., cognitive load, memory limits) from course materials.",
+              "Explicit advice on providing visual evidence and justifying severity ratings to meet the Distinction/High Distinction rubric descriptors.",
+              "Specific instructions on referencing formatting and academic conventions required by the unit."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_low_2",
+    "student_identifier": "synthetic_low_2",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 2,
+            "reason": "The feedback provides only vague, generic advice (e.g., shorten the report, reduce issues, remove theory references) that is not meaningfully tied to the assignment specification, rubric, or course materials. It even contradicts explicit requirements (e.g., deleting Week 2 cognition references, suggesting fewer than five issues) and shows only a superficial connection via mentioning the food app choice.",
+            "evidence": "'Overall comment: The student wrote too much and included too many things. The report would be stronger if it were shorter and simpler.'; 'Priority improvements: - Cut down to three issues instead of five - Remove the appendices to make the report cleaner - Delete the references to Week 2 cognition since it distracts from usability'; 'Strengths: The student picked a food app which is a common choice.'",
+            "defects": [
+              "Generic, unsupported advice about length and simplicity",
+              "Contradicts assignment spec (e.g., removing Week 2 cognition references, which spec requires)",
+              "Misaligned with rubric (suggesting fewer than five issues when rubric expects at least five for passing grades)",
+              "No reference to assignment word count, heuristic mapping requirements, severity ratings, or visual evidence",
+              "No use of retrieved course materials (lecture transcript, tutorial worksheet, sample solution)"
+            ],
+            "missing_evidence": [
+              "Assignment spec: 2000-word limit, need to identify ≥5 issues, map to Nielsen's heuristics, provide severity ratings, link to human cognition (Week 2), reference ISO 9241",
+              "Rubric criteria: Criterion 2 expects five issues with severity ratings and visual evidence; Criterion 1 expects insightful context analysis; Criterion 3 expects design recommendations grounded in usability theory",
+              "Course materials: lecture transcript on heuristic evaluation, tutorial worksheet guiding issue identification, sample solution showing proper structure and theory use"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is highly generic and could apply to almost any student submission. It does not identify concrete strengths, weaknesses, or performance gaps in Alex Johnson's specific report, such as the search bar visibility issue, the specific heuristics violated, or the ISO 9241 discussion in the introduction. Instead, it offers vague advice like 'cut down to three issues' and 'remove the appendices' without linking to the actual content of the submission.",
+            "evidence": "Overall comment: The student wrote too much and included too many things. The report would be stronger if it were shorter and simpler. Key strengths: - Report is not too long - Some issues are described. Strengths: The student picked a food app which is a common choice. Areas for improvement: The introduction is too focused on ISO 9241 and this makes it feel textbook. Improvement suggestion: Remove the paragraph on ISO 9241 and just say the app is being evaluated.",
+            "defects": [
+              "Generic advice that could apply to any student (e.g., 'cut down to three issues', 'remove the appendices').",
+              "No concrete references to specific parts of the student's submission (e.g., search bar placement, severity ratings, specific heuristic mappings).",
+              "Failure to link feedback to the rubric criteria or assignment requirements in a specific way.",
+              "No evidence of using the student's actual strengths or weaknesses to tailor improvement suggestions."
+            ],
+            "missing_evidence": [
+              "Reference to the specific issue 'Search Bar Visibility' described in the Findings section.",
+              "Mention of the severity rating scale (0-4) and how the student applied it.",
+              "Comment on the student's use of Nielsen's Ten Heuristics and any gaps in mapping.",
+              "Feedback on the introduction's discussion of ISO 9241 and its relevance to the assignment's learning outcomes.",
+              "Specific suggestions tied to the identified issues (e.g., 'move the search bar above the fold on the home screen to improve visibility')."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback provides some specific suggestions (e.g., cut to three issues, remove appendices, delete Week 2 cognition references) but they are vague in terms of how to choose which issues to keep, lack justification, and contradict assignment expectations (the rubric requires five or more issues and theory‑grounded recommendations). Consequently, the guidance is not clearly actionable or aligned with the assessment requirements.",
+            "evidence": "\"Cut down to three issues instead of five\", \"Remove the appendices to make the report cleaner\", \"Delete the references to Week 2 cognition since it distracts from usability\", \"Remove the paragraph on ISO 9241 and just say the app is being evaluated.\", \"Delete two of the weaker issues (like the search bar and button styles)\", \"Rewrite each recommendation as a single sentence without any theory citations.\"",
+            "defects": [
+              "Suggestions conflict with rubric requirements (need five issues, theory‑based recommendations).",
+              "Improvement steps are not prioritized or explained (e.g., no criteria for selecting which issues to keep).",
+              "Feedback does not reference specific parts of the student submission or rubric to ground the advice.",
+              "Advice is generic in that it tells the student what to remove without showing how to improve the remaining content."
+            ],
+            "missing_evidence": [
+              "Reference to the rubric’s expectation of five or more distinct issues for a high grade.",
+              "Reference to the assignment’s requirement that recommendations be grounded in usability theory.",
+              "Specific examples from the student’s report (e.g., where ISO 9241 is discussed, where the five issues are listed) to illustrate what should be revised.",
+              "Explanation of why reducing issues or removing theory would improve alignment with learning outcomes."
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback completely contradicts both the assignment specification and the marking rubric, giving actively harmful advice that would cause the student to fail or drop grade bands. The rubric for Criterion 2 explicitly requires 'Five or more distinct issues' for HD/D/C, yet the feedback repeatedly instructs the student to cut down to three issues. Furthermore, the assignment specification explicitly mandates demonstrating understanding of human cognition limits and grounding recommendations in usability theory, but the feedback directs the student to delete references to Week 2 cognition, mental models, cognitive load, and ISO 9241.",
+            "evidence": "Feedback statements such as 'Cut down to three issues instead of five', 'Five issues is too many and the report becomes repetitive. Reduce to the three most important ones', 'Delete the references to Week 2 cognition since it distracts from usability', 'The recommendations reference cognitive load and mental models which is not needed for this task. Take those references out', and 'Rewrite each recommendation as a single sentence without any theory citations.'",
+            "defects": [
+              "Directly penalises adherence to the rubric by instructing the student to reduce findings from five to three issues, which would cap the student at a Pass band under Criterion 2.",
+              "Contradicts the assignment specification which explicitly requires demonstrating understanding of human cognition and interaction limits.",
+              "Contradicts the task requirement that recommendations be grounded in usability theory by telling the student to remove theory citations and cognitive concepts.",
+              "Incorrectly claims ISO 9241 references should be dropped, despite ISO 9241 being a core taught concept introduced in Week 1 course materials."
+            ],
+            "missing_evidence": [
+              "Rubric Criterion 2 threshold requiring at least five distinct issues for high achievement.",
+              "Assignment Specification requirement to link issues to human cognition and interaction limits.",
+              "Course materials (Week 1 ISO 9241 metrics and Week 2 cognitive principles) that the student appropriately incorporated."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 2,
+            "reason": "The feedback identifies broad topics and occasional surface elements from the submission (such as mentioning a food app, ISO 9241, search bar, and button styles), but remains superficial and vague throughout. The identified strengths are almost entirely generic boilerplate ('Some issues are described', 'Report has headings', 'There are recommendations at the end'). Furthermore, the feedback fails to analyze the actual substance of the student's work—such as the conceptual error in Issue 1 where search bar placement is misattributed to 'Visibility of System Status'—giving minimal indication of how the student's specific arguments align with or fall short of the rubric criteria.",
+            "evidence": "Generic strengths include: 'Report is not too long', 'Some issues are described', 'The student picked a food app which is a common choice', 'Report has headings', and 'There are recommendations at the end'. Superficial issue references include: 'Delete two of the weaker issues (like the search bar and button styles)' without explaining what was actually written or why they are considered weak.",
+            "defects": [
+              "Strengths are broad, generic, and could apply to almost any report with headings and recommendations.",
+              "Mentions student topics (search bar, ISO 9241) only as surface labels without engaging with the student's specific arguments, analysis, or evidence.",
+              "Fails to identify actual performance gaps in the submission, such as the misapplication of Nielsen's heuristics in Issue 1."
+            ],
+            "missing_evidence": [
+              "Specific analysis of Issue 1, where the student incorrectly classified the search bar's placement as a violation of 'Visibility of System Status'.",
+              "Detailed critique of how the student applied the 0–4 severity scale and whether their justifications met the rubric expectations for Criterion 2.",
+              "Evaluation of the student's context analysis regarding QuickEats and its intended user demographic (young adults and busy professionals)."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 1,
+            "reason": "The feedback provides actively harmful guidance that directly contradicts the assignment specification and rubric criteria. Rather than guiding the student toward improvement aligned with unit expectations, following this advice would severely reduce the student's grade (e.g., advising them to reduce five issues to three, which caps Criterion 2 at Pass/Fail, and telling them to delete references to human cognition and usability theory despite explicit assignment requirements).",
+            "evidence": "Statements such as 'Cut down to three issues instead of five', 'Delete two of the weaker issues... so the report focuses on stronger issues only', 'Delete the references to Week 2 cognition', and 'Rewrite each recommendation as a single sentence without any theory citations.'",
+            "defects": [
+              "Instructs the student to reduce the analysis to three issues, directly conflicting with Rubric Criterion 2 which mandates five or more issues for higher performance bands.",
+              "Tells the student to remove cognitive concepts and theory citations, contradicting the task specification requirement to demonstrate understanding of human cognition and ground recommendations in usability theory.",
+              "Provides counterproductive revisions that misalign with assessment expectations and would lower the student's grade if implemented."
+            ],
+            "missing_evidence": [
+              "Rubric Criterion 2 performance descriptors requiring five or more distinct issues for D/HD bands.",
+              "Assignment Specification requirement explicitly stating: 'The report should demonstrate your understanding of human cognition and interaction limits as discussed in the early weeks of the course' and 'grounded in usability theory'."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_low_3",
+    "student_identifier": "synthetic_low_3",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback is completely disconnected from the heuristic evaluation assignment; it provides generic software engineering comments about database queries, test coverage, architecture diagrams, and MVC patterns, with no reference to the assignment specification, rubric criteria (Context and Methodological Framework, Usability Issue Analysis and Evidence, Design Recommendations and Theory Application), Nielsen's heuristics, severity ratings, or any course materials such as the lecture transcript, tutorial worksheet, or sample solution.",
+            "evidence": "\"Overall comment: The submission shows reasonable technical implementation. Database queries appear well structured and the user interface follows standard design patterns. Test coverage could be improved and the software architecture should be documented more clearly.\"\n\"Key strengths: - Implementation is functional - Code appears to run\"\n\"Priority improvements: - Improve test coverage using unit tests - Add architecture diagrams - Consider using a design pattern such as MVC or repository pattern\"",
+            "defects": [
+              "Feedback does not mention any assignment-specific requirements such as heuristic evaluation, Nielsen's Ten Heuristics, context analysis, severity ratings, or visual evidence.",
+              "Feedback provides generic software engineering advice unrelated to the usability evaluation task.",
+              "Feedback fails to reference any course materials (lecture transcript, tutorial worksheet, sample solution) that discuss heuristic evaluation or usability concepts.",
+              "Feedback does not align with any rubric criterion (Context and Methodological Framework, Usability Issue Analysis and Evidence, Design Recommendations and Theory Application)."
+            ],
+            "missing_evidence": [
+              "Reference to Nielsen's Ten Heuristics from the Week 04 lecture transcript.",
+              "Reference to ISO 9241 definition of usability (effectiveness, efficiency, satisfaction) from the student submission and course materials.",
+              "Reference to the severity rating scale (0-4) used in the student submission.",
+              "Reference to specific usability issues identified in the submission (e.g., search bar visibility violating Visibility of System Status).",
+              "Reference to assignment requirements: need to identify at least five issues, map to heuristics, justify severity, provide visual evidence.",
+              "Reference to rubric criteria: Context and Methodological Framework, Usability Issue Analysis and Evidence, Design Recommendations and Theory Application."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback is entirely generic and unrelated to the student's heuristic evaluation report. It discusses database queries, test coverage, software architecture, requirements engineering, user stories, non-functional requirements, quantitative metrics, A/B testing, agile prioritization, and IEEE referencing—none of which appear in the assignment or the student's submission. No concrete strengths, weaknesses, or performance gaps specific to the QuickEats heuristic evaluation are identified.",
+            "evidence": "\"Overall comment: The submission shows reasonable technical implementation. Database queries appear well structured and the user interface follows standard design patterns.\"\n\"Key strengths: - Implementation is functional - Code appears to run\"\n\"Priority improvements: - Improve test coverage using unit tests - Add architecture diagrams - Consider using a design pattern such as MVC or repository pattern\"\n\"Criterion: Context and Methodological Framework\nStrengths: The context of the problem is stated.\nAreas for improvement: The requirements engineering section could benefit from user stories written in the standard 'As a user, I want...' format.\"\n\"Criterion: Usability Issue Analysis and Evidence\nStrengths: The report identifies several concerns.\nAreas for improvement: The analysis lacks quantitative metrics such as time-on-task or completion rates.\"\n\"Criterion: Design Recommendations and Theory Application\nStrengths: Some recommendations are provided.\nAreas for improvement: The recommendations should be evaluated against agile prioritisation frameworks such as MoSCoW.\"\n\"Criterion: Academic Structure and Referencing\nStrengths: The report has sections.\nAreas for improvement: The report should follow IEEE referencing style consistent with software engineering conventions.\"",
+            "defects": [
+              "Feedback does not mention the selected interface (QuickEats) or its target audience.",
+              "No reference to Nielsen's Ten Heuristics or any heuristic violation identified in the submission.",
+              "No discussion of the five issues identified (e.g., Search Bar Visibility) or their severity ratings.",
+              "No connection to the assignment's learning outcomes (LO1, LO2) or rubric criteria (Context and Methodological Framework, Usability Issue Analysis and Evidence, etc.).",
+              "Feedback uses language appropriate for a software engineering implementation report, not a heuristic evaluation report."
+            ],
+            "missing_evidence": [
+              "Reference to the student's description of QuickEats as a food delivery app for young adults and busy professionals.",
+              "Mention of Issue 1: Search Bar Visibility and its violation of the Visibility of System Status heuristic.",
+              "Discussion of the methodology used (expert review using Nielsen's Ten Heuristics) and whether it was adequately described.",
+              "Evaluation of the student's identification of five specific issues and severity ratings.",
+              "Feedback on the link between identified usability issues and potential impacts on user performance and satisfaction.",
+              "Comments on the quality of the introduction, methodology, findings, and recommendations sections as they pertain to heuristic evaluation."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 1,
+            "reason": "The feedback provides no usable guidance for improving the heuristic evaluation report; it offers irrelevant technical suggestions (e.g., test coverage, architecture diagrams) that do not align with the assignment requirements, rubric, or student submission, making it impossible for the student to know what to revise.",
+            "evidence": "\"Overall comment: The submission shows reasonable technical implementation. Database queries appear well structured and the user interface follows standard design patterns.\"; \"Priority improvements: - Improve test coverage using unit tests - Add architecture diagrams - Consider using a design pattern such as MVC or repository pattern\"; \"Criterion: Context and Methodological Framework ... Areas for improvement: The requirements engineering section could benefit from user stories written in the standard 'As a user, I want...' format.\"",
+            "defects": [
+              "Feedback is completely misaligned with the heuristic evaluation assignment domain.",
+              "Suggestions are generic and unrelated to the identified usability issues (e.g., no mention of Nielsen's heuristics, search bar visibility, severity ratings).",
+              "No concrete, prioritised steps linked to the rubric criteria or student submission are provided."
+            ],
+            "missing_evidence": [
+              "Specific references to the student's identified issues (e.g., Search Bar Visibility, etc.) and how to improve them (e.g., relocate search bar, improve visibility).",
+              "Guidance tied to the rubric such as enhancing contextual analysis, providing visual evidence for each heuristic violation, refining severity justification, or linking recommendations to Nielsen's heuristics and user context."
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 1,
+            "reason": "The feedback is completely ungrounded in the assignment brief, rubric, and course materials. It fundamentally hallucinates the entire nature of the task, treating a written heuristic evaluation report as a software engineering coding submission. It introduces expectations that directly contradict the assignment guidelines (e.g., demanding quantitative metrics and A/B testing when the brief explicitly specifies an expert review where students are not required to conduct user testing) and introduces completely irrelevant technical requirements such as database queries, unit tests, software architecture diagrams, and product backlogs.",
+            "evidence": "Examples of complete detachment and hallucinated expectations include: 'Database queries appear well structured', 'Code appears to run', 'Improve test coverage using unit tests', 'Consider using a design pattern such as MVC or repository pattern', 'The analysis lacks quantitative metrics such as time-on-task or completion rates... Include performance benchmarks and A/B testing results', and 'Prioritise the recommendations using RICE scoring or WSJF and present them in a product backlog format.'",
+            "defects": [
+              "Completely misidentifies the assessment type as a code implementation project with databases and software architecture rather than a heuristic evaluation report.",
+              "Demands user testing data (quantitative metrics, completion rates, A/B testing), which directly contradicts the assignment specification stating user testing is not required.",
+              "Introduces out-of-scope frameworks and criteria (MVC pattern, MoSCoW, RICE, WSJF, IEEE referencing, systematic literature review) not present in the unit materials or assignment specification.",
+              "Fails to reference any of the actual content submitted by the student, including Nielsen's Heuristics, ISO 9241 standards, or the QuickEats application evaluation."
+            ],
+            "missing_evidence": [
+              "Evaluation of the student's application of Nielsen's Ten Heuristics as required by Criterion 1 and 2.",
+              "Assessment of the user context and target audience analysis for the QuickEats app.",
+              "Feedback on the severity rating scale (0-4) and specific usability issue analysis (e.g., Issue 1: Search Bar Visibility).",
+              "Alignment with taught concepts from Week 1-4 (ISO 9241 metrics, human cognition limits, expert review methods)."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 1,
+            "reason": "The feedback completely fails to address the student's actual submission. The student submitted a written Heuristic Evaluation report analyzing a mobile app (QuickEats) using Nielsen's Ten Heuristics, but the feedback evaluates a software development coding project, discussing code execution, database queries, unit tests, MVC patterns, and user stories. It identifies zero actual strengths, weaknesses, or performance gaps from the student's work.",
+            "evidence": "The feedback references irrelevant software engineering elements: 'Database queries appear well structured', 'Code appears to run', 'Improve test coverage using unit tests', 'The requirements engineering section could benefit from user stories', and 'Include performance benchmarks and A/B testing results', none of which relate to the student's heuristic evaluation report.",
+            "defects": [
+              "Feedback is completely disconnected from the student's submission, hallucinating code implementation and database queries for a written evaluation report.",
+              "No identification of actual concrete strengths or weaknesses in the student's analysis of QuickEats or application of Nielsen's heuristics.",
+              "Suggests irrelevant methodologies (A/B testing, unit tests, MoSCoW, RICE scoring) that directly contradict the assignment task requirements (which specified an expert heuristic evaluation without user testing)."
+            ],
+            "missing_evidence": [
+              "Reference to the student's selected interface (QuickEats food delivery app).",
+              "Specific evaluation of the student's application of Nielsen's heuristics (e.g., misclassifying search bar visibility under 'Visibility of System Status').",
+              "Analysis of the student's methodology, context description, and severity rating scale (0-4)."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 1,
+            "reason": "The feedback provides completely unusable and misleading guidance. It appears to evaluate an entirely different assignment (software development/coding) rather than a usability heuristic evaluation report. The action steps advise the student to add unit tests, architecture diagrams, MVC patterns, database queries, and A/B testing (which directly contradicts the assignment brief stating user testing is not required). Following this advice would actively harm the student's submission and lead to failure against the unit rubric.",
+            "evidence": "The feedback instructs the student to 'Improve test coverage using unit tests', 'Add architecture diagrams', 'Include performance benchmarks and A/B testing results', and 'Prioritise the recommendations using RICE scoring or WSJF and present them in a product backlog format', none of which pertain to the Heuristic Evaluation Report specification.",
+            "defects": [
+              "Advice is entirely irrelevant to the task description and rubric criteria, focusing on software implementation and code rather than heuristic evaluation.",
+              "Recommends methods explicitly excluded by the assignment brief (e.g., empirical A/B user testing when the brief specifies an expert review without user testing).",
+              "Provides zero actionable guidance on how to improve the heuristic analysis, severity ratings, or usability design recommendations."
+            ],
+            "missing_evidence": [
+              "Guidance on correctly mapping identified usability issues (such as Search Bar Visibility) to Nielsen's heuristics (e.g., noting that search visibility relates to Recognition rather than Visibility of System Status).",
+              "Actionable steps on providing visual evidence (screenshots) and justifying severity ratings (0 to 4 scale) as required by Criterion 2.",
+              "Concrete advice on formulating design recommendations linked to human cognition principles and usability theory as required by Criterion 3."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_1",
+    "student_identifier": "synthetic_medium_1",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 3,
+            "reason": "The feedback shows some alignment with the assignment specification (e.g., noting missing primary tasks in the methodology section) and rubric (e.g., critiquing the heuristic mapping of Issue 1), and it references course theory (cognitive connections). However, the grounding is uneven and generic: it does not cite specific retrieved course materials, lacks reference to learning outcomes or weighting, and offers improvement suggestions that are not tied to concrete unit concepts or rubric criteria.",
+            "evidence": "\"Primary tasks not explicitly listed as required by methodology section.\"; \"Issue 1 mapping to Visibility of System Status is inaccurate.\"; \"Cognitive theory connections are surface level.\"; \"Five issues identified and mapped to heuristics\"; \"Severity ratings provided with basic justification\".",
+            "defects": [
+              "Feedback does not reference specific retrieved course materials (tutorial sheet, sample solution, lecture transcript).",
+              "Feedback lacks mention of learning outcomes or weighting from the assignment specification.",
+              "Improvement suggestions are generic and not tied to specific unit concepts or rubric criteria."
+            ],
+            "missing_evidence": [
+              "Reference to the tutorial worksheet for heuristic evaluation steps and expected structure.",
+              "Reference to the sample solution illustrating depth of theory application and recommendation quality.",
+              "Reference to the lecture transcript for specific cognitive concepts (e.g., memory, attention) to ground theory application feedback."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 3,
+            "reason": "The feedback includes some concrete references to the student's submission (e.g., QuickEats app, Issue 1 mapping, five issues with severity ratings) but many comments remain generic or insufficiently tied to specific parts of the work, resulting in uneven coverage.",
+            "evidence": "\"Five issues identified and mapped to heuristics\", \"Severity ratings provided with basic justification\", \"Issue 1 mapping to Visibility of System Status is inaccurate\", \"Improvement suggestion: Remap Issue 1 to Recognition rather than Recall\", \"Suggested level: C\".",
+            "defects": [
+              "Does not specify which heuristics were mapped to each issue beyond Issue 1.",
+              "Does not detail the actual recommendations given or their shortcomings.",
+              "Lacks reference to specific sections of the report (e.g., introduction, methodology) or word count.",
+              "Feedback includes generic statements such as \"The student demonstrated adequate understanding of heuristic evaluation\" and \"Some recommendations were provided but lack theoretical depth\" without concrete examples."
+            ],
+            "missing_evidence": [
+              "Specific heuristic mappings for each of the five issues.",
+              "Direct quotes or paraphrases from the student's report illustrating strengths or weaknesses.",
+              "Details about the recommendations provided and how they could be improved with theory.",
+              "Connection to specific rubric descriptors (e.g., what constitutes a 'C' for each criterion) beyond the suggested level."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 3,
+            "reason": "The feedback provides some specific improvement suggestions (e.g., explicitly define three primary tasks, remap Issue 1 to Recognition, specify how recommendations reduce cognitive load, review APA guidelines) that are connected to identified weaknesses, but also includes vague, generic advice (e.g., 'Deepen connection to course theory', 'Improve specificity of recommendations') and lacks clear prioritization or detailed step‑by‑step guidance, resulting in only partial understanding of how to improve.",
+            "evidence": "\"Improvement suggestion: Explicitly define three primary tasks before evaluation.\"; \"Improvement suggestion: Remap Issue 1 to Recognition rather than Recall.\"; \"Improvement suggestion: Specify how recommendations reduce cognitive load.\"; \"Improvement suggestion: Review APA guidelines for web sources.\"; \"Priority improvements: - Deepen connection to course theory - Improve specificity of recommendations\"",
+            "defects": [
+              "Contains vague, generic advice such as 'Deepen connection to course theory' and 'Improve specificity of recommendations' that does not tell the student exactly what to do.",
+              "Lacks clear prioritization of the improvement steps; all suggestions are presented at similar level without indicating which are most critical.",
+              "Does not provide concrete examples or templates showing how to implement the suggestions (e.g., what a properly listed primary tasks section should look like)."
+            ],
+            "missing_evidence": []
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 3,
+            "reason": "The feedback is generally aligned with the assessment specification and uses the assignment's rubric criteria (Context, Usability Issue Analysis, Recommendations, Academic Structure). It also references taught concepts such as Nielsen's heuristics and cognitive theory. However, its grounding in the unit content is superficial, and it makes an inaccurate assessment claim regarding the student's submission by asserting that primary tasks were not listed when the student explicitly identified three main tasks in their methodology.",
+            "evidence": "Rubric alignment: 'Criterion: Context and Methodological Framework', 'Criterion: Usability Issue Analysis and Evidence', 'Criterion: Design Recommendations and Theory Application'. Course concept references: 'Nielsen heuristics stated as framework', 'Remap Issue 1 to Recognition rather than Recall', 'Specify how recommendations reduce cognitive load'. Inaccurate claim: 'Primary tasks not explicitly listed as required by methodology section' (contradicted by student text: 'the main tasks, which are searching for a restaurant, adding items to the cart, and checking out').",
+            "defects": [
+              "Makes a factually inaccurate grounding claim about the submission: states that primary tasks were not explicitly listed in the methodology, overlooking the student's explicit description of searching, adding to cart, and checking out.",
+              "Course material integration is superficial; advice to 'Specify how recommendations reduce cognitive load' is generic and fails to ground the feedback in specific cognitive models or limits taught in the early weeks of the unit."
+            ],
+            "missing_evidence": [
+              "Explicit connection to the unit's taught frameworks for cognitive limits (e.g., attention, working memory constraints discussed in Week 2) or ISO 9241-11 metrics referenced in the unit materials.",
+              "Accurate citation of the student's methodology text where the three primary tasks were already outlined."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 3,
+            "reason": "The feedback identifies some concrete, student-specific details—notably referencing the 'QuickEats' app and pinpointing the exact heuristic misclassification in Issue 1 ('Visibility of System Status' vs 'Recognition rather than Recall'). However, the specificity is highly uneven across criteria. Comments regarding cognitive theory, recommendations, and academic referencing are vague and generic, lacking direct citations, page references, or specific examples from the student's text.",
+            "evidence": "Concrete elements include: 'The QuickEats app context and target audience were described', 'Issue 1 mapping to Visibility of System Status is inaccurate', and 'Remap Issue 1 to Recognition rather than Recall'. Conversely, generic elements include: 'Cognitive theory connections are surface level', 'Some APA formatting errors present', and 'Specify how recommendations reduce cognitive load'.",
+            "defects": [
+              "Feedback on referencing is entirely generic ('Some APA formatting errors present') without citing any actual references, styles, or specific errors from the submission.",
+              "Critique of cognitive theory application ('Cognitive theory connections are surface level') does not name or locate the specific theories or sections where the analysis fell short.",
+              "The feedback asserts that 'Primary tasks not explicitly listed' without addressing the fact that the student explicitly named three tasks ('searching for a restaurant, adding items to the cart, and checking out') in the Methodology section, showing a lack of precise textual grounding.",
+              "Issues 2 through 5 and their respective recommendations are never specifically named or analyzed."
+            ],
+            "missing_evidence": [
+              "Specific citations or bibliographic entries demonstrating the APA formatting errors.",
+              "Direct quotes or references to the student's discussion of memory and attention to demonstrate why the cognitive theory links were considered surface-level.",
+              "Specific names or details for the remaining usability issues and design recommendations."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 3,
+            "reason": "The feedback provides a mix of concrete and generic suggestions. While some guidance is directly actionable (e.g., specifying the exact heuristic to remap Issue 1 and advising the student to define three primary tasks), other recommendations remain vague and high-level, offering limited instructional detail on how to execute them. As a result, the student gains only a partial understanding of how to make meaningful revisions across all criteria.",
+            "evidence": "Actionable suggestions include: 'Explicitly define three primary tasks before evaluation' and 'Remap Issue 1 to Recognition rather than Recall.' However, other suggestions are generic, such as priority improvements: 'Deepen connection to course theory', 'Improve specificity of recommendations', and criterion suggestions: 'Specify how recommendations reduce cognitive load' and 'Review APA guidelines for web sources.'",
+            "defects": [
+              "Priority improvements ('Deepen connection to course theory', 'Improve specificity of recommendations') are generic imperatives that lack concrete steps or guidance on how to implement them.",
+              "The suggestion to 'Specify how recommendations reduce cognitive load' lacks clear scaffolding or examples showing how to integrate specific cognitive principles discussed in the unit.",
+              "The referencing advice ('Review APA guidelines for web sources') is standard boilerplate rather than identifying the exact formatting errors that need correction."
+            ],
+            "missing_evidence": [
+              "Specific guidance on which cognitive models or concepts (such as working memory limits or attention split discussed in the course materials) the student should apply to their recommendations.",
+              "Targeted examples of APA citation errors present in the submission to clarify exactly what needs revision."
+            ]
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_2",
+    "student_identifier": "synthetic_medium_2",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 2,
+            "reason": "The feedback shows only a vague and inconsistent connection to the assignment specification, rubric, and course materials. It uses generic statements (e.g., 'report follows required structure', 'heuristic framework applied') without citing specific evidence from the student submission, rubric criteria, or retrieved unit materials such as the ISO 9241 definition, Nielsen's heuristics details, or tutorial guidance. This lack of concrete grounding prevents a higher score.",
+            "evidence": "'The report follows the required structure', 'Heuristic framework is applied', 'Recommendations are included for each issue', 'Strengthen the methodological framing', 'Deepen the theory application'.",
+            "defects": [
+              "Generic advice without specific links to the student submission",
+              "No reference to rubric criterion details (weights, performance levels)",
+              "No citation of course materials (ISO 9241, lecture transcript, tutorial worksheet)",
+              "Unsupported claims about theory application and methodological framing"
+            ],
+            "missing_evidence": [
+              "Specific excerpts from the student submission (e.g., description of QuickEats context, Issue 1: Search Bar Visibility)",
+              "References to rubric criteria such as 'Context and Methodological Framework (20%)' or 'Usability Issue Analysis and Evidence (40%)'",
+              "Connections to retrieved course materials like the ISO 9241 definition from Week 1, Nielsen's Ten Heuristics from the lecture transcript, or guidance from the tutorial worksheet"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 2,
+            "reason": "The feedback is largely generic, mentioning only broad aspects such as 'report follows the required structure' and 'heuristic framework is applied' without referencing any concrete elements of the student's submission (e.g., the specific issues identified like search bar visibility, severity ratings, or the analysis of QuickEats). It does not tie strengths or weaknesses to particular parts of the work, making it applicable to many similar reports.",
+            "evidence": "Overall comment: The report addresses the assignment requirements. Context is described, heuristics are applied, and recommendations are provided. Key strengths: - The report follows the required structure - Heuristic framework is applied - Recommendations are included for each issue",
+            "defects": [
+              "No reference to specific issues from the student's submission (e.g., Search Bar Visibility, any other identified issues).",
+              "No mention of specific strengths such as the description of target audience, use of severity scale, or particular heuristic mappings.",
+              "Feedback uses vague language that could apply to any heuristic evaluation report."
+            ],
+            "missing_evidence": [
+              "Reference to the student's identified Issue 1: Search Bar Visibility and its violation of Visibility of System Status.",
+              "Reference to the student's severity rating approach (0-4 scale) and how it was applied.",
+              "Reference to the student's description of QuickEats' target audience and context of use.",
+              "Reference to any specific heuristic mappings or recommendations the student made."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 3,
+            "reason": "The feedback provides some useful suggestions for improvement, but they are generic and lack concrete, prioritised steps tied to specific parts of the student's submission. The student would have a partial understanding of how to improve but would need to interpret vague advice such as 'Expand the methodology' or 'Provide stronger justification' without clear examples or actionable instructions.",
+            "evidence": "\"Expand the methodology to strengthen the link between the target audience context and the evaluation framework.\"\n\"Provide stronger justification for each heuristic mapping and severity rating decision.\"\n\"Ground each recommendation more explicitly in relevant usability theory to demonstrate deeper theoretical understanding.\"\n\"Review the report for any minor formatting inconsistencies before final submission.\"",
+            "defects": [
+              "Vague improvement suggestions lacking concrete steps or examples",
+              "No direct reference to specific parts of the student's submission to illustrate what to revise",
+              "Improvement steps are not prioritised or explicitly linked to rubric criteria in detail"
+            ],
+            "missing_evidence": [
+              "Specific excerpts from the student's submission (e.g., the search bar visibility description) to show where methodology linking is weak",
+              "Concrete examples of how to justify severity ratings using evidence from the submission",
+              "Explicit, actionable steps that connect each suggestion to the rubric criteria (e.g., 'Add a sentence after line X describing how the target audience's distractions affect heuristic Y')"
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 16h4m4.34670082s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57844s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 16h1m51.263532528s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57711s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h59m38.407527251s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57578s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_3",
+    "student_identifier": "synthetic_medium_3",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 4,
+            "reason": "The feedback is largely grounded in the assignment specification, rubric, and course materials, referencing the target audience, Nielsen's heuristics, severity ratings, human cognition concepts, and lecture note citations. However, it omits explicit attention to the rubric's visual evidence requirement and does not draw on the tutorial worksheet or sample solution, which prevents a perfect score.",
+            "evidence": "\"The QuickEats app is described as a food delivery service for young adults and busy professionals in distracted contexts. Nielsen's Ten Heuristics is stated as the framework.\" (Context and Methodological Framework strengths); \"Severity ratings from 2 to 4 are reasonably justified.\" (Key strengths); \"The connections to human cognition are stated in passing but not developed.\" (Design Recommendations area for improvement); \"The Evans (2023) lecture note reference is not the standard way to cite unit content.\" (Academic Structure area for improvement).",
+            "defects": [
+              "Feedback does not mention the visual evidence requirement outlined in the Usability Issue Analysis and Evidence rubric criterion.",
+              "Feedback does not explicitly reference the tutorial worksheet or sample solution as part of the course materials."
+            ],
+            "missing_evidence": [
+              "Explicit reference to the rubric's expectation for visual evidence for each usability issue.",
+              "Citation of the tutorial worksheet or sample solution to support heuristic mapping guidance."
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 4,
+            "reason": "The feedback frequently references concrete aspects of the student's submission (e.g., QuickEats app, specific issues like Search Bar Visibility, Unclear Error Messages, No Confirmation Before Order, severity ratings, and methodological details). It ties strengths and improvement suggestions to particular parts of the report, showing clear tailoring. However, some statements remain slightly generic (e.g., 'Some heuristic mappings should be reconsidered.' lacks explicit reference to which mapping or why) and the feedback does not include direct quotations from the student's text to ground its claims, preventing a perfect specificity score.",
+            "evidence": "\"The QuickEats app is described as a food delivery service for young adults and busy professionals in distracted contexts.\" ; \"Five issues identified across search, error handling, checkout, consistency, and confirmation\" ; \"Reconsider the Issue 1 heuristic mapping\" ; \"Provide more detail on the Issue 3 checkout flow analysis\" ; \"Strengthen the justification for the Severity 4 rating on Issue 5\" ; \"The QuickEats app is described as a food delivery service for young adults and busy professionals in distracted contexts. Nielsen's Ten Heuristics is stated as the framework.\"",
+            "defects": [
+              "Feedback uses generic phrasing without anchoring to exact text (e.g., 'Some heuristic mappings should be reconsidered.' does not specify which heuristic mapping or why).",
+              "Feedback does not include direct quotations from the student's submission to illustrate points (e.g., quoting the student's description of Issue 1 or severity justification)."
+            ],
+            "missing_evidence": [
+              "Specific excerpt from the student's submission describing the search bar location (Issue 1).",
+              "Exact wording of the student's severity rating justification for Issue 5.",
+              "Direct quote from the student's methodology section about the three primary tasks."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 3,
+            "reason": "The feedback offers a mix of concrete and vague improvement suggestions. While some recommendations are clear and actionable (e.g., presenting tasks as a numbered list, citing specific lecture slides, explaining cognitive load type), many are vague or lack concrete steps (e.g., 'provide more detail on the Issue 3 checkout flow analysis', 'strengthen the justification for the Severity 4 rating on Issue 5', 'reconsider the Issue 1 heuristic mapping'). This unevenness leaves the student with only a partial understanding of exactly what to revise and how to do so, meeting the criteria for an adequate but not good level of actionability.",
+            "evidence": "Clear suggestions: 'Present the three tasks as a numbered list in the introduction so the evaluation scope is clear before the findings begin.'; 'When cognitive load is mentioned, briefly explain which type of load is reduced and why the design change reduces it.'; 'Cite specific lecture slides or reading pack items instead of a general lecture notes reference.' Vague suggestions: 'Provide more detail on the Issue 3 checkout flow analysis'; 'Strengthen the justification for the Severity 4 rating on Issue 5'; 'Reconsider the Issue 1 heuristic mapping'; 'Consider remapping Issue 1 to a heuristic that better fits hidden interface elements.'",
+            "defects": [
+              "Vague improvement suggestions",
+              "Lack of prioritisation among suggestions",
+              "Missing concrete how-to steps for several recommendations"
+            ],
+            "missing_evidence": [
+              "Feedback does not reference the rubric severity scale to illustrate how to justify severity ratings",
+              "Feedback does not provide an example of a numbered list from the student's submission",
+              "Feedback does not cite specific lecture slide numbers to demonstrate proper referencing"
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h57m18.188921965s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57438s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h57m1.188068549s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57421s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h56m48.516792952s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.8-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57408s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_medium_4",
+    "student_identifier": "synthetic_medium_4",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 2,
+            "reason": "The feedback shows only a limited and vague connection to the assignment specification and rubric. It mentions general elements like 'framework stated', 'five issues identified', and 'APA references', but does not anchor these observations in specific evidence from the student submission, rubric performance levels, or course materials. The feedback relies on generic statements without demonstrating how the student work meets or falls short of the detailed criteria, resulting in superficial grounding.",
+            "evidence": "'All required sections are present, the framework is stated, five issues are identified with severity ratings, and recommendations follow.'",
+            "defects": [
+              "Vague, unsupported claims about the student work",
+              "No direct quotes or specific examples from the submission",
+              "No reference to rubric descriptors (e.g., HD/D/C/P/Fail levels) or assignment specification details",
+              "No use of retrieved course materials (lecture, tutorial, sample solution) to justify feedback"
+            ],
+            "missing_evidence": [
+              "Specific excerpts from the student report (e.g., the search bar visibility description) to illustrate strengths or weaknesses",
+              "Explicit mapping of feedback to rubric performance levels (e.g., 'The report meets C-level for Criterion 2 because it identifies five issues but severity ratings are weakly justified')",
+              "Connections to course concepts such as Nielsen's heuristics, ISO 9241 usability metrics, or human cognition principles discussed in lectures/tutorials"
+            ]
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 2,
+            "reason": "The feedback is broadly applicable to any student submission; it mentions generic strengths like 'complete report structure' and 'five issues identified' without referencing specific aspects of Alex Johnson's QuickEats report (e.g., the search bar placement, severity ratings, or particular heuristic violations). It does not explain how these strengths or weaknesses relate to the rubric criteria or where they appear in the submission, resulting in vague comments that lack concrete, student‑specific detail.",
+            "evidence": "'Complete report structure', 'Five issues identified', 'Recommendations for each issue', 'APA references included'",
+            "defects": [
+              "Generic advice that could apply to any heuristic evaluation report",
+              "No direct quotes or references to the student's actual content (e.g., QuickEats, search bar visibility, specific heuristics)",
+              "Missing linkage between feedback points and the rubric criteria or task expectations",
+              "No indication of where in the submission the identified strengths/weaknesses occur"
+            ],
+            "missing_evidence": [
+              "Reference to the search bar visibility issue on the home screen",
+              "Mention of the severity rating scale used (0‑4) and how it was applied",
+              "Specific heuristic violated (Visibility of System Status) for the search bar issue",
+              "Details about the target audience (young adults, busy professionals) and context of use as described in the submission",
+              "Concrete examples of how the report's structure aligns with the required sections (Introduction, Methodology, Findings, etc.)"
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 2,
+            "reason": "The feedback provides improvement suggestions that are vague and difficult to apply, such as 'add more detail' or 'improve depth' without explaining how to do so, and lacks concrete, prioritized steps tied to the rubric or assignment specifics.",
+            "evidence": "Priority improvements: - Improve the context section - Improve the issue analysis - Improve the recommendations - Improve the referencing; Improvement suggestion: Add more detail on the target audience and their usability requirements; Improvement suggestion: Provide more detailed analysis for each issue; Improvement suggestion: Include more theoretical grounding in the recommendations; Improvement suggestion: Include additional academic sources.",
+            "defects": [
+              "Suggestions are generic and lack concrete instructions (e.g., 'add more detail' without specifying what detail or how to obtain it).",
+              "No prioritization of improvements; all areas are listed equally without indicating which are most critical for achieving a higher grade.",
+              "No linkage to specific rubric criteria, assignment requirements, or retrieved course materials to ground the advice in what is expected.",
+              "No examples or models of what improved sections would look like."
+            ],
+            "missing_evidence": [
+              "Reference to the rubric's performance levels (e.g., HD criteria for Context and Methodological Framework) to show what a strong context section entails.",
+              "Specific guidance from the assignment spec such as 'describe typical user tasks and context of use' with concrete steps like 'cite user demographics from Week 2 lecture transcript'.",
+              "Concrete examples of detailed issue analysis (e.g., 'include a screenshot with annotated arrows showing the search bar location and explain how it violates Visibility of System heuristic').",
+              "Actionable steps for recommendations grounded in theory, such as 'apply Nielsen's heuristic of Error Prevention by adding a confirmation step before checkout, as discussed in Week 4 lecture transcript'.",
+              "Direction on referencing: 'use at least three peer‑reviewed sources from the retrieved course materials (e.g., lecture transcript, tutorial worksheet) to support each design recommendation'."
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h55m49.475343895s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57349s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h55m36.698338943s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.8-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57336s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h55m23.800320254s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.8-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57323s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_high_1",
+    "student_identifier": "synthetic_high_1",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is strongly grounded in both the assignment specification/rubric and the retrieved course materials. It consistently references specific elements from the student submission (e.g., Issue 1 Search Bar Visibility, severity ratings, recommendations), cites the rubric criteria and performance levels (e.g., 'On the rubric, this sits at the boundary between C and D'), and links to unit materials such as Week 4 lecture, Sample Answer Guide, A1 Worksheet Task 3, ISO 9241, and Week 2 cognition concepts. All improvement steps are specific, actionable, and directly tied to the evidenced gaps, with no generic or unsupported claims.",
+            "evidence": "'matching the criteria taught in Week 4 and the Sample Answer Guide'; 'aligned with the Task 3 guidance in the A1 Worksheet'; 'Nielsen's Ten Heuristics is explicitly established as the framework in the Methodology, with the correct distinction from user testing (matching the Week 4 lecture on expert review as a \"discount usability engineering method\")'; 'Five distinct issues are identified with 0-4 severity ratings and justifications based on frequency and impact, aligned with the Task 3 guidance in the A1 Worksheet'; 'On the rubric, this sits at the boundary between C and D: the structure and evidence are D-level, but the theoretical depth in Criterion 3 currently reads as C-level.'",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 4,
+            "reason": "The feedback is largely tailored to the student's submission, referencing concrete elements such as Issue 1 (Search Bar Visibility), Issue 2 error messages, the five identified issues, severity ratings, and specific recommendations (e.g., moving the search bar to top, adding confirmation dialog). It connects strengths and weaknesses to the assignment requirements and rubric criteria. However, the feedback contains some generic phrasing (e.g., 'solid grasp', 'reasonable spread', 'main gap is that some heuristic mappings could be sharper') and does not pinpoint exact locations in the submission (e.g., paragraph numbers, direct quotations) or explicitly link each comment to specific rubric wording, which prevents a perfect specificity score.",
+            "evidence": "'Issue 1: Search Bar Visibility' ... 'moving the search bar to the top for Issue 1', 'develop the Week 2 cognition connection with a specific mechanism: for Issue 2, name the type of cognitive load (extraneous)', 'Five distinct issues are identified with 0-4 severity ratings', 'Recommendations are concrete and directly resolve each violation, e.g. moving the search bar to the top for Issue 1, and adding a confirmation dialog for Issue 5'.",
+            "defects": [
+              "Generic evaluative language that is not tightly bound to specific passages (e.g., 'solid grasp', 'reasonable spread').",
+              "Lack of explicit location markers (e.g., line numbers, direct quotes) to show exactly where in the submission each strength or weakness appears."
+            ],
+            "missing_evidence": [
+              "Direct quotations from the student's submission to illustrate each point.",
+              "Explicit section or paragraph references (e.g., 'In the Findings section under Issue 1 you wrote...').",
+              "Exact mapping of each feedback point to specific rubric criterion language (e.g., citing the exact wording of Criterion 2's HD descriptor)."
+            ]
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback offers concrete, prioritized, and submission-linked improvement steps that clearly tell the student what to revise, why it matters, and how to do so, aligning with rubric expectations and course materials.",
+            "evidence": "Priority improvements: 'First, revise the Issue 1 heuristic mapping: the student's own recommendation cites \"recognition over recall\", which is a stronger fit than \"Visibility of System Status\" for a hidden search element.'; 'Second, develop the Week 2 cognition connection with a specific mechanism: for Issue 2, name the type of cognitive load (extraneous) that the vague error message imposes, and explain why field-adjacent, specific error messages reduce it.'; 'Third, explicitly list the three primary tasks as a numbered set in the Methodology, as the A1 Worksheet Task 1 requires.' Criterion-specific suggestions: 'Remap Issue 1 to Recognition Rather Than Recall and update the justification paragraph.'; 'For Issues 2 and 3, add one sentence per recommendation identifying which specific cognitive limit the design change addresses (extraneous cognitive load for Issue 2, working-memory span across five checkout screens for Issue 3) and why the change reduces that limit.'; 'Replace the Evans (2023) reference with citations to the specific Week 1, 2, and 4 readings actually used.'",
+            "defects": [],
+            "missing_evidence": []
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h53m48.593477081s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.8-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57228s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h53m35.525263489s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57215s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h53m23.004949134s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57203s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_high_2",
+    "student_identifier": "synthetic_high_2",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback is strongly grounded in the assignment specification (Worksheet requirements, ISO 9241 metrics, Nielsen heuristics, primary tasks), the rubric (explicitly referencing each criterion by name), and retrieved course materials (Week 4 lecture, Week 2 cognition concepts, Worksheet). It uses concrete evidence from the student submission (Issue 1 heuristic mapping contradicting the student's own recommendation, appendix screenshots, severity ratings justified per Worksheet) and avoids unsupported claims or generic advice. No material weaknesses in grounding are evident.",
+            "evidence": "\"Nielsen framework and expert-review method correctly framed, matching the Week 4 lecture.\"; \"Severity ratings (0-4) justified by frequency and impact per the Worksheet.\"; \"Remap Issue 1 to Recognition Rather Than Recall (the student already cites this concept in their own recommendation).\"; \"Add a numbered three-task list to the Methodology as required by A1 Worksheet Task 1.\"; \"Five distinct heuristics, justified severity ratings, and appendix screenshots for each issue.\"; \"Recommendations for Issue 2 (field-adjacent specific error text) and Issue 5 (confirmation dialog for a Severity 4 error-prevention gap) are actionable and correctly targeted.\"; \"Cognitive load and mental models are named but not explained\"; \"Evans (2023) as a lecture-note reference is not a standard academic source.\"",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback provides precise, student-specific analysis, referencing concrete aspects such as Issue 1 mapping, severity ratings justification, recommendations for Issues 2 and 5, methodology primary tasks description, use of Nielsen framework and ISO 9241 metrics, and cognitive load mentions. It ties each comment to the student's submission and assignment requirements, offering targeted improvement actions without generic statements.",
+            "evidence": "\"Recommendations for Issues 2 and 5 are precise and directly resolve the violations.\"; \"Severity ratings (0-4) justified by frequency and impact per the Worksheet.\"; \"Add a numbered list of the three primary tasks in the Methodology before the Findings begin.\"; \"Remap Issue 1 to Recognition Rather Than Recall and revise the justification paragraph to match.\"; \"For Issue 2, name extraneous cognitive load and explain why a specific, field-adjacent message reduces it.\"",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 4,
+            "reason": "The feedback provides clear, practical steps in most areas (e.g., adding a numbered task list, remapping Issue 1, specifying cognitive load types, linking screens to working memory, replacing lecture-note references). These actions are specific, aligned with the Worksheet and lecture materials, and realistic for the student to implement. However, some suggestions remain somewhat vague (e.g., 'Name the specific cognitive load type for Issues 2 and 3 and explain the reduction mechanism' lacks detail on which type and how to explain the mechanism), and the feedback does not explicitly prioritize the improvements by impact or tie each suggestion directly to rubric weightings, preventing a perfect score.",
+            "evidence": "\"Add a numbered list of the three primary tasks in the Methodology before the Findings begin.\"; \"Remap Issue 1 to Recognition Rather Than Recall and revise the justification paragraph to match.\"; \"For Issue 2, name extraneous cognitive load and explain why a specific, field-adjacent message reduces it.\"; \"For Issue 3, connect five sequential checkout screens to working-memory span.\"; \"Replace it with the specific Week 1, 2, and 4 readings used.\"",
+            "defects": [
+              "The suggestion to 'Name the specific cognitive load type for Issues 2 and 3 and explain the reduction mechanism' is vague regarding which cognitive load type and how to explain the reduction mechanism.",
+              "Improvement steps are listed but not explicitly prioritized by their potential impact on the grade or rubric weighting.",
+              "Feedback does not directly link each actionable suggestion to specific rubric criteria or weightings to show how addressing them would improve the score."
+            ],
+            "missing_evidence": [
+              "Reference to rubric weightings (e.g., Usability Issue Analysis 40%) to prioritize improvements.",
+              "Concrete example of how to name extraneous cognitive load and explain its reduction for Issue 2.",
+              "Specific citation from the Worksheet or lecture detailing the expected format for the cognitive load explanation."
+            ]
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h51m44.526823494s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.8-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57104s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h51m31.900084246s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57091s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h51m19.360039336s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57079s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "input_file": "synthetic_high_3",
+    "student_identifier": "synthetic_high_3",
+    "evaluated_model": "human_written",
+    "pipeline_version": "synthetic_test",
+    "ai_grade_band": "N/A",
+    "judges": {
+      "nvidia_nvidia_nemotron_3_super_120b_a12b": {
+        "provider": "nvidia",
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": 5,
+            "reason": "The feedback consistently ties its observations and suggestions to specific elements of the assignment specification, rubric, and course materials (e.g., Nielsen's heuristics, ISO 9241, Week 4 lecture, A1 Worksheet tasks, sample answer guide). It uses direct evidence from the student submission (issue mappings, severity ratings, appendices, task descriptions) to justify its claims, avoiding generic advice and demonstrating strong grounding.",
+            "evidence": "- \"Nielsen framework, ISO 9241 metrics, and Week 4 distinction between expert review and user testing are correctly applied.\"\n- \"Five distinct heuristics covered with 0-4 severity justification following the Worksheet Task 3 method.\"\n- \"Appendices A-E are referenced for visual evidence per the assignment specification.\"\n- \"The three primary tasks are described but not listed as a numbered set, which the A1 Worksheet Task 1 explicitly requires.\"\n- \"Remap Issue 1 to Recognition Rather Than Recall, and rewrite the Findings paragraph to describe the recall-cost imposed by hiding the search bar below the fold.\"\n- \"expand the Issue 5 recommendation with confirmation-dialog wording and a cancel path, explicitly grounding it in Nielsen's Error Prevention principle from the Week 4 lecture.\"\n- \"Substitute Evans (2023) with citations to the specific Week 1, 2, and 4 primary readings used in the analysis.\"",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": 5,
+            "reason": "The feedback provides precise, student-specific analysis, identifying concrete strengths (e.g., correct application of Nielsen framework, ISO 9241 metrics, Issue 2 and Issue 5 recommendations being concrete) and weaknesses (e.g., Issue 1 mapping contradiction, Severity 4 recommendation being brief, three primary tasks not numbered, Week 2 cognition references as labels, Evans 2023 citation issue) directly tied to the student's submission. It explains how each issue affects achievement of assessment criteria and offers prioritized, actionable improvements grounded in the assignment requirements and course materials.",
+            "evidence": "'First, resolve the Issue 1 mapping-recommendation contradiction by remapping to Recognition Rather Than Recall.'; 'Second, expand the Issue 5 recommendation to match its Severity 4 weight: describe the confirmation-dialog wording, the cancel path, and how it aligns with Nielsen's Error Prevention principle from the Week 4 lecture.'; 'Third, develop the Week 2 cognition link on Issues 2 and 3 by naming the specific cognitive limit (extraneous load and working-memory span respectively).'; 'Strengths: Context of use, distracted-mobile user model, Nielsen framework, and ISO 9241 effectiveness-efficiency-satisfaction are correctly established.'; 'Areas for improvement: The three primary tasks are described but not listed as a numbered set.'; 'Strengths: Five distinct heuristics covered with severity ratings justified through frequency and impact. Appendices A-E are referenced for visual evidence.'; 'Areas for improvement: Issue 1 is mapped to Visibility of System Status...'; 'Strengths: Recommendations for Issue 2 and Issue 5 correctly resolve the identified violations. The Issue 2 fix (field-adjacent, named-field error text) is textbook-quality.'; 'Areas for improvement: The Week 2 cognition references appear as labels rather than mechanisms. Additionally, the Issue 5 recommendation is the shortest in the set despite Issue 5 carrying the highest severity (4, Usability Catastrophe)...'; 'Strengths: All required sections present in the correct order, APA style used consistently, Nielsen (1994, 1995) and ISO 9241 cited correctly.'; 'Areas for improvement: The Evans (2023) reference to lecture notes is not a standard academic source...'",
+            "defects": [],
+            "missing_evidence": []
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": 5,
+            "reason": "The feedback provides highly concrete, prioritised, and assessment-relevant improvement steps. It clearly tells the student what to revise (remap Issue 1, expand Issue 5 recommendation, name specific cognitive limits), why it matters (resolves internal contradiction, matches severity, strengthens theory links), and how to improve (with specific actions such as adding confirmation-dialog wording, cancel path, and naming extraneous load/working-memory span). The suggestions are directly tied to the submission, rubric, and retrieved course materials, and are presented in a prioritised list.",
+            "evidence": "\"First, resolve the Issue 1 mapping-recommendation contradiction by remapping to Recognition Rather Than Recall.\"; \"Second, expand the Issue 5 recommendation to match its Severity 4 weight: describe the confirmation-dialog wording, the cancel path, and how it aligns with Nielsen's Error Prevention principle from the Week 4 lecture.\"; \"Third, develop the Week 2 cognition link on Issues 2 and 3 by naming the specific cognitive limit (extraneous load and working-memory span respectively).\"",
+            "defects": [],
+            "missing_evidence": []
+          }
+        }
+      },
+      "gemini_gemini_3_8_flash": {
+        "provider": "gemini",
+        "model": "gemini-3.8-flash",
+        "note": "synthetic baseline evaluation",
+        "scores": {
+          "grounding": {
+            "dimension": "grounding",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h48m51.833010656s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '56931s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "specificity": {
+            "dimension": "specificity",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h48m38.474428515s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-3.8-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '56918s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          },
+          "actionability": {
+            "dimension": "actionability",
+            "score": null,
+            "reason": "judge call failed: Error code: 429 - [{'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.8-flash\\nPlease retry in 15h48m26.075945476s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-3.8-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '56906s'}]}}]",
+            "evidence": "",
+            "defects": [],
+            "missing_evidence": [],
+            "failed": true
+          }
+        }
+      }
+    }
+  }
+]
