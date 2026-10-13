@@ -209,6 +209,72 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertIn("assignment specification, rubric, and student submission", run["prompt_text"])
         mock_generate_text.assert_called_once()
 
+    @patch("feedback_lens.feedback.pipeline.generate_text")
+    @patch("feedback_lens.feedback.pipeline.retrieve_relevant_chunks")
+    def test_retrieval_records_preserve_raw_hits_and_used_in_prompt(
+        self,
+        mock_retrieve,
+        mock_generate_text,
+    ) -> None:
+        mock_generate_text.return_value = _feedback_response()
+        selected_chunks = _retrieval_result("selected query")[1]
+        mock_retrieve.return_value = (
+            "comp1001_2026_s1",
+            selected_chunks,
+            [
+                {
+                    "query_text": "selected query",
+                    "chunk_id": 1,
+                    "rank_position": 1,
+                    "similarity_score": 0.9,
+                },
+                {
+                    "query_text": "truncated query",
+                    "chunk_id": 2,
+                    "rank_position": 2,
+                    "similarity_score": 0.8,
+                },
+            ],
+        )
+
+        with _connect_minimal_feedback_db() as conn:
+            conn.execute(
+                """
+                INSERT INTO material_chunks
+                    (chunk_id, material_id, chunk_index, chunk_text)
+                VALUES (2, 1, 2, 'A lower-ranked course context chunk.')
+                """
+            )
+            conn.commit()
+
+            result = generate_feedback_for_submission(
+                conn,
+                submission_id=1,
+                provider="qwen",
+                model="test-model",
+                context_mode="retrieval",
+                retrieval_strategy="baseline",
+            )
+            records = conn.execute(
+                """
+                SELECT query_text, chunk_id, rank_position, similarity_score,
+                       used_in_prompt
+                FROM retrieval_records
+                WHERE generation_id = ?
+                ORDER BY retrieval_record_id
+                """,
+                (result.generation_id,),
+            ).fetchall()
+
+        self.assertEqual(len(records), 2)
+        self.assertEqual(
+            [tuple(record) for record in records],
+            [
+                ("selected query", 1, 1, 0.9, 1),
+                ("truncated query", 2, 2, 0.8, 0),
+            ],
+        )
+
     def test_retrieval_mode_defaults_to_planned_unit_grounded_deepseek(self) -> None:
         planner_response = json.dumps(
             {

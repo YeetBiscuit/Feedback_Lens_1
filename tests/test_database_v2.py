@@ -165,6 +165,8 @@ class DatabaseV2Tests(unittest.TestCase):
                     (7, "tutorial_group_allocation"),
                     (8, "assignment_feedback_models"),
                     (9, "organization_memberships"),
+                    (10, "generation_quality_verdicts"),
+                    (11, "embedding_model_rollout"),
                 ],
             )
             self.assertIsNotNone(

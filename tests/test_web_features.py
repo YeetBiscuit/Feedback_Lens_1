@@ -166,6 +166,52 @@ class WebFeatureServiceTests(unittest.TestCase):
                 ).fetchone()[0]
             )
 
+    def test_minilm_unit_materials_are_reported_read_only_and_cannot_restore(
+        self,
+    ) -> None:
+        with self._migrated_connection() as conn:
+            offering_id = conn.execute(
+                "SELECT unit_offering_id FROM unit_offerings WHERE legacy_unit_id = 1"
+            ).fetchone()[0]
+            material_id = conn.execute(
+                """
+                INSERT INTO unit_materials
+                    (unit_id, material_type, title, source_file_path,
+                     cleaned_text, is_active)
+                VALUES (1, 'scoping_note', 'Legacy context',
+                        'missing.txt', 'Legacy context', 0)
+                """
+            ).lastrowid
+            chunk_id = conn.execute(
+                """
+                INSERT INTO material_chunks
+                    (material_id, chunk_index, chunk_text)
+                VALUES (?, 0, 'Legacy context')
+                """,
+                (material_id,),
+            ).lastrowid
+            conn.execute(
+                """
+                INSERT INTO chunk_embedding_map
+                    (chunk_id, embedding_model, vector_store_name, vector_id)
+                VALUES (?, 'all-MiniLM-L6-v2',
+                        'comp2001_2026_semester_1', ?)
+                """,
+                (chunk_id, str(chunk_id)),
+            )
+            conn.commit()
+
+            details = get_unit_detail(conn, 1, offering_id)
+            self.assertTrue(details["scoping_materials_read_only"])
+            self.assertEqual(details["embedding_model"], "all-MiniLM-L6-v2")
+
+            with self.assertRaises(ApiError) as blocked:
+                enqueue_scoping_note_restore(conn, 1, material_id)
+            self.assertEqual(
+                blocked.exception.code,
+                "legacy_unit_materials_read_only",
+            )
+
     def test_unit_edit_is_audited_and_code_locks_after_materials(
         self,
     ) -> None:
@@ -548,11 +594,19 @@ class WebFeatureServiceTests(unittest.TestCase):
                     """,
                     (job_id,),
                 ).fetchone()
-                with mock.patch(
-                    "feedback_lens.web.upload_service.embed_and_store",
-                    side_effect=lambda chunks, collection: [
-                        str(chunk["chunk_id"]) for chunk in chunks
-                    ],
+                with (
+                    mock.patch(
+                        "feedback_lens.web.upload_service.encode_chunks",
+                        side_effect=lambda chunks, config: [
+                            [0.0] for _ in chunks
+                        ],
+                    ),
+                    mock.patch(
+                        "feedback_lens.web.upload_service.store_chunk_embeddings",
+                        side_effect=lambda chunks, embeddings, collection, **kwargs: [
+                            str(chunk["chunk_id"]) for chunk in chunks
+                        ],
+                    ),
                 ):
                     restored = handle_processing_job(conn, job)
                 restored_id = restored["material_id"]
@@ -1489,6 +1543,90 @@ class WebFeatureRouteTests(unittest.TestCase):
                 """
             ).fetchone()[0]
         self.assertEqual(queued, 2)
+
+    def test_scoping_material_upload_accepts_processed_slide_json(self) -> None:
+        self._authenticate(1)
+        document = {
+            "lecture": "Lecture 9",
+            "source_file": "lecture9.pdf",
+            "slides": [
+                {
+                    "slide_number": 1,
+                    "title": "Education",
+                    "text_content": ["Education context"],
+                    "visual_elements": [],
+                    "unclear_content": [],
+                    "has_instructional_content": True,
+                }
+            ],
+        }
+        response = self.client.post(
+            "/api/admin/unit-offerings/1/scoping-notes",
+            data={
+                "files": [
+                    (
+                        io.BytesIO(json.dumps(document).encode("utf-8")),
+                        "lecture9.json",
+                    )
+                ]
+            },
+            content_type="multipart/form-data",
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+
+        self.assertEqual(response.status_code, 202)
+        payload = response.get_json()
+        self.assertEqual(payload["accepted_count"], 1)
+        self.assertEqual(payload["rejected_count"], 0)
+
+    def test_scoping_material_upload_rejects_legacy_minilm_unit(self) -> None:
+        with open_database(self.database_path) as conn:
+            material_id = conn.execute(
+                """
+                INSERT INTO unit_materials
+                    (unit_id, material_type, title, cleaned_text)
+                VALUES (1, 'scoping_note', 'Legacy context', 'Legacy context')
+                """
+            ).lastrowid
+            chunk_id = conn.execute(
+                """
+                INSERT INTO material_chunks
+                    (material_id, chunk_index, chunk_text)
+                VALUES (?, 0, 'Legacy context')
+                """,
+                (material_id,),
+            ).lastrowid
+            conn.execute(
+                """
+                INSERT INTO chunk_embedding_map
+                    (chunk_id, embedding_model, vector_store_name, vector_id)
+                VALUES (?, 'all-MiniLM-L6-v2',
+                        'comp2001_2026_semester_1', ?)
+                """,
+                (chunk_id, str(chunk_id)),
+            )
+            conn.commit()
+
+        self._authenticate(1)
+        response = self.client.post(
+            "/api/admin/unit-offerings/1/scoping-notes",
+            data={"files": [(io.BytesIO(b"New context"), "new.txt")]},
+            content_type="multipart/form-data",
+            headers={"X-CSRF-Token": "route-test-csrf"},
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "legacy_unit_materials_read_only",
+        )
+        with open_database(self.database_path) as conn:
+            self.assertEqual(
+                conn.execute(
+                    "SELECT COUNT(*) FROM processing_jobs"
+                ).fetchone()[0],
+                0,
+            )
 
     def test_scoping_material_upload_rejects_batch_with_no_valid_files(
         self,

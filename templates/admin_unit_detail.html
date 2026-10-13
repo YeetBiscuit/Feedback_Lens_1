@@ -105,10 +105,11 @@
 <div class="card">
   <div class="toolbar">
     <h2>Scoping materials</h2>
-    <button id="scope-upload-btn" onclick="document.getElementById('scope-file').click()">Upload materials (PDF/TXT)</button>
+    <button id="scope-upload-btn" onclick="document.getElementById('scope-file').click()">Upload materials (PDF/TXT/JSON)</button>
   </div>
   <p class="muted">Unit-level teaching context used for feedback generation, including lecture transcripts and uploaded notes.</p>
-  <input class="hidden" id="scope-file" type="file" accept=".pdf,.txt" multiple onchange="uploadScopes(this)">
+  <p class="muted hidden" id="scope-read-only-note">This legacy Unit uses MiniLM retrieval. Its scoping materials are read-only; existing materials remain available for retrieval.</p>
+  <input class="hidden" id="scope-file" type="file" accept=".pdf,.txt,.json" multiple onchange="uploadScopes(this)">
   <p><strong>Active materials (<span id="active-count">0</span>)</strong></p>
   <div id="active-notes"></div>
   <details>
@@ -225,6 +226,7 @@ let tutorSearchCandidates = [];
 function materialTypeLabel(type){
   return {
     lecture_transcript:'Lecture transcript',
+    lecture_slide:'Lecture slides',
     scoping_note:'Uploaded note'
   }[type] || (type || 'Unit material').replaceAll('_', ' ');
 }
@@ -236,7 +238,10 @@ function materialRow(material, status){
   if(status === 'active'){
     actions += ` <button class="danger" onclick="deactivateNote(${material.material_id})">Deactivate</button>`;
   }else if(status === 'deactivated'){
-    actions += ` <button class="secondary" onclick="restoreNote(${material.material_id})">Restore</button> <button class="danger" onclick="deleteNote(${material.material_id})">Delete</button>`;
+    if(!unitData?.scoping_materials_read_only){
+      actions += ` <button class="secondary" onclick="restoreNote(${material.material_id})">Restore</button>`;
+    }
+    actions += ` <button class="danger" onclick="deleteNote(${material.material_id})">Delete</button>`;
   }
   const deletedAt = status === 'deleted' && material.deleted_at ?
     `<br><span class="muted">Deleted ${escapeHtml(material.deleted_at)}</span>` : '';
@@ -290,6 +295,10 @@ async function load(){
         <td><a class="button secondary" href="/admin/assessment/${assessment.assessment_plan_id}">Manage</a></td>
       </tr>`).join('') : '<tr><td colspan="4" class="empty">No assessments yet.</td></tr>';
     renderMaterials(unitData.scoping_notes);
+    const scopeReadOnly = Boolean(unitData.scoping_materials_read_only);
+    document.getElementById('scope-upload-btn').disabled = scopeReadOnly;
+    document.getElementById('scope-file').disabled = scopeReadOnly;
+    document.getElementById('scope-read-only-note').classList.toggle('hidden', !scopeReadOnly);
     const activation = unitData.activation;
     document.getElementById('activation').innerHTML = !activation.mail_configured ?
       '<div class="message error">Account activation is unavailable because outbound email is not configured.</div>' :

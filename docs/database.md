@@ -230,10 +230,14 @@ This means feedback generation works from database records even if the original 
 
 Only unit materials are embedded into ChromaDB.
 
+New units use pinned `BAAI/bge-m3` dense embeddings in model-versioned cosine
+collections. Units that already have `all-MiniLM-L6-v2` vectors continue using
+their existing collections; those legacy unit-material indexes are read-only.
+
 The vector store contains:
 
 - chunk text
-- chunk metadata such as page range
+- chunk metadata such as page range or processed-slide range
 - vector IDs linked back to `material_chunks` through `chunk_embedding_map`
 
 Assignment specs, rubrics, and student submissions are stored in SQLite but are not currently embedded into ChromaDB.
