@@ -373,18 +373,48 @@ function render(){
   updateBulkBar();
 }
 
-function changeStatus(genId, sel){
+
+function changeStatus(genId, sel) {
   var newStatus = sel.value;
-  sel.className = 'status-select-inline ' + statusClass(newStatus);
+  var row = rows.find(function (r) {
+    return r.generation_id === genId;
+  });
+  var previousStatus = row ? row.review_status : newStatus;
+
   fetch('/api/feedback/' + genId + '/save', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({review_status: newStatus})
-  }).then(function(r){return r.json();}).then(function(){
-    var row = rows.find(function(r){ return r.generation_id === genId; });
-    if(row) row.review_status = newStatus;
-  });
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': {{ csrf_token | tojson }}
+    },
+    body: JSON.stringify({ review_status: newStatus })
+  })
+    .then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok) {
+          throw new Error(
+            data.error || 'Unable to update the feedback status.'
+          );
+        }
+        return data;
+      });
+    })
+    .then(function () {
+      if (row) {
+        row.review_status = newStatus;
+      }
+      sel.value = newStatus;
+      sel.className = 'status-select-inline ' + statusClass(newStatus);
+    })
+    .catch(function (error) {
+      sel.value = previousStatus;
+      sel.className =
+        'status-select-inline ' + statusClass(previousStatus);
+
+      alert(error.message || 'Unable to update the feedback status.');
+    });
 }
+
 
 function toggleOne(id, checked){
   if(checked) selected[id] = true;

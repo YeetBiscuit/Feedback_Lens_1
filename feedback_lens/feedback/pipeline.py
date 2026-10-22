@@ -2,6 +2,7 @@ import json
 import re
 import sqlite3
 from dataclasses import dataclass
+from feedback_lens.security.submission_screening import screen_text
 
 from feedback_lens.db.connection import fetch_latest_version_row
 from feedback_lens.feedback.llm.providers import (
@@ -641,7 +642,25 @@ def generate_feedback_for_submission(
     raw_response = None
 
     try:
+        # inputs = _load_generation_inputs(conn, submission_id)
+        # retrieval_cues = []
+
         inputs = _load_generation_inputs(conn, submission_id)
+
+        submission_text = (
+                inputs["submission"]["cleaned_text"]
+                or inputs["submission"]["raw_text"]
+                or ""
+        )
+
+        screening_result = screen_text(submission_text)
+
+        if not screening_result.allowed:
+            raise ValueError(
+                "Submission rejected by prompt-injection prescreen: "
+                f"{screening_result.reason or 'unsafe submission content'}"
+            )
+
         retrieval_cues = []
 
         cur = conn.execute(

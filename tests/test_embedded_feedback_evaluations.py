@@ -263,6 +263,247 @@ class EmbeddedFeedbackEvaluationRouteTests(unittest.TestCase):
             self.client.get(endpoint).get_json()["evaluation"]
         )
 
+
+    def test_student_assessment_remains_pending_without_approved_review(
+        self,
+    ) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            generation = conn.execute(
+                """
+                SELECT assignment_id
+                FROM generation_runs
+                WHERE generation_id = 1
+                """
+            ).fetchone()
+
+            self.assertIsNotNone(generation)
+
+            conn.execute(
+                "DELETE FROM human_reviews WHERE generation_id = 1"
+            )
+            conn.commit()
+
+        response = self.client.get(
+            f"/api/student/assessment/{generation['assignment_id']}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["status"], "pending")
+
+
+    def test_student_assessment_remains_pending_with_unapproved_review(
+        self,
+    ) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            review = conn.execute(
+                """
+                SELECT review_id
+                FROM human_reviews
+                WHERE generation_id = 1
+                ORDER BY review_id DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+            self.assertIsNotNone(review)
+
+            conn.execute(
+                """
+                UPDATE human_reviews
+                SET approved = 0
+                WHERE review_id = ?
+                """,
+                (review["review_id"],),
+            )
+
+            assignment = conn.execute(
+                """
+                SELECT assignment_id
+                FROM generation_runs
+                WHERE generation_id = 1
+                """
+            ).fetchone()
+            conn.commit()
+
+        response = self.client.get(
+            f"/api/student/assessment/{assignment['assignment_id']}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["status"], "pending")
+
+    def test_student_unit_status_stays_pending_with_unapproved_review(
+        self,
+    ) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            row = conn.execute(
+                """
+                SELECT a.unit_id, a.assignment_id
+                FROM generation_runs gr
+                JOIN assignments a
+                  ON a.assignment_id = gr.assignment_id
+                WHERE gr.generation_id = 1
+                """
+            ).fetchone()
+            self.assertIsNotNone(row)
+            unit_id = row["unit_id"]
+            assignment_id = row["assignment_id"]
+
+            conn.execute(
+                """
+                UPDATE human_reviews
+                SET approved = 0
+                WHERE generation_id = 1
+                """,
+            )
+            conn.commit()
+
+        response = self.client.get(
+            f"/api/student/unit/{unit_id}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        assignments = response.get_json()["assignments"]
+        assignment = next(
+            item for item in assignments
+            if item["assignment_id"] == assignment_id
+        )
+        self.assertEqual(assignment["status"], "pending")
+
+    def test_student_assessments_status_stays_pending_with_unapproved_review(
+        self,
+    ) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            row = conn.execute(
+                """
+                SELECT assignment_id
+                FROM generation_runs
+                WHERE generation_id = 1
+                """
+            ).fetchone()
+            self.assertIsNotNone(row)
+            assignment_id = row["assignment_id"]
+
+            conn.execute(
+                """
+                UPDATE human_reviews
+                SET approved = 0
+                WHERE generation_id = 1
+                """,
+            )
+            conn.commit()
+
+        response = self.client.get("/api/student/assessments")
+
+        self.assertEqual(response.status_code, 200)
+        assignments = response.get_json()["assignments"]
+        assignment = next(
+            item for item in assignments
+            if item["assignment_id"] == assignment_id
+        )
+        self.assertEqual(assignment["status"], "pending")
+
+
+    def test_student_cannot_retrieve_unapproved_feedback(self) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            conn.execute(
+                "DELETE FROM human_reviews WHERE generation_id = 1"
+            )
+            conn.commit()
+
+        response = self.client.get("/api/student/feedback/1")
+
+        self.assertEqual(response.status_code, 404)
+
+
+    def test_student_home_count_excludes_unapproved_feedback(self) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            conn.execute(
+                "DELETE FROM human_reviews WHERE generation_id = 1"
+            )
+            conn.commit()
+
+        response = self.client.get("/api/student/home")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.get_json()["counts"]["total_feedback"],
+            0,
+        )
+
+    def test_student_feedback_list_excludes_unapproved_feedback(self) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            row = conn.execute(
+                """
+                SELECT a.unit_id
+                FROM generation_runs AS gr
+                JOIN assignments AS a
+                  ON a.assignment_id = gr.assignment_id
+                WHERE gr.generation_id = 1
+                """
+            ).fetchone()
+            self.assertIsNotNone(row)
+            unit_id = row["unit_id"]
+
+            conn.execute(
+                "DELETE FROM human_reviews WHERE generation_id = 1"
+            )
+            conn.commit()
+
+        response = self.client.get(
+            f"/api/student/feedback-list/{unit_id}"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(
+            1,
+            [item["generation_id"] for item in response.get_json()["items"]],
+        )
+
+    def test_student_feedback_units_exclude_unapproved_generations(self) -> None:
+        self._authenticate(3)
+
+        with open_database(self.database_path) as conn:
+            row = conn.execute(
+                """
+                SELECT a.unit_id
+                FROM generation_runs AS gr
+                JOIN assignments AS a
+                  ON a.assignment_id = gr.assignment_id
+                WHERE gr.generation_id = 1
+                """
+            ).fetchone()
+            self.assertIsNotNone(row)
+            unit_id = row["unit_id"]
+
+            conn.execute(
+                "DELETE FROM human_reviews WHERE generation_id = 1"
+            )
+            conn.commit()
+
+        response = self.client.get("/api/student/feedback-list")
+
+        self.assertEqual(response.status_code, 200)
+        returned_unit_ids = [
+            item["unit_id"] for item in response.get_json()["units"]
+        ]
+        self.assertNotIn(unit_id, returned_unit_ids)
+
+
     def test_student_cannot_evaluate_another_students_feedback(self) -> None:
         self._authenticate(4)
         response = self.client.post(

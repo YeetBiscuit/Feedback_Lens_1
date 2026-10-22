@@ -382,6 +382,7 @@ class StaffAllocationRouteTests(unittest.TestCase):
             )
             saved = client.post(
                 "/api/feedback/2/save",
+                headers={"X-CSRF-Token": "route-csrf"},
                 json={"final_mark": 75, "review_status": "reviewed"},
             )
             evaluated = client.get(
@@ -548,8 +549,274 @@ class StaffAllocationRouteTests(unittest.TestCase):
             )
 
             reopen_submission(conn, 1, 1, attempt_id)
+
+            workflow = conn.execute(
+                """
+                SELECT marking_status,
+                       marker_confirmed_by_user_id,
+                       marker_confirmed_at
+                FROM submission_workflow_states
+                WHERE submission_attempt_id = ?
+                """,
+                (attempt_id,),
+            ).fetchone()
+
+            self.assertEqual(workflow["marking_status"], "in_progress")
+            self.assertIsNone(workflow["marker_confirmed_by_user_id"])
+            self.assertIsNone(workflow["marker_confirmed_at"])
+
+            event = conn.execute(
+                """
+                SELECT actor_user_id, event_type
+                FROM submission_workflow_events
+                WHERE submission_attempt_id = ?
+                  AND event_type = 'feedback_returned'
+                ORDER BY workflow_event_id DESC
+                LIMIT 1
+                """,
+                (attempt_id,),
+            ).fetchone()
+
+            self.assertIsNotNone(event)
+            self.assertEqual(event["actor_user_id"], 1)
+            self.assertEqual(event["event_type"], "feedback_returned")
+
             reopened = preview_allocation(conn, 1, 1, reassign)
             self.assertEqual(reopened["operations"][0]["change_type"], "reassigned")
+
+    def test_regular_educator_cannot_reopen_confirmed_feedback(self):
+        conn = _allocation_connection()
+        with conn:
+            attempt_id = _attempt_ids(conn)[0]
+            payload = {
+                "mode": "manual",
+                "submission_attempt_ids": [attempt_id],
+                "staff_user_id": 2,
+            }
+            preview = preview_allocation(conn, 1, 1, payload)
+            payload["preview_hash"] = preview["preview_hash"]
+            confirm_allocation(conn, 1, 1, payload)
+
+            conn.execute(
+                """
+                UPDATE submission_workflow_states
+                SET marking_status = 'marker_confirmed',
+                    marker_confirmed_by_user_id = 2,
+                    marker_confirmed_at = CURRENT_TIMESTAMP
+                WHERE submission_attempt_id = ?
+                """,
+                (attempt_id,),
+            )
+
+        client = self._client(
+            3, "second@example.test", "educator"
+        )
+
+        with (
+            patch("app.connect_db", return_value=conn),
+            patch(
+                "feedback_lens.web.routes.connect_db",
+                return_value=conn,
+            ),
+            patch(
+                "feedback_lens.web.security.connect_db",
+                return_value=conn,
+            ),
+        ):
+            response = client.post(
+                f"/api/admin/assessments/1/submissions/{attempt_id}/reopen",
+                headers={"X-CSRF-Token": "route-csrf"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "assessment_forbidden",
+        )
+
+        workflow = conn.execute(
+            """
+            SELECT marking_status
+            FROM submission_workflow_states
+            WHERE submission_attempt_id = ?
+            """,
+            (attempt_id,),
+        ).fetchone()
+
+        self.assertEqual(
+            workflow["marking_status"], "marker_confirmed"
+        )
+        conn.close()
+
+    def test_chief_admin_can_reopen_confirmed_feedback_via_api(self):
+        conn = _allocation_connection()
+        with conn:
+            attempt_id = _attempt_ids(conn)[0]
+            payload = {
+                "mode": "manual",
+                "submission_attempt_ids": [attempt_id],
+                "staff_user_id": 2,
+            }
+            preview = preview_allocation(conn, 1, 1, payload)
+            payload["preview_hash"] = preview["preview_hash"]
+            confirm_allocation(conn, 1, 1, payload)
+
+            conn.execute(
+                """
+                UPDATE submission_workflow_states
+                SET marking_status = 'marker_confirmed',
+                    marker_confirmed_by_user_id = 2,
+                    marker_confirmed_at = CURRENT_TIMESTAMP
+                WHERE submission_attempt_id = ?
+                """,
+                (attempt_id,),
+            )
+
+        client = self._client(
+            1, "chief@example.test", "admin"
+        )
+
+        try:
+            with (
+                patch("app.connect_db", return_value=conn),
+                patch(
+                    "feedback_lens.web.routes.connect_db",
+                    return_value=conn,
+                ),
+                patch(
+                    "feedback_lens.web.security.connect_db",
+                    return_value=conn,
+                ),
+            ):
+                response = client.post(
+                    f"/api/admin/assessments/1/submissions/{attempt_id}/reopen",
+                    headers={"X-CSRF-Token": "route-csrf"},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["status"], "ok")
+
+            workflow = conn.execute(
+                """
+                SELECT marking_status,
+                       marker_confirmed_by_user_id,
+                       marker_confirmed_at
+                FROM submission_workflow_states
+                WHERE submission_attempt_id = ?
+                """,
+                (attempt_id,),
+            ).fetchone()
+
+            self.assertEqual(workflow["marking_status"], "in_progress")
+            self.assertIsNone(workflow["marker_confirmed_by_user_id"])
+            self.assertIsNone(workflow["marker_confirmed_at"])
+
+            event = conn.execute(
+                """
+                SELECT actor_user_id, event_type
+                FROM submission_workflow_events
+                WHERE submission_attempt_id = ?
+                  AND event_type = 'feedback_returned'
+                ORDER BY workflow_event_id DESC
+                LIMIT 1
+                """,
+                (attempt_id,),
+            ).fetchone()
+
+            self.assertIsNotNone(event)
+            self.assertEqual(event["actor_user_id"], 1)
+            self.assertEqual(event["event_type"], "feedback_returned")
+        finally:
+            conn.close()
+
+    def test_unit_admin_can_reopen_confirmed_feedback_via_api(self):
+        conn = _allocation_connection()
+        try:
+            attempt_id = _attempt_ids(conn)[0]
+            payload = {
+                "mode": "manual",
+                "submission_attempt_ids": [attempt_id],
+                "staff_user_id": 2,
+            }
+            preview = preview_allocation(conn, 1, 1, payload)
+            payload["preview_hash"] = preview["preview_hash"]
+            confirm_allocation(conn, 1, 1, payload)
+
+            conn.execute(
+                """
+                INSERT INTO unit_role_assignments
+                    (unit_offering_id, user_id, role, assigned_by_user_id)
+                VALUES (1, 2, 'unit_admin', 1)
+                """
+            )
+            conn.execute(
+                """
+                UPDATE submission_workflow_states
+                SET marking_status = 'marker_confirmed',
+                    marker_confirmed_by_user_id = 2,
+                    marker_confirmed_at = CURRENT_TIMESTAMP
+                WHERE submission_attempt_id = ?
+                """,
+                (attempt_id,),
+            )
+            conn.commit()
+
+            client = self._client(
+                2, "marker@example.test", "educator"
+            )
+
+            with (
+                patch("app.connect_db", return_value=conn),
+                patch(
+                    "feedback_lens.web.routes.connect_db",
+                    return_value=conn,
+                ),
+                patch(
+                    "feedback_lens.web.security.connect_db",
+                    return_value=conn,
+                ),
+            ):
+                response = client.post(
+                    f"/api/admin/assessments/1/submissions/{attempt_id}/reopen",
+                    headers={"X-CSRF-Token": "route-csrf"},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.get_json()["status"], "ok")
+
+            workflow = conn.execute(
+                """
+                SELECT marking_status,
+                       marker_confirmed_by_user_id,
+                       marker_confirmed_at
+                FROM submission_workflow_states
+                WHERE submission_attempt_id = ?
+                """,
+                (attempt_id,),
+            ).fetchone()
+
+            self.assertEqual(workflow["marking_status"], "in_progress")
+            self.assertIsNone(workflow["marker_confirmed_by_user_id"])
+            self.assertIsNone(workflow["marker_confirmed_at"])
+
+            event = conn.execute(
+                """
+                SELECT actor_user_id, event_type
+                FROM submission_workflow_events
+                WHERE submission_attempt_id = ?
+                  AND event_type = 'feedback_returned'
+                ORDER BY workflow_event_id DESC
+                LIMIT 1
+                """,
+                (attempt_id,),
+            ).fetchone()
+
+            self.assertIsNotNone(event)
+            self.assertEqual(event["actor_user_id"], 2)
+            self.assertEqual(event["event_type"], "feedback_returned")
+        finally:
+            conn.close()
+
 
     def test_completed_assignment_does_not_block_staff_removal(self):
         with _allocation_connection() as conn:

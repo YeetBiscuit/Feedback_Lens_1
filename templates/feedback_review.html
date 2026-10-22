@@ -590,7 +590,10 @@ function saveCurrent(btn){
   };
   fetch('/api/feedback/' + genId + '/save', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': {{ csrf_token | tojson }}
+    },
     body: JSON.stringify(payload)
   }).then(function(r){return r.json();}).then(function(){
     c.strengths = payload.criteria[0].strengths;

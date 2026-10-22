@@ -117,7 +117,62 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
             flask_session["user_id"] = user_id
             flask_session["email"] = email
             flask_session["role"] = "educator"
+            flask_session["_csrf_token"] = "test-csrf-token"
         return client
+
+    def test_generate_feedback_blocks_when_judge_fails(self) -> None:
+        conn = _connect_app_feedback_db()
+        client = self._client_with_user(1, "allowed@example.test")
+
+        with (
+            patch("app.connect_db", return_value=conn),
+            patch("app.record_generated_feedback") as record_feedback,
+            patch(
+                "app.generate_feedback_with_quality_gate",
+                return_value=(
+                    _generation_result(),
+                    {"passed": False, "judge_failed": True},
+                ),
+            ),
+        ):
+            response = client.post(
+                "/api/feedback/generate",
+                json={"submission_id": 1},
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()["status"], "needs_review")
+        self.assertIn("quality judge failed", response.get_json()["error"])
+        record_feedback.assert_not_called()
+
+    def test_generate_feedback_blocks_when_quality_threshold_not_met(self) -> None:
+        conn = _connect_app_feedback_db()
+        client = self._client_with_user(1, "allowed@example.test")
+
+        with (
+            patch("app.connect_db", return_value=conn),
+            patch("app.record_generated_feedback") as record_feedback,
+            patch(
+                "app.generate_feedback_with_quality_gate",
+                return_value=(
+                    _generation_result(),
+                    {
+                        "passed": False,
+                        "regenerated": True,
+                        "escalated": True,
+                    },
+                ),
+            ),
+        ):
+            response = client.post(
+                "/api/feedback/generate",
+                json={"submission_id": 1},
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.get_json()["status"], "needs_review")
+        self.assertIn("quality threshold", response.get_json()["error"])
+        record_feedback.assert_not_called()
 
     def test_generate_feedback_defaults_to_planned_unit_grounded_deepseek(self) -> None:
         conn = _connect_app_feedback_db()
@@ -265,6 +320,7 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
             "Submission not found or not authorised",
         )
         mock_generate.assert_not_called()
+
 
     def test_generate_feedback_maps_pipeline_validation_error_to_bad_request(self) -> None:
         conn = _connect_app_feedback_db()
@@ -441,6 +497,348 @@ class FeedbackGenerateRouteTests(unittest.TestCase):
             "Generation not found or not authorised",
         )
         mock_regenerate.assert_not_called()
+
+
+    def test_rejected_save_does_not_persist_feedback_edits(self) -> None:
+        conn = _connect_app_feedback_db()
+
+        conn.execute(
+            """
+            INSERT INTO generation_runs
+                (generation_id, submission_id, assignment_id, rubric_id,
+                 pipeline_version, llm_provider, llm_model,
+                 prompt_template_version, retrieval_strategy, status)
+            VALUES
+                (123, 1, 1, 1, 'baseline_retrieval_v1', 'qwen', 'test-model',
+                 'baseline_feedback_json_v1', 'assignment_spec_multi_cue_v1',
+                 'completed')
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO rubric_criteria
+                (criterion_id, rubric_id, criterion_name, criterion_order)
+            VALUES (1, 1, 'Analysis', 1)
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO criterion_feedback
+                (generation_id, criterion_id, strengths, mark)
+            VALUES (123, 1, 'Original strength', 70)
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO overall_feedback
+                (generation_id, overall_comment, final_mark)
+            VALUES (123, 'Original overall comment', 70)
+            """
+        )
+        conn.execute(
+            """
+            UPDATE submission_workflow_states
+            SET marking_status = 'marker_confirmed',
+                current_generation_id = 123
+            WHERE submission_attempt_id = 1
+            """
+        )
+        conn.commit()
+
+        client = self._client_with_user(1, "allowed@example.test")
+
+        with patch("app.connect_db", return_value=conn):
+            response_without_csrf = client.post(
+                "/api/feedback/123/save",
+                json={
+                    "overall_comment": "Should not be saved",
+                    "review_status": "pending",
+                },
+            )
+
+        self.assertEqual(response_without_csrf.status_code, 403)
+
+        with patch("app.connect_db", return_value=conn):
+            response = client.post(
+                "/api/feedback/123/save",
+                headers={"X-CSRF-Token": "test-csrf-token"},
+                json={
+                    "criteria": [
+                        {
+                            "criterion_id": 1,
+                            "strengths": "UNEXPECTED EDIT",
+                            "mark": 99,
+                        }
+                    ],
+                    "overall_comment": "UNEXPECTED OVERALL EDIT",
+                    "final_mark": 99,
+                    "review_status": "pending",
+                },
+            )
+
+        self.assertEqual(response.status_code, 409)
+
+        criterion = conn.execute(
+            """
+            SELECT strengths, mark
+            FROM criterion_feedback
+            WHERE generation_id = 123 AND criterion_id = 1
+            """
+        ).fetchone()
+        overall = conn.execute(
+            """
+            SELECT overall_comment, final_mark
+            FROM overall_feedback
+            WHERE generation_id = 123
+            """
+        ).fetchone()
+
+        self.assertEqual(criterion["strengths"], "Original strength")
+        self.assertEqual(criterion["mark"], 70)
+        self.assertEqual(overall["overall_comment"], "Original overall comment")
+        self.assertEqual(overall["final_mark"], 70)
+
+
+    def test_save_rejects_invalid_review_status_without_changes(self) -> None:
+        conn = _connect_app_feedback_db()
+        conn.execute(
+            """
+            INSERT INTO generation_runs
+                (generation_id, submission_id, assignment_id, rubric_id,
+                 pipeline_version, llm_provider, llm_model,
+                 prompt_template_version, retrieval_strategy, status)
+            VALUES
+                (123, 1, 1, 1, 'baseline_retrieval_v1', 'qwen', 'test-model',
+                 'baseline_feedback_json_v1', 'assignment_spec_multi_cue_v1',
+                 'completed')
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO overall_feedback
+                (generation_id, overall_comment, final_mark)
+            VALUES (123, 'Original comment', 60)
+            """
+        )
+        conn.execute(
+            """
+            UPDATE submission_workflow_states
+            SET current_generation_id = 123
+            WHERE submission_attempt_id = 1
+            """
+        )
+        conn.commit()
+
+        client = self._client_with_user(1, "allowed@example.test")
+
+        with patch("app.connect_db", return_value=conn):
+            response = client.post(
+                "/api/feedback/123/save",
+                headers={"X-CSRF-Token": "test-csrf-token"},
+                json={
+                    "overall_comment": "Unexpected edit",
+                    "final_mark": 99,
+                    "review_status": "unexpected_status",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+
+        saved = conn.execute(
+            """
+            SELECT overall_comment, final_mark
+            FROM overall_feedback
+            WHERE generation_id = 123
+            """
+        ).fetchone()
+        self.assertEqual(saved["overall_comment"], "Original comment")
+        self.assertEqual(saved["final_mark"], 60)
+
+        workflow = conn.execute(
+            """
+            SELECT marking_status
+            FROM submission_workflow_states
+            WHERE submission_attempt_id = 1
+            """
+        ).fetchone()
+        self.assertNotEqual(workflow["marking_status"], "in_progress")
+
+    def test_save_pending_removes_tutor_approval_after_reopening(self) -> None:
+        conn = _connect_app_feedback_db()
+        conn.execute(
+            """
+            INSERT INTO generation_runs
+                (generation_id, submission_id, assignment_id, rubric_id,
+                 pipeline_version, llm_provider, llm_model,
+                 prompt_template_version, retrieval_strategy, status)
+            VALUES
+                (123, 1, 1, 1, 'baseline_retrieval_v1', 'qwen', 'test-model',
+                 'baseline_feedback_json_v1', 'assignment_spec_multi_cue_v1',
+                 'completed')
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO overall_feedback
+                (generation_id, overall_comment, final_mark)
+            VALUES (123, 'Previously approved feedback', 75)
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO human_reviews
+                (generation_id, tutor_id, review_type, approved, comments)
+            VALUES (123, 1, 'tutor_review', 1, 'Previously approved')
+            """
+        )
+        conn.execute(
+            """
+            UPDATE submission_workflow_states
+            SET marking_status = 'in_progress',
+                current_generation_id = 123,
+                marker_confirmed_by_user_id = NULL,
+                marker_confirmed_at = NULL
+            WHERE submission_attempt_id = 1
+            """
+        )
+        conn.commit()
+
+        client = self._client_with_user(1, "allowed@example.test")
+
+        with patch("app.connect_db", return_value=conn):
+            response = client.post(
+                "/api/feedback/123/save",
+                headers={"X-CSRF-Token": "test-csrf-token"},
+                json={
+                    "overall_comment": "Feedback needs further editing",
+                    "review_status": "pending",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+
+        review_count = conn.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM human_reviews
+            WHERE generation_id = 123
+              AND tutor_id = 1
+              AND review_type = 'tutor_review'
+            """
+        ).fetchone()["count"]
+        self.assertEqual(review_count, 0)
+
+        workflow = conn.execute(
+            """
+            SELECT marking_status, marker_confirmed_by_user_id,
+                   marker_confirmed_at
+            FROM submission_workflow_states
+            WHERE submission_attempt_id = 1
+            """
+        ).fetchone()
+        self.assertEqual(workflow["marking_status"], "in_progress")
+        self.assertIsNone(workflow["marker_confirmed_by_user_id"])
+        self.assertIsNone(workflow["marker_confirmed_at"])
+
+        feedback = conn.execute(
+            """
+            SELECT overall_comment
+            FROM overall_feedback
+            WHERE generation_id = 123
+            """
+        ).fetchone()
+        self.assertEqual(
+            feedback["overall_comment"],
+            "Feedback needs further editing",
+        )
+
+
+    def test_save_reviewed_creates_approval_and_confirms_workflow(self) -> None:
+        conn = _connect_app_feedback_db()
+        conn.execute(
+            """
+            INSERT INTO generation_runs
+                (generation_id, submission_id, assignment_id, rubric_id,
+                 pipeline_version, llm_provider, llm_model,
+                 prompt_template_version, retrieval_strategy, status)
+            VALUES
+                (123, 1, 1, 1, 'baseline_retrieval_v1', 'qwen', 'test-model',
+                 'baseline_feedback_json_v1', 'assignment_spec_multi_cue_v1',
+                 'completed')
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO overall_feedback
+                (generation_id, overall_comment, final_mark)
+            VALUES (123, 'Original comment', 60)
+            """
+        )
+        conn.execute(
+            """
+            UPDATE submission_workflow_states
+            SET current_generation_id = 123
+            WHERE submission_attempt_id = 1
+            """
+        )
+        conn.commit()
+
+        client = self._client_with_user(1, "allowed@example.test")
+
+        with patch("app.connect_db", return_value=conn):
+            response = client.post(
+                "/api/feedback/123/save",
+                headers={"X-CSRF-Token": "test-csrf-token"},
+                json={
+                    "overall_comment": "Reviewed by educator",
+                    "final_mark": 75,
+                    "review_status": "reviewed",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["review_status"], "reviewed")
+
+        review = conn.execute(
+            """
+            SELECT tutor_id, review_type, approved, comments
+            FROM human_reviews
+            WHERE generation_id = 123
+            ORDER BY review_id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+
+        self.assertIsNotNone(review)
+        self.assertEqual(review["tutor_id"], 1)
+        self.assertEqual(review["review_type"], "tutor_review")
+        self.assertEqual(review["approved"], 1)
+        self.assertEqual(review["comments"], "Reviewed by educator")
+
+        saved_feedback = conn.execute(
+            """
+            SELECT overall_comment, final_mark
+            FROM overall_feedback
+            WHERE generation_id = 123
+            """
+        ).fetchone()
+
+        self.assertEqual(
+            saved_feedback["overall_comment"],
+            "Reviewed by educator",
+        )
+        self.assertEqual(saved_feedback["final_mark"], 75)
+
+        workflow = conn.execute(
+            """
+            SELECT marking_status, current_generation_id
+            FROM submission_workflow_states
+            WHERE submission_attempt_id = 1
+            """
+        ).fetchone()
+
+        self.assertEqual(workflow["marking_status"], "marker_confirmed")
+        self.assertEqual(workflow["current_generation_id"], 123)
 
 
 if __name__ == "__main__":

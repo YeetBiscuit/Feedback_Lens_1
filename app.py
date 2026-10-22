@@ -15,7 +15,11 @@ from feedback_lens.feedback.review import fetch_generation_review, parse_json_te
 from feedback_lens.web import feature_blueprint
 from feedback_lens.web.config import get_secret_key, get_web_settings
 from feedback_lens.web.jobs import run_worker_forever
-from feedback_lens.web.security import can_access_admin_workspace, csrf_token
+from feedback_lens.web.security import (
+    can_access_admin_workspace,
+    csrf_token,
+    require_csrf,
+)
 from feedback_lens.web.staff_portal_service import (
     assignment_feedback_model,
     fetch_authorised_generation,
@@ -477,14 +481,21 @@ def student_home_data():
     with connect_db() as conn:
         counts = conn.execute("""
             SELECT
-                (SELECT COUNT(*) FROM student_submissions WHERE student_identifier = ?) AS total_submissions,
                 (SELECT COUNT(DISTINCT of.generation_id)
                     FROM overall_feedback of
-                    JOIN generation_runs gr ON gr.generation_id = of.generation_id
-                    JOIN student_submissions ss ON ss.submission_id = gr.submission_id
+                    JOIN generation_runs gr
+                        ON gr.generation_id = of.generation_id
+                    JOIN student_submissions ss
+                        ON ss.submission_id = gr.submission_id
                     WHERE ss.student_identifier = ?
+                      AND EXISTS (
+                          SELECT 1
+                          FROM human_reviews approved_review
+                          WHERE approved_review.generation_id = gr.generation_id
+                            AND approved_review.approved = 1
+                      )
                 ) AS total_feedback
-        """, (sid, sid)).fetchone()
+        """, (sid,)).fetchone()
 
     return jsonify({
         'user': dict(user),
@@ -554,7 +565,9 @@ def student_unit_data(unit_id):
                 AND gr.generation_id = (
                     SELECT MAX(generation_id) FROM generation_runs WHERE submission_id = ss.submission_id
                 )
-            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            LEFT JOIN human_reviews hr
+                ON hr.generation_id = gr.generation_id
+                AND hr.approved = 1
             WHERE a.unit_id = ?
             ORDER BY a.assignment_id
         """, (sid, unit_id)).fetchall()
@@ -592,7 +605,9 @@ def student_assessments_data():
                 AND gr.generation_id = (
                     SELECT MAX(generation_id) FROM generation_runs WHERE submission_id = ss.submission_id
                 )
-            LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
+            LEFT JOIN human_reviews hr
+                ON hr.generation_id = gr.generation_id
+                AND hr.approved = 1
             WHERE a.unit_id IN (
                 SELECT DISTINCT a2.unit_id
                 FROM assignments a2
@@ -718,7 +733,10 @@ def student_assessment_data(assignment_id):
             """, (sub['submission_id'],)).fetchone()
             if gen:
                 hr = conn.execute("""
-                    SELECT review_id FROM human_reviews WHERE generation_id = ?
+                    SELECT review_id
+                    FROM human_reviews
+                    WHERE generation_id = ?
+                      AND approved = 1
                 """, (gen['generation_id'],)).fetchone()
                 review_status = 'marked' if hr else 'pending'
             else:
@@ -759,6 +777,12 @@ def student_feedback_list():
             JOIN generation_runs gr ON gr.submission_id = ss.submission_id
             JOIN overall_feedback of ON of.generation_id = gr.generation_id
             WHERE ss.student_identifier = ?
+              AND EXISTS (
+                  SELECT 1
+                  FROM human_reviews approved_review
+                  WHERE approved_review.generation_id = gr.generation_id
+                    AND approved_review.approved = 1
+              )
             GROUP BY u.unit_id
             HAVING feedback_count > 0
             ORDER BY u.unit_code
@@ -791,6 +815,12 @@ def student_feedback_by_unit(unit_id):
             LEFT JOIN overall_feedback of ON of.generation_id = gr.generation_id
             LEFT JOIN human_reviews hr ON hr.generation_id = gr.generation_id
             WHERE a.unit_id = ? AND ss.student_identifier = ?
+              AND EXISTS (
+                  SELECT 1
+                  FROM human_reviews approved_review
+                  WHERE approved_review.generation_id = gr.generation_id
+                    AND approved_review.approved = 1
+              )
             ORDER BY gr.generation_id DESC
         """, (unit_id, sid)).fetchall()
 
@@ -809,7 +839,14 @@ def student_feedback_detail_data(generation_id):
             SELECT gr.generation_id
             FROM generation_runs gr
             JOIN student_submissions ss ON ss.submission_id = gr.submission_id
-            WHERE gr.generation_id = ? AND ss.student_identifier = ?
+            WHERE gr.generation_id = ?
+              AND ss.student_identifier = ?
+              AND EXISTS (
+                  SELECT 1
+                  FROM human_reviews approved_review
+                  WHERE approved_review.generation_id = gr.generation_id
+                    AND approved_review.approved = 1
+              )
         """, (generation_id, sid)).fetchone()
         if not check:
             return jsonify({'error': 'Feedback not found'}), 404
@@ -864,16 +901,23 @@ def student_feedback_detail_data(generation_id):
         'criterion_feedback': criteria
     })
 
+
 @app.route('/educator/feedback-review')
 @staff_portal_required
 def feedback_review():
-    return render_template('feedback_review.html')
+    return render_template(
+        'feedback_review.html',
+        csrf_token=csrf_token(),
+    )
+
 
 @app.route('/educator/general-feedback')
 @staff_portal_required
 def general_feedback():
-    return render_template('general_feedback.html')
-
+    return render_template(
+        'general_feedback.html',
+        csrf_token=csrf_token(),
+    )
 
 
 @app.route('/logout')
@@ -913,7 +957,11 @@ def unit_dashboard_data(unit_id):
 @app.route('/educator/unit/<int:unit_id>/submissions')
 @staff_portal_required
 def submissions_list(unit_id):
-    return render_template('submissions_list.html', unit_id=unit_id)
+    return render_template(
+        'submissions_list.html',
+        unit_id=unit_id,
+        csrf_token=csrf_token(),
+    )
 
 
 @app.route('/api/educator/unit/<int:unit_id>/submissions')
@@ -1384,6 +1432,32 @@ def generate_feedback():
             # Judge results are internal evaluation data and are not returned
             # to the Staff workspace.
             app.logger.info("quality gate: %s", gate_report)
+
+            if gate_report.get("passed") is not True:
+                if gate_report.get("judge_failed"):
+                    message = (
+                        "Feedback was generated but could not be approved "
+                        "because the quality judge failed. Please retry or "
+                        "refer the submission for review."
+                    )
+                else:
+                    message = (
+                        "Feedback did not meet the required quality threshold "
+                        "after the available attempts. It has not been approved "
+                        "and requires review."
+                    )
+
+                app.logger.warning(
+                    "Feedback generation not approved: generation_id=%s, report=%s",
+                    result.generation_id,
+                    gate_report,
+                )
+                return jsonify({
+                    "status": "needs_review",
+                    "error": message,
+                    "generation_id": result.generation_id,
+                }), 409
+
         except Exception as err:
             failed = conn.execute(
                 """
@@ -1509,6 +1583,7 @@ def regenerate_criterion_feedback(generation_id, criterion_id):
 
 
 @app.route('/api/feedback/<int:generation_id>/save', methods=['POST'])
+@require_csrf
 def save_feedback(generation_id):
     user, error = _staff_api_user()
     if error:
@@ -1532,6 +1607,26 @@ def save_feedback(generation_id):
             return jsonify({
                 'error': 'Previous generated versions are read-only.'
             }), 409
+
+        review_status = data.get('review_status') or data.get('status')
+
+        if review_status is not None and review_status not in (
+            'reviewed',
+            'pending',
+            'ai_generated',
+        ):
+            return jsonify({
+                'error': 'Invalid review status.'
+            }), 400
+        if (
+            workflow is not None
+            and workflow['marking_status'] == 'marker_confirmed'
+            and review_status in ('pending', 'ai_generated')
+        ):
+            return jsonify({
+                'error': 'Confirmed feedback must be returned by a Unit Admin before editing.'
+            }), 409
+
         for item in data.get('criteria', []):
             conn.execute("""
                 UPDATE criterion_feedback
@@ -1557,17 +1652,6 @@ def save_feedback(generation_id):
                     final_mark=COALESCE(?, final_mark)
                 WHERE generation_id=?
             """, (overall_comment, final_mark, generation_id))
-
-        review_status = data.get('review_status') or data.get('status')
-
-        if (
-            workflow is not None
-            and workflow['marking_status'] == 'marker_confirmed'
-            and review_status in ('pending', 'ai_generated')
-        ):
-            return jsonify({
-                'error': 'Confirmed feedback must be returned by a Unit Admin before editing.'
-            }), 409
 
         if review_status == 'reviewed' and user.get('tutor_id') is not None:
             review = conn.execute(
