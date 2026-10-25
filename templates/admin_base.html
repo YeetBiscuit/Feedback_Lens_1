@@ -15,7 +15,9 @@
   <div class="nav-center">
     <a class="nav-link" data-admin-nav="dashboard" href="/admin">Dashboard</a>
     <a class="nav-link" data-admin-nav="units" href="/admin/units">Units</a>
+    {% if user.is_chief_admin %}
     <a class="nav-link" data-admin-nav="ai-quality" href="/admin/ai-quality">AI Quality</a>
+    {% endif %}
   </div>
   <div class="nav-right">
     <div class="font-toggle">

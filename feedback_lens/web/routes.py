@@ -171,7 +171,9 @@ def _page_admin_user():
         )
         if not chief and not unit_admin:
             return None
-        return dict(user)
+        result = dict(user)
+        result["is_chief_admin"] = chief
+        return result
 
 
 def _json_user(conn):
@@ -1595,6 +1597,8 @@ def admin_ai_quality_page():
     user = _page_admin_user()
     if user is None:
         return redirect("/login")
+    if not user["is_chief_admin"]:
+        return redirect("/admin/units")
     return render_template(
         "admin_ai_quality.html",
         csrf_token=csrf_token(),
@@ -1608,5 +1612,7 @@ def api_admin_judge_quality():
     from feedback_lens.web.judge_quality_service import get_judge_quality_overview
 
     with connect_db() as conn:
-        _json_user(conn)
+        user = _json_user(conn)
+        if not is_chief_admin(conn, int(user["user_id"])):
+            raise ApiError("chief_admin_required", "Not authorised.", 403)
         return jsonify(get_judge_quality_overview(conn))
