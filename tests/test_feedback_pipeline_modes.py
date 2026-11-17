@@ -275,7 +275,7 @@ class FeedbackPipelineModeTests(unittest.TestCase):
             ],
         )
 
-    def test_retrieval_mode_defaults_to_planned_unit_grounded_deepseek(self) -> None:
+    def test_retrieval_mode_defaults_to_planned_unit_grounded_openai(self) -> None:
         planner_response = json.dumps(
             {
                 "retrieval_cues": [
@@ -325,8 +325,8 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         retrieval_cues = mock_retrieve.call_args.args[2]
         retrieval_kwargs = mock_retrieve.call_args.kwargs
         self.assertEqual(result.context_mode, "retrieval")
-        self.assertEqual(result.provider, "deepseek")
-        self.assertEqual(result.model, "deepseek-v4-pro")
+        self.assertEqual(result.provider, "openai")
+        self.assertEqual(result.model, "gpt-5.4-mini")
         self.assertEqual(result.retrieval_strategy, "llm_planned_cue_v1")
         self.assertEqual(result.retrieval_cue_count, 1)
         self.assertEqual(result.per_cue_top_k, 5)
@@ -335,8 +335,8 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertEqual(result.feedback_modifier_mode, "system_default")
         self.assertIsNone(result.feedback_length)
         self.assertIsNone(result.feedback_tone)
-        self.assertEqual(run["llm_provider"], "deepseek")
-        self.assertEqual(run["llm_model"], "deepseek-v4-pro")
+        self.assertEqual(run["llm_provider"], "openai")
+        self.assertEqual(run["llm_model"], "gpt-5.4-mini")
         self.assertEqual(run["pipeline_version"], "planned_retrieval_v1")
         self.assertEqual(run["prompt_template_version"], "unit_grounded_feedback_json_v2")
         self.assertEqual(run["retrieval_strategy"], "llm_planned_cue_v1")

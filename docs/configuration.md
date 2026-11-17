@@ -86,18 +86,132 @@ address per hour. Configure them with `FEEDBACK_LENS_IDENTITY_RATE_LIMIT` and
 `FEEDBACK_LENS_SOURCE_RATE_LIMIT`. Only keyed, irreversible request hashes are
 recorded for these limits.
 
-## LLM Provider Selection
+## Feedback Stage Configuration
+
+Edit `config/llm.json` to independently select the `planner`, `generator`, and
+`revision` provider, model ID, and OpenAI `request_options`. All three initially
+use `openai` / `gpt-5.4-mini`, with reasoning `none`. The Planner output limit is
+4096 tokens; Generator and Revision use 8192. These are integration-test settings,
+not a feedback-quality recommendation.
+
+To use a local configuration outside git, set `FEEDBACK_LENS_LLM_CONFIG` to its
+path. Relative paths resolve against the project root. API keys must remain in
+environment variables (`OPENAI_API_KEY`, `NVIDIA_API_KEY`, etc.), never this file.
+
+Each role has the same configuration shape. For example, a stronger Generator
+can be selected without changing the Planner or Revision entries:
+
+```json
+"generator": {
+  "provider": "openai",
+  "model": "gpt-6.1-sol",
+  "request_options": {
+    "reasoning": {"effort": "medium"},
+    "max_output_tokens": 16384
+  }
+}
+```
+
+This is an example, not the checked-in default. OpenAI model IDs are passed
+through to the Responses API without a model allowlist. Select a text model that
+supports Responses with strict Structured Outputs and is accessible to your project. Model availability and
+parameter compatibility are validated by the API. Supported configurable options
+are `reasoning`, `text`, `max_output_tokens`, `temperature`, and `top_p`.
+Other providers retain their existing adapters and should omit `request_options`.
+
+The OpenAI adapter deliberately does not forward the legacy pipeline temperature
+automatically. To use temperature with a compatible model, explicitly include it
+in `request_options`. Remove `temperature` and `top_p` when reasoning is enabled.
+Changing model may require changing its options too (for example, Sol does not
+support reasoning `none`). Output-token budgets include reasoning tokens; an
+incomplete or empty response raises an error instead of saving partial feedback.
+Requests use `store=False`; no prompt-cache configuration is added in this change.
+
+### Strict structured output
+
+OpenAI pipeline calls automatically supply Responses API `text.format` with
+`type: "json_schema"` and `strict: true`. The Planner uses the
+`retrieval_plan_v1` contract; Generator, automatic Revision, and teacher criterion
+regeneration use `feedback_v1`. The contracts live in
+`feedback_lens/feedback/llm/structured_output.py` and match the existing prompt
+fields. All object properties are required, extra properties are disallowed,
+and grade bands are restricted to `N`, `P`, `C`, `D`, and `HD`.
+
+The pipeline sets this format after resolving model options, including saved
+options for older feedback records. It overrides any configured `text.format`
+while preserving other text settings such as verbosity. The effective schema
+and strict flag are recorded with the existing configuration audit events.
+Do not copy schemas into `config/llm.json`.
+
+This constrains completed, non-refusal output structure, not feedback quality.
+Refusals, incomplete responses, API errors, and parsing errors still fail the
+operation; there is no silent fallback to unconstrained text or automatic JSON
+repair. Existing cue and rubric-mapping checks remain in place. Other providers
+and NVIDIA judges retain their existing behaviour. See the
+[OpenAI Structured Outputs guide](https://developers.openai.com/api/docs/guides/structured-outputs).
+
+### Configuration precedence
+
+Configuration precedence and scope:
+
+- Existing assessments keep their saved Generator provider/model. No historical
+  settings or feedback are rewritten. They may still require the old API key.
+- New web assessments copy the current Generator provider/model when created.
+  Subsequent backend model changes do not overwrite that saved selection.
+- CLI `--provider` / `--model` and explicit function arguments override the
+  Generator default. Matching stage settings supply its request options. An
+  override selecting a different model/provider does not inherit another model's
+  options; OpenAI then uses server defaults and an 8192-token output limit,
+  plus the pipeline's strict output contract.
+- The Planner always uses its independent backend configuration, including
+  when planning retrieval again for an automatic revision.
+- Automatic quality-gate retries use Revision instead of the old NVIDIA Flash.
+- Teacher criterion regeneration follows the provider/model on the selected
+  feedback record, including when that draft came from Revision. Recorded request
+  options are reused when available; older records without that audit entry use
+  matching Generator options or provider defaults. No automatic model fallback
+  occurs if an old endpoint is unavailable. Original generation metadata is
+  retained and the actual regeneration model is recorded in `audit_events`.
+- Judges, quality thresholds, and retry counts remain unchanged. NVIDIA judge
+  requests still require `NVIDIA_API_KEY`; this change does not verify the live
+  availability of those endpoints.
+
+Restart the web application and worker after changing environment variables or
+configuration, so all running processes use the same settings.
+
+### Live synthetic smoke test
+
+After the offline tests pass, you can opt in to five real generation requests
+(plus any SDK retries) using the configured models:
+
+```powershell
+$env:FEEDBACK_LENS_RUN_LIVE_LLM_TESTS = "1"
+python -m unittest tests.test_openai_live -v
+Remove-Item Env:FEEDBACK_LENS_RUN_LIVE_LLM_TESTS
+```
+
+This incurs API usage. It uses a tiny synthetic assignment and an in-memory
+database, so existing assessments are not changed. It exercises actual OpenAI
+planning, initial generation, automatic revision, JSON parsing/storage, and
+teacher criterion regeneration. Every request is checked for its strict format,
+with raw JSON parsed directly. Retrieval uses a fixed synthetic chunk and
+judge results are simulated to force one revision; it does not verify live
+NVIDIA judges, the vector store, or frontend rendering. Without the opt-in
+variable, normal test discovery skips these network calls.
+
+## Available Providers
 
 Feedback generation uses a provider registry in `feedback_lens/feedback/llm/providers.py`.
 
 Current registered providers:
 
-- `deepseek` (default)
+- `openai` (initial default)
+- `deepseek`
 - `qwen`
 - `gemini`
 - `nvidia`
 
-Feedback generation uses the official DeepSeek API by default:
+Feedback generation uses the configured Generator by default:
 
 ```bash
 python generate_feedback.py <submission_id>
@@ -192,7 +306,7 @@ python generate_feedback.py 1 --provider gemini
 
 ## Official DeepSeek Configuration
 
-The default provider uses DeepSeek's OpenAI-compatible endpoint in
+The DeepSeek provider uses DeepSeek's OpenAI-compatible endpoint in
 `feedback_lens/feedback/llm/deepseek.py`.
 
 Current official DeepSeek settings:
@@ -211,7 +325,7 @@ $env:DEEPSEEK_API_KEY="your_key_here"
 Run feedback generation with the default Pro model:
 
 ```bash
-python generate_feedback.py 1
+python generate_feedback.py 1 --provider deepseek
 ```
 
 Select Flash explicitly when lower cost is preferred:

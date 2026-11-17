@@ -179,7 +179,12 @@ For generated unit packages, see [unit_generation.md](unit_generation.md).
 
 ## 5. Configure The LLM Provider
 
-The default provider uses the official DeepSeek API:
+The initial backend configuration uses OpenAI for Planner, Generator, and
+Revision. Set `OPENAI_API_KEY` in the backend/worker environment. Each role is
+configured independently in `config/llm.json`; existing assessments retain
+their saved Generator choice.
+
+For existing DeepSeek assessments or explicit DeepSeek calls:
 
 ```powershell
 $env:DEEPSEEK_API_KEY="your_key_here"
@@ -207,7 +212,7 @@ If you need more detail about providers and model selection, see [configuration.
 
 ## 6. Generate Feedback
 
-Run with the default official DeepSeek V4-Pro model:
+Run with the configured Generator (initially OpenAI `gpt-5.4-mini`):
 
 ```powershell
 python generate_feedback.py <submission_id> --per-cue-top-k 5 --max-final-chunks 10
@@ -472,7 +477,8 @@ python build.py
 $env:QWEN_API_KEY="your_qwen_key_here"
 ```
 
-For the default official DeepSeek provider, set
+For the initially configured OpenAI roles, set `OPENAI_API_KEY`.
+For the official DeepSeek provider, set
 `$env:DEEPSEEK_API_KEY="your_deepseek_key_here"` and use `--provider deepseek`.
 For Gemini, set `$env:GEMINI_API_KEY="your_gemini_key_here"` and use
 `--provider gemini`. For the NVIDIA hosted provider, set

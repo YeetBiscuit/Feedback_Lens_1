@@ -28,7 +28,7 @@ These local files are intentionally ignored by git and should be managed separat
 
 - Python 3.10+
 - `pip`
-- optional Qwen or Gemini API key if you want to run feedback generation
+- an API key for your selected feedback provider (OpenAI by default)
 
 ## Setup
 
@@ -53,13 +53,34 @@ If you are using Gemini for generation:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
-The default feedback provider uses DeepSeek's official API:
+The default Planner, Generator, and automatic Revision models are configured
+independently in [`config/llm.json`](config/llm.json). All three initially use
+OpenAI `gpt-5.4-mini` for integration testing. Set `OPENAI_API_KEY` in the
+environment of your backend and worker, then restart those processes.
+
+```bash
+python generate_feedback.py <submission_id> --provider openai
+```
+
+OpenAI model IDs are configurable, not restricted to a hardcoded list. The
+adapter uses the Responses API. Model-specific reasoning, output-token limits,
+and optional sampling settings belong in each stage's `request_options`.
+See the [configuration guide](docs/configuration.md#feedback-stage-configuration).
+Keep credentials out of configuration files and git.
+
+Existing assessments keep their saved model choices; new assessments copy the
+current Generator choice. Teacher criterion regeneration follows the provider
+and model saved on the selected feedback record, including a Revision draft.
+Automatic quality-gate revision uses Revision, while
+its retrieval planning uses Planner. NVIDIA judge configuration is unchanged.
+
+For existing assessments using DeepSeek's official API:
 
 ```powershell
 $env:DEEPSEEK_API_KEY="your_key_here"
 ```
 
-It defaults to `deepseek-v4-pro`. The lower-cost `deepseek-v4-flash` model can
+The DeepSeek provider defaults to `deepseek-v4-pro`. Its `deepseek-v4-flash` model can
 be selected explicitly with `--model deepseek-v4-flash`.
 
 If you are using NVIDIA's hosted provider:
@@ -84,8 +105,9 @@ $env:NVIDIA_API_KEY="your_key_here"
 4. Ingest course materials with `python ingest.py`.
 5. Import a student submission with `python import_documents.py submission ...`.
 6. Generate feedback with `python generate_feedback.py <submission_id>`. The
-   default provider is the official DeepSeek API; `qwen`, `gemini`, and
-   `nvidia` remain available through `--provider`.
+   default provider comes from the Generator backend configuration (initially
+   OpenAI); `deepseek`, `qwen`, `gemini`, and `nvidia` remain available through
+   `--provider`. Planner is configured independently.
 7. Review saved prompts, retrievals, and outputs with `python review_generation.py`.
 
 The detailed end-to-end workflow lives in [docs/usage.md](docs/usage.md).

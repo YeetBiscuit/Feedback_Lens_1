@@ -141,6 +141,11 @@ class WebFeatureServiceTests(unittest.TestCase):
             )
 
             self.assertEqual(assessment["assessment"]["title"], "Final report")
+            model = conn.execute(
+                "SELECT default_llm_provider, default_llm_model FROM assessment_plans WHERE assessment_plan_id = ?",
+                (assessment["assessment"]["assessment_plan_id"],),
+            ).fetchone()
+            self.assertEqual(tuple(model), ("openai", "gpt-5.4-mini"))
             self.assertEqual(
                 conn.execute(
                     """

@@ -6,8 +6,7 @@ below threshold, regenerates once with judge-derived revision notes.
 Judge results are recorded for evaluation but are not surfaced to educators.
 """
 
-REVISION_PROVIDER = "nvidia"
-REVISION_MODEL = "deepseek-ai/deepseek-v4.1-flash"
+from feedback_lens.feedback.llm.config import resolve_stage_config
 
 import json
 import sqlite3
@@ -327,9 +326,11 @@ def generate_feedback_with_quality_gate(
 
     for attempt in range(1, MAX_ATTEMPTS + 1):
         attempt_kwargs = dict(generation_kwargs)
-        if attempt > 1 and REVISION_MODEL:
-            attempt_kwargs["provider"] = REVISION_PROVIDER
-            attempt_kwargs["model"] = REVISION_MODEL
+        if attempt > 1:
+            revision_config = resolve_stage_config("revision")
+            attempt_kwargs["provider"] = revision_config.provider
+            attempt_kwargs["model"] = revision_config.model
+            attempt_kwargs["generation_stage"] = "revision"
 
         result = generate_feedback_for_submission(
             conn,

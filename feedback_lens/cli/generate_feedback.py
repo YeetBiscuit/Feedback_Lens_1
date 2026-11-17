@@ -1,4 +1,5 @@
 import argparse
+from feedback_lens.feedback.llm.config import get_stage_config
 
 from feedback_lens.db.connection import connect_db
 from feedback_lens.feedback.pipeline import (
@@ -39,7 +40,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Generate rubric-aligned feedback for an existing student submission.",
     )
     parser.add_argument("submission_id", type=int)
-    parser.add_argument("--provider", default=DEFAULT_FEEDBACK_PROVIDER)
+    parser.add_argument("--provider", default=get_stage_config("generator").provider)
     parser.add_argument("--model")
     parser.set_defaults(feedback_modifier_mode=DEFAULT_FEEDBACK_MODIFIER_MODE)
     parser.add_argument(

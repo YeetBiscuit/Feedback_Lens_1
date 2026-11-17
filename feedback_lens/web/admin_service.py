@@ -8,6 +8,7 @@ from collections import Counter
 from datetime import date
 from pathlib import Path
 
+from feedback_lens.feedback.llm.config import resolve_stage_config
 from feedback_lens.feedback.llm.providers import (
     DEFAULT_FEEDBACK_MODEL,
     DEFAULT_FEEDBACK_PROVIDER,
@@ -904,6 +905,7 @@ def create_assessment(
     ).fetchone()
     if offering is None or offering["legacy_unit_id"] is None:
         raise ApiError("unit_not_found", "Unit not found.", 404)
+    generator_config = resolve_stage_config("generator")
     try:
         conn.execute("BEGIN")
         legacy_assignment_id = int(
@@ -931,8 +933,8 @@ def create_assessment(
                 INSERT INTO assessment_plans
                     (unit_offering_id, legacy_assignment_id,
                      assessment_code, title, description, status,
-                     created_by_user_id)
-                VALUES (?, ?, ?, ?, ?, 'draft', ?)
+                     created_by_user_id, default_llm_provider, default_llm_model)
+                VALUES (?, ?, ?, ?, ?, 'draft', ?, ?, ?)
                 """,
                 (
                     unit_offering_id,
@@ -941,6 +943,8 @@ def create_assessment(
                     title,
                     data.get("description"),
                     actor_user_id,
+                    generator_config.provider,
+                    generator_config.model,
                 ),
             ).lastrowid
         )

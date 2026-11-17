@@ -120,6 +120,8 @@ class LLMProviderRegistryTests(unittest.TestCase):
         mock_openai.assert_called_once_with(
             api_key="test-key",
             base_url=GEMINI_BASE_URL,
+            timeout=120.0,
+            max_retries=4,
         )
         mock_openai.return_value.chat.completions.create.assert_called_once_with(
             model=GEMINI_MODEL,
@@ -143,6 +145,8 @@ class LLMProviderRegistryTests(unittest.TestCase):
         mock_openai.assert_called_once_with(
             api_key="test-key",
             base_url=NVIDIA_BASE_URL,
+            timeout=240.0,
+            max_retries=2,
         )
         mock_openai.return_value.chat.completions.create.assert_called_once_with(
             model=NVIDIA_MODEL,

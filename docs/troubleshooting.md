@@ -10,7 +10,8 @@ Symptom:
 Missing API key. Please set environment variable QWEN_API_KEY.
 ```
 
-For the default official DeepSeek provider, the message names
+For the initially configured OpenAI provider, the message names `OPENAI_API_KEY`.
+For the official DeepSeek provider, the message names
 `DEEPSEEK_API_KEY`. For Gemini, it names `GEMINI_API_KEY`; for the
 NVIDIA hosted provider, it names `NVIDIA_API_KEY`.
 
@@ -26,7 +27,7 @@ Or, for Gemini:
 $env:GEMINI_API_KEY="your_key_here"
 ```
 
-Or, for the default official DeepSeek provider:
+Or, for the official DeepSeek provider:
 
 ```powershell
 $env:DEEPSEEK_API_KEY="your_key_here"

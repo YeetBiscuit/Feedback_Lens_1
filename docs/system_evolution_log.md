@@ -44,6 +44,66 @@ Each entry should include, where relevant:
 
 ---
 
+## 2026-11-17 — OpenAI Integration, Strict JSON Output, and Workflow Verification
+
+**Status:** Implemented and verified for the temporary single-Judge workflow.
+Default dual-Judge latency and one missing test fixture remain unresolved.
+
+### Important Changes
+
+- Added OpenAI Responses API support and independent Planner, Generator, and
+  Revision settings in `config/llm.json`, initially using `gpt-5.4-mini`.
+  Credentials stay in environment variables; effective settings are audited.
+- Preserved baseline retrieval and opt-in planning. Automatic revision uses
+  Revision settings; teacher criterion regeneration uses the selected feedback
+  record's saved model and request options. Existing assessment choices remain.
+- Replaced prompt-only JSON formatting with strict API JSON Schema contracts:
+  `retrieval_plan_v1` for planning and `feedback_v1` for generation, revision,
+  and criterion regeneration. Required fields, types, grade values, and the ban
+  on extra fields are enforced through Responses API `text.format`.
+- Applied and audited the schema after resolving saved model settings. Refusal,
+  incomplete, empty, and malformed responses still fail explicitly; there is
+  no silent fallback to unconstrained output or automatic JSON repair.
+- No database migration or vector re-indexing was required. Other providers,
+  historical feedback, and the default NVIDIA Judge configuration are unchanged.
+  Selected OpenAI models must support strict Structured Outputs.
+
+### Verification Results
+
+- Passed 62 focused regression tests covering stage routing, provider and saved
+  model compatibility, strict contracts, auditing, and failure handling.
+- Passed the live OpenAI smoke test for planning, generation, automatic revision,
+  and teacher criterion regeneration. Responses parsed directly as JSON;
+  retrieval and Judge verdicts in this smoke test were simulated.
+- Completed a browser run with actual vector retrieval and live Nemotron
+  judging, including automatic revision and a final `passed_after_revision`.
+  Verified retrieved text in saved prompts, stored responses against their
+  schemas, persisted scores and feedback, browser edit/save/refresh, and readback
+  through the normal web instance. No JSON parsing retry was needed in this run.
+- Full discovery: 169 tests, with 167 passed, one opt-in live test skipped, and
+  one error caused by a missing local allocation workbook fixture. The full
+  suite is not yet passing.
+- Browser checks used a synthetic submission and an authorised temporary
+  Nemotron-only process, which was stopped afterwards. Setup/allocation screens
+  were skipped. A backup preceded test-data creation; test records remain local,
+  and no feedback was released to students.
+
+### Unresolved Issues and Follow-up
+
+- Default dual-Judge latency remains unresolved. Both Judges eventually returned
+  scores in an earlier run, but its revision failed on malformed JSON before the
+  strict-output fix. Subsequent short `gpt-oss-20b` probes timed out before HTTP
+  response headers, while Nemotron responded. The provider-side cause is not
+  established; successful end-to-end dual-Judge verification is still required.
+- Investigate Judge availability, timeout/retry behaviour, and progress/error
+  visibility, then repeat the default dual-Judge run. Keep Judge inputs unchanged,
+  including full materials, specification, rubric, and feedback.
+- Restore the missing workbook fixture and rerun the affected test. Strict JSON
+  does not prevent refusals, truncation, or provider errors, and these checks do
+  not establish educational quality or comparative model performance.
+
+---
+
 ## 2026-09-24 — Retrieval Query Semantics and Aggregation Ranking
 
 **Status:** Complete

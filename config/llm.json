@@ -1,0 +1,26 @@
+{
+  "planner": {
+    "provider": "openai",
+    "model": "gpt-5.4-mini",
+    "request_options": {
+      "reasoning": {"effort": "none"},
+      "max_output_tokens": 4096
+    }
+  },
+  "generator": {
+    "provider": "openai",
+    "model": "gpt-5.4-mini",
+    "request_options": {
+      "reasoning": {"effort": "none"},
+      "max_output_tokens": 8192
+    }
+  },
+  "revision": {
+    "provider": "openai",
+    "model": "gpt-5.4-mini",
+    "request_options": {
+      "reasoning": {"effort": "none"},
+      "max_output_tokens": 8192
+    }
+  }
+}

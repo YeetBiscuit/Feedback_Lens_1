@@ -1,13 +1,15 @@
 import json
 import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+
+from feedback_lens.feedback.llm.config import StageModelConfig, resolve_stage_config
+from feedback_lens.feedback.llm.structured_output import with_structured_output
 
 from feedback_lens.db.connection import fetch_latest_version_row
 from feedback_lens.feedback.llm.providers import (
     DEFAULT_FEEDBACK_PROVIDER,
     generate_text,
-    resolve_model_name,
 )
 from feedback_lens.feedback.prompt import (
     CUSTOM_FEEDBACK_MODIFIER_MODE,
@@ -578,7 +580,7 @@ def _fail_retrieval_planning_record(
 def generate_feedback_for_submission(
     conn: sqlite3.Connection,
     submission_id: int,
-    provider: str = DEFAULT_FEEDBACK_PROVIDER,
+    provider: str | None = None,
     model: str | None = None,
     top_k: int | None = None,
     per_cue_top_k: int | None = None,
@@ -593,7 +595,10 @@ def generate_feedback_for_submission(
     feedback_tone: str | None = None,
     planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
     revision_notes: str | None = None,
+    generation_stage: str = "generator",
 ) -> FeedbackGenerationResult:
+    if generation_stage not in ("generator", "revision"):
+        raise ValueError("generation_stage must be generator or revision.")
     generation_id = None
     planning_record_id = None
     resolved_context_mode = _normalise_context_mode(context_mode)
@@ -622,7 +627,14 @@ def generate_feedback_for_submission(
         feedback_length,
         feedback_tone,
     )
-    resolved_model = resolve_model_name(provider, model)
+    generation_config = with_structured_output(
+        resolve_stage_config(generation_stage, provider, model), "feedback_v1",
+    )
+    provider, resolved_model = generation_config.provider, generation_config.model
+    recorded_temperature = (
+        generation_config.request_options.get("temperature")
+        if provider == "openai" else temperature
+    )
     if resolved_context_mode == "direct":
         resolved_per_cue_top_k = 0
         resolved_max_final_chunks = 0
@@ -661,7 +673,7 @@ def generate_feedback_for_submission(
                 resolved_model,
                 resolved_prompt_template_version,
                 resolved_retrieval_strategy,
-                temperature,
+                recorded_temperature,
                 resolved_per_cue_top_k,
                 resolved_per_cue_top_k,
                 resolved_max_final_chunks,
@@ -669,8 +681,19 @@ def generate_feedback_for_submission(
         )
         generation_id = cur.lastrowid
 
+        conn.execute(
+            """INSERT INTO audit_events (event_type, entity_type, entity_id, metadata_json)
+               VALUES ('feedback.generation_config', 'generation_run', ?, ?)""",
+            (str(generation_id), json.dumps({
+                "stage": generation_stage, **asdict(generation_config),
+            })),
+        )
+
         if resolved_context_mode == "retrieval":
             if resolved_retrieval_strategy == RETRIEVAL_PLANNER_STRATEGY:
+                planner_config = with_structured_output(
+                    resolve_stage_config("planner"), "retrieval_plan_v1",
+                )
                 planner_prompt = build_retrieval_planner_prompt(
                     inputs["assignment"],
                     inputs["assignment_spec"],
@@ -683,16 +706,22 @@ def generate_feedback_for_submission(
                     conn,
                     generation_id,
                     resolved_retrieval_strategy,
-                    provider,
-                    resolved_model,
+                    planner_config.provider,
+                    planner_config.model,
                     planner_prompt.prompt_template_version,
                     planner_prompt.prompt_text,
                 )
+                conn.execute(
+                    """INSERT INTO audit_events (event_type, entity_type, entity_id, metadata_json)
+                       VALUES ('feedback.planner_config', 'retrieval_planning_record', ?, ?)""",
+                    (str(planning_record_id), json.dumps(asdict(planner_config))),
+                )
                 planner_raw_response = generate_text(
                     planner_prompt.prompt_text,
-                    provider=provider,
-                    model=resolved_model,
+                    provider=planner_config.provider,
+                    model=planner_config.model,
                     temperature=temperature,
+                    **planner_config.call_options(),
                 )
                 _record_retrieval_planner_response(
                     conn,
@@ -777,6 +806,7 @@ def generate_feedback_for_submission(
             provider=provider,
             model=resolved_model,
             temperature=temperature,
+            **generation_config.call_options(),
         )
         conn.execute(
             """
@@ -971,13 +1001,33 @@ def regenerate_feedback_for_criterion(
         feedback_length=resolved_feedback_length,
         feedback_tone=resolved_feedback_tone,
     )
-    provider = run["llm_provider"] or DEFAULT_FEEDBACK_PROVIDER
-    model = run["llm_model"]
+    # Follow the selected feedback record, including a draft from Revision.
+    generation_config = resolve_stage_config(
+        "generator", run["llm_provider"] or DEFAULT_FEEDBACK_PROVIDER, run["llm_model"],
+    )
+    saved_config = conn.execute(
+        """SELECT metadata_json FROM audit_events
+           WHERE event_type = 'feedback.generation_config'
+             AND entity_type = 'generation_run' AND entity_id = ?
+           ORDER BY audit_event_id DESC LIMIT 1""",
+        (str(generation_id),),
+    ).fetchone()
+    if saved_config:
+        recorded = json.loads(saved_config["metadata_json"])
+        if (recorded.get("provider"), recorded.get("model")) == (
+            generation_config.provider, generation_config.model,
+        ):
+            generation_config = StageModelConfig(
+                generation_config.provider, generation_config.model,
+                recorded.get("request_options", {}),
+            )
+    generation_config = with_structured_output(generation_config, "feedback_v1")
     raw_response = generate_text(
         prompt,
-        provider=provider,
-        model=model,
+        provider=generation_config.provider,
+        model=generation_config.model,
         temperature=run["temperature"] if run["temperature"] is not None else 0.2,
+        **generation_config.call_options(),
     )
     payload = _extract_json_payload(raw_response)
     mapped_criteria = _map_criterion_feedback(
@@ -1006,6 +1056,14 @@ def regenerate_feedback_for_criterion(
             generation_id,
             criterion_id,
         ),
+    )
+    conn.execute(
+        """INSERT INTO audit_events (event_type, entity_type, entity_id, metadata_json)
+           VALUES ('feedback.criterion_regenerated', 'criterion_feedback', ?, ?)""",
+        (str(existing_feedback["criterion_feedback_id"]), json.dumps({
+            "generation_id": generation_id, "criterion_id": criterion_id,
+            **asdict(generation_config),
+        })),
     )
     conn.commit()
 

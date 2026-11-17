@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from feedback_lens.feedback.llm.config import resolve_stage_config
 
 from feedback_lens.feedback.llm.providers import (
     DEFAULT_FEEDBACK_MODEL,
@@ -97,12 +98,12 @@ def assignment_feedback_model(
         """,
         (assignment_id,),
     ).fetchone()
-    if row is None:
-        return DEFAULT_FEEDBACK_PROVIDER, DEFAULT_FEEDBACK_MODEL
-    return (
-        row["default_llm_provider"] or DEFAULT_FEEDBACK_PROVIDER,
-        row["default_llm_model"] or DEFAULT_FEEDBACK_MODEL,
+    configured = resolve_stage_config(
+        "generator",
+        row["default_llm_provider"] if row else None,
+        row["default_llm_model"] if row else None,
     )
+    return configured.provider, configured.model
 
 
 def fetch_authorised_generation(
