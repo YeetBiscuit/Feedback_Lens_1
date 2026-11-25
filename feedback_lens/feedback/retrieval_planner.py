@@ -3,12 +3,29 @@ import re
 import sqlite3
 from dataclasses import dataclass
 
-from feedback_lens.feedback.retrieval import normalize_retrieval_cues
+from feedback_lens.feedback.retrieval import normalize_retrieval_cues, submission_retrieval_steps
 
 
 RETRIEVAL_PLANNER_STRATEGY = "llm_planned_cue_v1"
 RETRIEVAL_PLANNER_PROMPT_TEMPLATE_VERSION = "retrieval_planner_json_v1"
 DEFAULT_MAX_RETRIEVAL_CUES = 8
+MAX_RETRIEVAL_CUES = 15
+
+
+def resolve_planner_max_cues(submission_text: str, override: int | None = None) -> int:
+    if override is not None:
+        if (
+            isinstance(override, bool)
+            or not isinstance(override, int)
+            or not 1 <= override <= MAX_RETRIEVAL_CUES
+        ):
+            raise ValueError(f"planner_max_cues must be an integer from 1 to {MAX_RETRIEVAL_CUES}.")
+        return override
+
+    return min(
+        DEFAULT_MAX_RETRIEVAL_CUES + submission_retrieval_steps(submission_text),
+        MAX_RETRIEVAL_CUES,
+    )
 
 
 @dataclass(slots=True)

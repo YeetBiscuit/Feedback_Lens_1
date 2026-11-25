@@ -21,16 +21,16 @@ from feedback_lens.feedback.prompt import (
     validate_feedback_tone,
 )
 from feedback_lens.feedback.retrieval import (
-    DEFAULT_MAX_FINAL_CHUNKS,
     DEFAULT_PER_CUE_TOP_K,
+    default_final_chunk_limit,
     load_assignment_spec_cues,
     retrieve_relevant_chunks,
 )
 from feedback_lens.feedback.retrieval_planner import (
-    DEFAULT_MAX_RETRIEVAL_CUES,
     RETRIEVAL_PLANNER_STRATEGY,
     build_retrieval_planner_prompt,
     parse_retrieval_planner_response,
+    resolve_planner_max_cues,
 )
 
 
@@ -593,7 +593,7 @@ def generate_feedback_for_submission(
     feedback_modifier_mode: str | None = None,
     feedback_length: str | None = None,
     feedback_tone: str | None = None,
-    planner_max_cues: int = DEFAULT_MAX_RETRIEVAL_CUES,
+    planner_max_cues: int | None = None,
     revision_notes: str | None = None,
     generation_stage: str = "generator",
 ) -> FeedbackGenerationResult:
@@ -637,23 +637,27 @@ def generate_feedback_for_submission(
     )
     if resolved_context_mode == "direct":
         resolved_per_cue_top_k = 0
-        resolved_max_final_chunks = 0
     else:
         resolved_per_cue_top_k = _normalise_positive_int(
             per_cue_top_k if per_cue_top_k is not None else top_k,
             DEFAULT_PER_CUE_TOP_K,
             "per_cue_top_k",
         )
-        resolved_max_final_chunks = _normalise_positive_int(
-            max_final_chunks,
-            DEFAULT_MAX_FINAL_CHUNKS,
-            "max_final_chunks",
-        )
     prompt = None
     raw_response = None
 
     try:
         inputs = _load_generation_inputs(conn, submission_id)
+        if resolved_context_mode == "direct":
+            resolved_max_final_chunks = 0
+        elif max_final_chunks is None:
+            resolved_max_final_chunks = default_final_chunk_limit(
+                inputs["submission"]["cleaned_text"],
+            )
+        else:
+            resolved_max_final_chunks = _normalise_positive_int(
+                max_final_chunks, 0, "max_final_chunks",
+            )
         retrieval_cues = []
 
         cur = conn.execute(
@@ -691,6 +695,9 @@ def generate_feedback_for_submission(
 
         if resolved_context_mode == "retrieval":
             if resolved_retrieval_strategy == RETRIEVAL_PLANNER_STRATEGY:
+                resolved_planner_max_cues = resolve_planner_max_cues(
+                    inputs["submission"]["cleaned_text"], override=planner_max_cues,
+                )
                 planner_config = with_structured_output(
                     resolve_stage_config("planner"), "retrieval_plan_v1",
                 )
@@ -700,7 +707,7 @@ def generate_feedback_for_submission(
                     inputs["rubric"],
                     inputs["criteria"],
                     inputs["submission"],
-                    max_cues=planner_max_cues,
+                    max_cues=resolved_planner_max_cues,
                 )
                 planning_record_id = _create_retrieval_planning_record(
                     conn,
@@ -730,7 +737,7 @@ def generate_feedback_for_submission(
                 )
                 retrieval_cues = parse_retrieval_planner_response(
                     planner_raw_response,
-                    max_cues=planner_max_cues,
+                    max_cues=resolved_planner_max_cues,
                 )
                 _complete_retrieval_planning_record(
                     conn,

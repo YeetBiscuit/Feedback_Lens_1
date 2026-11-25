@@ -13,10 +13,7 @@ from feedback_lens.feedback.prompt import (
     FEEDBACK_LENGTH_OPTIONS,
     FEEDBACK_TONE_OPTIONS,
 )
-from feedback_lens.feedback.retrieval import (
-    DEFAULT_MAX_FINAL_CHUNKS,
-    DEFAULT_PER_CUE_TOP_K,
-)
+from feedback_lens.feedback.retrieval import DEFAULT_PER_CUE_TOP_K
 
 
 DEFAULT_RETRIEVAL_PROMPT_TEMPLATE_ALIAS = "unit-grounded-v2"
@@ -89,8 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-final-chunks",
         type=int,
-        default=DEFAULT_MAX_FINAL_CHUNKS,
-        help="Maximum deduplicated chunks to pass to the feedback generator.",
+        help="Override the length-based limit on deduplicated chunks sent to the feedback generator.",
     )
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument(

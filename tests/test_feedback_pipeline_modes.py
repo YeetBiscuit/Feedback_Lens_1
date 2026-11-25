@@ -356,6 +356,51 @@ class FeedbackPipelineModeTests(unittest.TestCase):
         self.assertEqual(retrieval_kwargs["max_final_chunks"], 10)
         self.assertEqual(mock_generate_text.call_count, 2)
 
+    @patch("feedback_lens.feedback.pipeline.retrieve_relevant_chunks")
+    @patch("feedback_lens.feedback.pipeline.generate_text")
+    def test_submission_length_sets_planner_and_final_chunk_limits(
+        self, mock_generate_text, mock_retrieve,
+    ) -> None:
+        planner_response = json.dumps({
+            "retrieval_cues": [
+                {"order": index, "text": f"Course concept {index}"}
+                for index in range(1, 17)
+            ],
+        })
+        mock_retrieve.return_value = _retrieval_result()
+
+        for word_count, options, expected_cues, expected_chunks in (
+            (1499, {}, 8, 10),
+            (1500, {}, 9, 12),
+            (2000, {}, 10, 14),
+            (4499, {}, 14, 22),
+            (4500, {}, 15, 24),
+            (6000, {}, 15, 24),
+            (2000, {"planner_max_cues": 8, "max_final_chunks": 10}, 8, 10),
+        ):
+            with self.subTest(word_count=word_count, options=options):
+                mock_generate_text.reset_mock()
+                mock_generate_text.side_effect = [planner_response, _feedback_response()]
+                with _connect_minimal_feedback_db() as conn:
+                    conn.execute(
+                        "UPDATE student_submissions SET cleaned_text = ? WHERE submission_id = 1",
+                        ("word " * word_count,),
+                    )
+                    result = generate_feedback_for_submission(conn, submission_id=1, **options)
+                    stored_limit = conn.execute(
+                        "SELECT max_final_chunks FROM generation_runs WHERE generation_id = ?",
+                        (result.generation_id,),
+                    ).fetchone()[0]
+
+                self.assertIn(
+                    f"Generate 1 to {expected_cues} targeted retrieval cues.",
+                    mock_generate_text.call_args_list[0].args[0],
+                )
+                self.assertEqual(len(mock_retrieve.call_args.args[2]), expected_cues)
+                self.assertEqual(mock_retrieve.call_args.kwargs["max_final_chunks"], expected_chunks)
+                self.assertEqual(result.max_final_chunks, expected_chunks)
+                self.assertEqual(stored_limit, expected_chunks)
+
     def test_baseline_retrieval_strategy_still_uses_assignment_spec_cues(self) -> None:
         with (
             patch("feedback_lens.feedback.pipeline.generate_text") as mock_generate_text,

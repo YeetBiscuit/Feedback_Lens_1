@@ -1,25 +1,25 @@
 {
   "planner": {
     "provider": "openai",
-    "model": "gpt-5.4-mini",
+    "model": "gpt-6-luna",
     "request_options": {
-      "reasoning": {"effort": "none"},
+      "reasoning": {"effort": "low"},
       "max_output_tokens": 4096
     }
   },
   "generator": {
     "provider": "openai",
-    "model": "gpt-5.4-mini",
+    "model": "gpt-6.1-terra",
     "request_options": {
-      "reasoning": {"effort": "none"},
+      "reasoning": {"effort": "medium"},
       "max_output_tokens": 8192
     }
   },
   "revision": {
     "provider": "openai",
-    "model": "gpt-5.4-mini",
+    "model": "gpt-6.2-sol",
     "request_options": {
-      "reasoning": {"effort": "none"},
+      "reasoning": {"effort": "medium"},
       "max_output_tokens": 8192
     }
   }

@@ -23,7 +23,8 @@ QUALITY_THRESHOLD = 4
 MAX_ATTEMPTS = 3
 
 GATE_JUDGES = [
-    ("nvidia", "openai/gpt-oss-20b", "gpt-oss-20b"),
+    # Temporarily disabled because NVIDIA returned HTTP 410 for this model.
+    # ("nvidia", "openai/gpt-oss-20b", "gpt-oss-20b"),
     ("nvidia", "nvidia/nemotron-3.5-super-vl-120b-a12b", "nemotron-3.5-super-vl"),
 ]
 

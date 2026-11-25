@@ -9,6 +9,21 @@ from feedback_lens.file_management.indexing.embedding import (
 
 DEFAULT_PER_CUE_TOP_K = 5
 DEFAULT_MAX_FINAL_CHUNKS = 10
+MAX_AUTOMATIC_FINAL_CHUNKS = 24
+BASE_SUBMISSION_WORD_COUNT = 1000
+WORDS_PER_RETRIEVAL_STEP = 500
+
+
+def submission_retrieval_steps(submission_text: str) -> int:
+    word_count = len(submission_text.split())
+    return max(word_count - BASE_SUBMISSION_WORD_COUNT, 0) // WORDS_PER_RETRIEVAL_STEP
+
+
+def default_final_chunk_limit(submission_text: str) -> int:
+    return min(
+        DEFAULT_MAX_FINAL_CHUNKS + 2 * submission_retrieval_steps(submission_text),
+        MAX_AUTOMATIC_FINAL_CHUNKS,
+    )
 
 
 def _coerce_order(value: object, fallback: int) -> int:

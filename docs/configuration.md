@@ -385,7 +385,7 @@ Planned retrieval uses the selected provider and model to read the assignment sp
 Defaults:
 
 - `per_cue_top_k = 5`
-- `max_final_chunks = 10`
+- `max_final_chunks` defaults to 10 through 1,000 submission words, plus 2 per additional full 500 words, capped at 24. Set it explicitly to override the automatic limit.
 - `retrieval_strategy = baseline`
 - `temperature = 0.2`
 

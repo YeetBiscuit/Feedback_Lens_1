@@ -44,6 +44,34 @@ Each entry should include, where relevant:
 
 ---
 
+## 2026-11-26 — Dynamic Retrieval Limits and Default Model Update
+
+**Status:** Implemented and verified.
+
+### Important Changes
+
+- Planner query and Generator chunk limits now scale with the word count of the
+  extracted submission. The default is 8 queries and 10 chunks through 1,000
+  words. Each additional full 500 words adds 1 query and 2 chunks, capped at 15
+  queries and 24 chunks. Programmatic overrides remain available. Deduplication
+  and similarity ranking are unchanged.
+- Updated the OpenAI defaults to `gpt-6-luna / low` for Planning,
+  `gpt-6.1-terra / medium` for Generation, and `gpt-6.2-sol / medium` for Revision.
+  Existing assessment model overrides remain in effect.
+- Temporarily disabled NVIDIA-hosted `gpt-oss-20b` after an HTTP 410 response.
+  Nemotron 3.5 Super VL remains the active Judge.
+
+### Verification
+
+- Passed 52 retrieval regression tests and verified all three scoring
+  dimensions against the live Nemotron endpoint.
+- On five synthetic submissions, Terra `medium` and `low` both reached the
+  quality threshold on all five. `medium` passed 3 on the first attempt versus 2
+  for `low` and required 2 revisions versus 3. Estimated OpenAI cost was
+  US$0.128 for `medium` and US$0.158 for `low`, excluding Judge costs.
+
+---
+
 ## 2026-11-17 — OpenAI Integration, Strict JSON Output, and Workflow Verification
 
 **Status:** Implemented and verified for the temporary single-Judge workflow.

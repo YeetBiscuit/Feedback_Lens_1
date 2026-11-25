@@ -43,7 +43,7 @@ class GenerateFeedbackCliTests(unittest.TestCase):
         self.assertEqual(args.submission_id, 1)
         self.assertEqual(args.retrieval_strategy, "planned")
         self.assertEqual(args.per_cue_top_k, 5)
-        self.assertEqual(args.max_final_chunks, 10)
+        self.assertIsNone(args.max_final_chunks)
 
     def test_retrieval_limit_arguments_are_configurable(self) -> None:
         args = build_parser().parse_args(
@@ -57,7 +57,7 @@ class GenerateFeedbackCliTests(unittest.TestCase):
         args = build_parser().parse_args(["1", "--top-k", "7"])
 
         self.assertEqual(args.per_cue_top_k, 7)
-        self.assertEqual(args.max_final_chunks, 10)
+        self.assertIsNone(args.max_final_chunks)
 
     def test_prompt_argument_sets_prompt_template_version(self) -> None:
         args = build_parser().parse_args(["1", "--prompt", "unit-grounded-v2"])
